@@ -304,23 +304,27 @@ export default function VerifizierungPage() {
   useEffect(() => { if (!newDialog) clearTimers() }, [newDialog])
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div><h1 className="text-2xl font-bold">Verifizierung</h1><p className="text-muted-foreground">KYC & Kundenverifizierung</p></div>
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div><h1 className="text-2xl font-bold">Verifizierung</h1><p className="text-sm text-muted-foreground">KYC & Kundenverifizierung</p></div>
         <Button onClick={handleOpenDialog}><Plus className="h-4 w-4 mr-2" />Neue Verifizierung</Button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {[
-          { icon: FileText, color: 'text-blue-500', count: statCounts.eingereicht, label: 'Eingereicht' },
-          { icon: AlertCircle, color: 'text-amber-500', count: statCounts.in_pruefung, label: 'In Prüfung' },
-          { icon: CheckCircle, color: 'text-emerald-500', count: statCounts.verifiziert, label: 'Verifiziert' },
-          { icon: XCircle, color: 'text-red-500', count: statCounts.abgelehnt, label: 'Abgelehnt' },
-        ].map(({ icon: Icon, color, count, label }) => (
-          <Card key={label}><CardContent className="pt-6 text-center">
-            <Icon className={'h-5 w-5 mx-auto ' + color + ' mb-1'} />
-            <div className="text-2xl font-bold">{count}</div>
-            <p className="text-xs text-muted-foreground">{label}</p>
+          { icon: FileText, bg: 'bg-blue-50 dark:bg-blue-950/30', color: 'text-blue-500', count: statCounts.eingereicht, label: 'Eingereicht' },
+          { icon: AlertCircle, bg: 'bg-amber-50 dark:bg-amber-950/30', color: 'text-amber-500', count: statCounts.in_pruefung, label: 'In Prüfung' },
+          { icon: CheckCircle, bg: 'bg-emerald-50 dark:bg-emerald-950/30', color: 'text-emerald-500', count: statCounts.verifiziert, label: 'Verifiziert' },
+          { icon: XCircle, bg: 'bg-red-50 dark:bg-red-950/30', color: 'text-red-500', count: statCounts.abgelehnt, label: 'Abgelehnt' },
+        ].map(({ icon: Icon, bg, color, count, label }) => (
+          <Card key={label}><CardContent className="p-3 flex items-center gap-3">
+            <div className={'h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ' + bg}>
+              <Icon className={'h-4 w-4 ' + color} />
+            </div>
+            <div>
+              <div className="text-xl font-bold leading-none">{count}</div>
+              <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+            </div>
           </CardContent></Card>
         ))}
       </div>
@@ -335,12 +339,12 @@ export default function VerifizierungPage() {
           <TabsTrigger value="manuell_pruefen">Manuell prüfen</TabsTrigger>
         </TabsList>
         {['alle', 'eingereicht', 'in_pruefung', 'verifiziert', 'abgelehnt', 'manuell_pruefen'].map(tab => (
-          <TabsContent key={tab} value={tab} className="space-y-3 mt-4">
+          <TabsContent key={tab} value={tab} className="space-y-2.5 mt-2.5">
             {filterByStatus(tab).map(sub => {
               const config = kycStatusConfig[sub.status]
               return (
                 <Card key={sub.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedSubmission(sub)}>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3">
                         <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">

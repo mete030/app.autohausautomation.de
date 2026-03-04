@@ -39,6 +39,31 @@ export interface VehicleHistoryEntry {
   note?: string
 }
 
+export type VehicleAuctionStatus = 'aktiv' | 'verkauft' | 'reserviert'
+
+export interface VehicleListRowLegacy {
+  id: string
+  vehicleId: string
+  autoId: string
+  catalogNumber: string
+  kNumber: string
+  lotNumber: string
+  minimumPrice: number
+  currentBid: number
+  auctionStatus: VehicleAuctionStatus
+  imagesAvailable: boolean
+  auctionDate: string // ISO date
+  docsCoc: boolean
+  docsServiceHistory: boolean
+  docsSpareKey: boolean
+  huValidUntil: string // ISO date
+  damageNote: string
+  lastAuction: string
+  listingUrl: string
+  contractTextUrl: string
+  rowLocked?: boolean
+}
+
 // ---- Callcenter-Tracking (Problem 2) ----
 
 export type CallbackStatus = 'offen' | 'in_bearbeitung' | 'erledigt' | 'ueberfaellig'
@@ -169,9 +194,9 @@ export interface KYCCheckResult {
 // ---- Dashboard ----
 
 export interface DashboardStats {
-  werkstatt: { aktiv: number; ueberfaellig: number }
+  werkstatt: { wartend: number; ueberfaellig: number }
   rueckrufe: { offen: number; ueberfaellig: number }
-  inserate: { live: number; entwuerfe: number }
+  inserate: { zuErstellen: number; zuVeroeffentlichen: number }
   nachrichten: { ungelesen: number; heuteNeu: number }
   kyc: { offen: number; zuPruefen: number }
 }

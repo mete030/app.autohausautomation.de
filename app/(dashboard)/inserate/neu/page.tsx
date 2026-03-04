@@ -168,9 +168,21 @@ const EXPORT_PLATFORMS = [
 ]
 
 const MOCK_IMAGES = [
-  { id: 0, label: 'Frontansicht', colorClass: 'from-slate-200 via-slate-300 to-slate-400' },
-  { id: 1, label: 'Seitenansicht', colorClass: 'from-blue-100 via-blue-200 to-blue-300' },
-  { id: 2, label: 'Heckansicht', colorClass: 'from-zinc-200 via-zinc-300 to-zinc-400' },
+  {
+    id: 0,
+    label: 'Frontansicht',
+    photo: 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=600&q=80&fit=crop&auto=format',
+  },
+  {
+    id: 1,
+    label: 'Seitenansicht',
+    photo: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600&q=80&fit=crop&auto=format',
+  },
+  {
+    id: 2,
+    label: 'Heckansicht',
+    photo: 'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=600&q=80&fit=crop&auto=format',
+  },
 ]
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -784,9 +796,13 @@ export default function NeuesInseratPage() {
                       const enhancements = imageEnhancements[img.id]
                       return (
                         <div key={img.id}>
-                          {/* Image placeholder */}
-                          <div className={`aspect-[4/3] rounded-xl bg-gradient-to-br ${img.colorClass} flex items-center justify-center relative overflow-hidden`}>
-                            <Car className="h-8 w-8 text-white/40" />
+                          {/* Image */}
+                          <div className="aspect-[4/3] rounded-xl overflow-hidden bg-muted">
+                            <img
+                              src={img.photo}
+                              alt={img.label}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
                           <p className="text-[10px] text-muted-foreground text-center mt-1.5 mb-2">{img.label}</p>
 

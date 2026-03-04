@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,10 +50,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-1 ml-auto">
-        <Badge variant="secondary" className="hidden xl:inline-flex h-7 px-2 text-[11px] font-medium">
-          Lokal: http://localhost:3007/
-        </Badge>
-
         {/* Dark Mode Toggle */}
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleDarkMode}>
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

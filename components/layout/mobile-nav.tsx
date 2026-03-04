@@ -24,11 +24,8 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="border-b px-4 py-4">
-          <SheetTitle className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-              W
-            </div>
-            Wackenhut
+          <SheetTitle className="flex items-center">
+            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-auto max-w-[180px] invert dark:invert-0" />
           </SheetTitle>
         </SheetHeader>
         <ScrollArea className="flex-1 py-4">

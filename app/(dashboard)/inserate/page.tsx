@@ -7,9 +7,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useListingStore } from '@/lib/stores/listing-store'
 import { formatCurrency } from '@/lib/utils'
 import { priceCategoryConfig } from '@/lib/constants'
-import { Plus, Eye, MessageSquare, Star, Car } from 'lucide-react'
+import { Plus, Eye, MessageSquare, Star } from 'lucide-react'
 import Link from 'next/link'
 import type { ListingStatus } from '@/lib/types'
+
+// Dummy car photos per listing id (Unsplash)
+const LISTING_PHOTOS: Record<string, string> = {
+  l1: 'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=320&q=80&fit=crop&auto=format',
+  l2: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=320&q=80&fit=crop&auto=format',
+  l3: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=320&q=80&fit=crop&auto=format',
+  l4: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=320&q=80&fit=crop&auto=format',
+}
 
 const statusLabels: Record<ListingStatus, string> = {
   entwurf: 'Entwurf',
@@ -63,8 +71,16 @@ export default function InseratePage() {
                   <Card className="hover:shadow-md transition-shadow cursor-pointer mb-3">
                     <CardContent className="p-4">
                       <div className="flex gap-4">
-                        <div className="w-32 h-20 bg-muted rounded-lg flex items-center justify-center shrink-0">
-                          <Car className="h-8 w-8 text-muted-foreground/30" />
+                        <div className="w-32 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
+                          {LISTING_PHOTOS[listing.id] ? (
+                            <img
+                              src={LISTING_PHOTOS[listing.id]}
+                              alt={listing.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-muted" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-start justify-between gap-2">

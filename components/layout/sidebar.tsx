@@ -40,16 +40,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-14 items-center border-b border-border/50 px-3">
         {!collapsed ? (
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs">
-              W
-            </div>
-            <span className="font-semibold text-[15px] tracking-tight">Wackenhut</span>
+          <Link href="/dashboard" className="flex items-center">
+            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-auto max-w-[180px] invert dark:invert-0" />
           </Link>
         ) : (
-          <div className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs">
-            W
-          </div>
+          <Link href="/dashboard" className="mx-auto">
+            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-7 w-7 object-contain invert dark:invert-0" />
+          </Link>
         )}
       </div>
 

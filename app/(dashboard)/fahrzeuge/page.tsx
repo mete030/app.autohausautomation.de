@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatCurrency, formatMileage, getEscalationLevel, getDaysRemaining } from '@/lib/utils'
 import { escalationColors } from '@/lib/constants'
 import { useVehicleStore } from '@/lib/stores/vehicle-store'
+import VehicleListExcelTable from '@/components/fahrzeuge/VehicleListExcelTable'
 import { Search, LayoutGrid, List, MapPin, Fuel, Gauge, Map } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -211,64 +212,7 @@ export default function FahrzeugePage() {
 
       {/* List View */}
       {view === 'list' && (
-        <Card className="border-border/60">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Fahrzeug</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Status</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Standort</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Km-Stand</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Deadline</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Preis</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((vehicle) => {
-                  const escLevel = getEscalationLevel(vehicle.deadline)
-                  const escConfig = escalationColors[escLevel]
-                  const daysLeft = getDaysRemaining(vehicle.deadline)
-
-                  return (
-                    <tr key={vehicle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <td className="p-3">
-                        <Link href={`/fahrzeuge/${vehicle.id}`} className="flex items-center gap-3">
-                          <div className="h-10 w-14 rounded-md overflow-hidden bg-muted shrink-0 relative">
-                            <Image
-                              src={vehicle.imageUrl}
-                              alt={`${vehicle.make} ${vehicle.model}`}
-                              fill
-                              className="object-cover"
-                              sizes="56px"
-                            />
-                          </div>
-                          <div>
-                            <div className="font-medium">{vehicle.make} {vehicle.model}</div>
-                            <div className="text-xs text-muted-foreground">{vehicle.year} · {vehicle.licensePlate}</div>
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="p-3">
-                        <Badge className={`${statusColors[vehicle.status]} border-0 text-[11px]`} variant="secondary">
-                          {statusLabels[vehicle.status]}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-muted-foreground">{vehicle.location}</td>
-                      <td className="p-3 text-muted-foreground">{formatMileage(vehicle.mileage)}</td>
-                      <td className="p-3">
-                        <Badge variant="outline" className={`${escConfig.bg} ${escConfig.text} border-0 text-[11px]`}>
-                          {daysLeft < 0 ? `${Math.abs(daysLeft)}d überfällig` : `${daysLeft}d`}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right font-medium">{formatCurrency(vehicle.price)}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <VehicleListExcelTable vehicles={filtered} />
       )}
     </div>
   )
