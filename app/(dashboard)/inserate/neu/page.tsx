@@ -11,40 +11,231 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { priceCategoryConfig } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
-import { ArrowLeft, Sparkles, RefreshCw, Check, Star, Upload, TrendingDown, TrendingUp, Minus, ImagePlus } from 'lucide-react'
+import {
+  ArrowLeft, Sparkles, RefreshCw, Check, Star, Upload, ImagePlus,
+  ScanLine, Pencil, Loader2, Car, X, Wand2,
+  Scissors, Zap, ExternalLink, CheckCircle2, ChevronRight, Plus,
+} from 'lucide-react'
+
+// ─── Platform Brand Icons ────────────────────────────────────────────────────
+
+const MobileDeIcon = ({ size = 40 }: { size?: number }) => (
+  <div
+    className="rounded-2xl flex items-center justify-center shrink-0"
+    style={{ width: size, height: size, background: '#FF6600' }}
+  >
+    <svg viewBox="0 0 24 24" style={{ width: size * 0.58, height: size * 0.58 }} fill="white">
+      <path d="M18.92 6.01L15 2H9L5.08 6.01C4.4 6.73 4 7.7 4 8.75V19c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8.75c0-1.05-.4-2.02-1.08-2.74zM12 17.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 12.5 12 12.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM9.5 7l1.5-3h2l1.5 3h-5z" />
+    </svg>
+  </div>
+)
+
+const AutoScout24Icon = ({ size = 40 }: { size?: number }) => (
+  <div
+    className="rounded-2xl flex items-center justify-center shrink-0"
+    style={{ width: size, height: size, background: '#003F87' }}
+  >
+    <svg viewBox="0 0 24 24" style={{ width: size * 0.58, height: size * 0.58 }} fill="none">
+      <circle cx="10.5" cy="10" r="6" stroke="white" strokeWidth="2" />
+      <line x1="15" y1="14.5" x2="21" y2="20.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M7.5 10.5h6M8.5 8.5l.9-1.5h2.2l.9 1.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9.2" cy="11.8" r="0.9" fill="white" />
+      <circle cx="12.8" cy="11.8" r="0.9" fill="white" />
+    </svg>
+  </div>
+)
+
+const TruckScout24Icon = ({ size = 40 }: { size?: number }) => (
+  <div
+    className="rounded-2xl flex items-center justify-center shrink-0"
+    style={{ width: size, height: size, background: '#009C3B' }}
+  >
+    <svg viewBox="0 0 24 24" style={{ width: size * 0.58, height: size * 0.58 }} fill="white">
+      <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9 1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+    </svg>
+  </div>
+)
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const VIN_MOCK = {
+  vin: 'WBA52AG0X0FH12345',
+  make: 'BMW',
+  model: '520d Touring',
+  year: '2021',
+  mileage: '62.400',
+  power: '190',
+  displacement: '1.995',
+  fuelType: 'diesel',
+  transmission: 'automatik',
+  color: 'Sophistograu Metallic',
+  doors: '5',
+  seats: '5',
+  firstRegistration: '03.2021',
+  hu: '03.2025',
+  price: '38.900',
+  serienausstattung: [
+    'LED-Scheinwerfer', 'Klimaautomatik 2-Zonen', 'Rückfahrkamera',
+    'Park Distance Control vorne/hinten', 'Sitzheizung vorne', 'DAB+ Radio',
+    'Bluetooth Freisprecheinrichtung', 'Tempomat', 'Lichtsensor', 'Regensensor',
+    'Isofix', 'Start-Stop-System', 'Bordcomputer', 'Elektr. Fensterheber',
+    'Elektr. Außenspiegel', 'Zentralverriegelung', 'ABS / ASR / DSC',
+    'Fahrassistenzsysteme', 'Multifunktionslenkrad', 'Spurhalteassistent',
+  ],
+  sonderausstattung: [
+    'Navigationssystem Professional', 'M Sportpaket', 'Panorama-Glasdach',
+    'Head-Up Display', 'Harman Kardon Soundsystem', 'Adaptives Fahrwerk M',
+    'Komfortzugang', 'Driving Assistant Professional', 'Standheizung',
+    'Anhängerkupplung schwenkbar',
+  ],
+}
+
+const SERIES_OPTIONS = [
+  'LED-Scheinwerfer', 'Xenon-Scheinwerfer', 'Tagfahrlicht', 'Klimaautomatik',
+  'Klimaanlage', 'Rückfahrkamera', 'Park Distance Control', 'Einparkhilfe',
+  'Sitzheizung vorne', 'DAB+ Radio', 'Bluetooth', 'Apple CarPlay',
+  'Android Auto', 'Tempomat', 'Lichtsensor', 'Regensensor', 'Isofix',
+  'Start-Stop-System', 'Bordcomputer', 'Elektr. Fensterheber',
+  'Elektr. Außenspiegel', 'Zentralverriegelung', 'ABS', 'ASR', 'ESP',
+  'Airbags vorne', 'Airbags seitlich', 'Spurhalteassistent',
+  'Notbremsassistent', 'Multifunktionslenkrad', 'Lenkradheizung',
+]
+
+const EXTRA_OPTIONS = [
+  'Navigationssystem', 'Navigationssystem Professional', 'M Sportpaket',
+  'AMG Paket', 'S-Line Paket', 'Panorama-Glasdach', 'Schiebedach elektrisch',
+  'Head-Up Display', 'Harman Kardon Soundsystem', 'Bang & Olufsen',
+  'Bose Soundsystem', 'Adaptives Fahrwerk', 'Luftfederung', 'Komfortzugang',
+  'Keyless Go', 'Driving Assistant Professional', 'Standheizung',
+  'Anhängerkupplung', 'Lederausstattung', '360° Kamera',
+  'Nachtsichtassistent', 'Massagesitze', 'Belüftete Sitze', 'Sportabgasanlage',
+]
+
+const MOCK_AI = {
+  title: 'BMW 520d Touring M Sport – Pano, HUD, Driving Assistant Pro',
+  description: 'Gepflegter BMW 520d Touring in eleganter M Sport Ausführung. Ausgestattet mit dem Navigationssystem Professional, Head-Up Display und Panorama-Glasdach. Der 190 PS Dieselmotor überzeugt durch kraftvolle Fahrleistungen bei moderatem Verbrauch.\n\n✓ M Sportpaket\n✓ Navigation Professional\n✓ LED-Scheinwerfer\n✓ Panorama-Glasdach\n✓ Head-Up Display\n✓ Harman Kardon Sound\n✓ Driving Assistant Professional\n✓ Scheckheftgepflegt',
+  improvedDescription: 'Erleben Sie Businessklasse auf höchstem Niveau: Dieser BMW 520d Touring im zeitlosen Sophistograu Metallic vereint sportliches Flair mit luxuriösem Komfort. Das M Sportpaket verleiht dem Fahrzeug eine athletische Präsenz, während das Driving Assistant Professional-Paket für maximale Sicherheit sorgt.\n\nDer 190 PS starke TwinPower Turbo Diesel, kombiniert mit der 8-Gang Steptronic, bietet ein souveränes Fahrerlebnis bei geringem Verbrauch.\n\n✓ M Sportpaket + 20" M Leichtmetallräder\n✓ Navigation Professional mit Echtzeit-Traffic\n✓ Head-Up Display mit erweiterter Realität\n✓ Panorama-Glasdach elektrisch\n✓ Harman Kardon 16-Lautsprecher\n✓ Driving Assistant Professional\n✓ Adaptives Fahrwerk M\n✓ 1 Vorbesitzer – Scheckheftgepflegt',
+  kycScore: 74,
+  improvedKycScore: 96,
+  confidence: 92,
+  priceAnalysis: {
+    marketPrice: 41200,
+    suggestion: 38900,
+    category: 'gut' as const,
+    thresholds: [
+      { label: 'Sehr gut', max: 36000 },
+      { label: 'Gut', max: 39500 },
+      { label: 'Zufriedenstellend', max: 42000 },
+      { label: 'Erhöht', max: 44500 },
+    ],
+  },
+}
+
+const EXPORT_PLATFORMS = [
+  {
+    id: 'mobile_de',
+    name: 'mobile.de',
+    description: 'Größter deutscher Automarkt',
+    icon: <MobileDeIcon size={44} />,
+    borderColor: 'border-orange-200 dark:border-orange-800',
+    bgColor: 'bg-orange-50 dark:bg-orange-950/30',
+    btnStyle: { background: '#FF6600' } as React.CSSProperties,
+    btnHoverClass: 'hover:opacity-90',
+  },
+  {
+    id: 'autoscout24',
+    name: 'AutoScout24',
+    description: 'Europäisches Automarktportal',
+    icon: <AutoScout24Icon size={44} />,
+    borderColor: 'border-blue-200 dark:border-blue-900',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+    btnStyle: { background: '#003F87' } as React.CSSProperties,
+    btnHoverClass: 'hover:opacity-90',
+  },
+  {
+    id: 'truckscout24',
+    name: 'TruckScout24',
+    description: 'Nutzfahrzeuge & Transporter',
+    icon: <TruckScout24Icon size={44} />,
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
+    btnStyle: { background: '#009C3B' } as React.CSSProperties,
+    btnHoverClass: 'hover:opacity-90',
+  },
+]
+
+const MOCK_IMAGES = [
+  { id: 0, label: 'Frontansicht', colorClass: 'from-slate-200 via-slate-300 to-slate-400' },
+  { id: 1, label: 'Seitenansicht', colorClass: 'from-blue-100 via-blue-200 to-blue-300' },
+  { id: 2, label: 'Heckansicht', colorClass: 'from-zinc-200 via-zinc-300 to-zinc-400' },
+]
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type InputMode = 'choose' | 'vin' | 'manual'
+type VinStatus = 'idle' | 'loading' | 'found'
+type EnhancementType = 'background' | 'quality' | 'cutout'
+type EnhancementStatus = 'idle' | 'processing' | 'done'
+type ExportStatus = 'idle' | 'exporting' | 'done'
+
+type EnhancementState = Record<number, Record<EnhancementType, EnhancementStatus>>
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function NeuesInseratPage() {
+  // Mode
+  const [inputMode, setInputMode] = useState<InputMode>('choose')
+
+  // VIN
+  const [vin, setVin] = useState('')
+  const [vinStatus, setVinStatus] = useState<VinStatus>('idle')
+  const [vinData, setVinData] = useState<typeof VIN_MOCK | null>(null)
+
+  // Manual form
+  const [formData, setFormData] = useState({
+    make: '', model: '', year: '', mileage: '', power: '', displacement: '',
+    fuelType: '', transmission: '', color: '', doors: '', seats: '',
+    firstRegistration: '', hu: '', licensePlate: '', price: '',
+  })
+  const [selectedSeries, setSelectedSeries] = useState<string[]>([])
+  const [selectedExtras, setSelectedExtras] = useState<string[]>([])
+  const [customExtra, setCustomExtra] = useState('')
+
+  // AI
   const [generating, setGenerating] = useState(false)
   const [generated, setGenerated] = useState(false)
-  const [formData, setFormData] = useState({
-    make: '',
-    model: '',
-    year: '',
-    mileage: '',
-    fuelType: '',
-    power: '',
-    color: '',
-    price: '',
-    extras: '',
+  const [activeDescription, setActiveDescription] = useState('')
+  const [improvingDesc, setImprovingDesc] = useState(false)
+  const [descImproved, setDescImproved] = useState(false)
+  const [kycScore, setKycScore] = useState(MOCK_AI.kycScore)
+  const [improvingKyc, setImprovingKyc] = useState(false)
+  const [kycImproved, setKycImproved] = useState(false)
+
+  // Images
+  const [imageEnhancements, setImageEnhancements] = useState<EnhancementState>({
+    0: { background: 'idle', quality: 'idle', cutout: 'idle' },
+    1: { background: 'idle', quality: 'idle', cutout: 'idle' },
+    2: { background: 'idle', quality: 'idle', cutout: 'idle' },
   })
 
-  const mockAiResult = {
-    title: 'BMW 320d Touring M Sport - LED, Navi Prof., Panorama, HUD',
-    description: 'Sportlicher BMW 320d Touring in der begehrten M Sport-Ausführung. Umfangreiche Ausstattung mit Navigationssystem Professional, LED-Scheinwerfer, Panorama-Glasdach und Head-Up Display. Der kraftvolle 190 PS Dieselmotor bietet souveräne Fahrleistungen bei moderatem Verbrauch. Scheckheftgepflegt beim BMW Partner.\n\n✓ M Sportpaket\n✓ Navigation Professional\n✓ LED-Scheinwerfer\n✓ Panorama-Glasdach\n✓ Head-Up Display\n✓ Sitzheizung vorne\n✓ Park Distance Control',
-    confidence: 89,
-    priceAnalysis: {
-      marketPrice: 36200,
-      suggestion: 34900 as number,
-      category: 'gut' as const,
-      thresholds: [
-        { label: 'Sehr gut', max: 32500 },
-        { label: 'Gut', max: 35000 },
-        { label: 'Zufriedenstellend', max: 37000 },
-        { label: 'Erhöht', max: 39000 },
-      ],
-    },
+  // Export
+  const [inseratCreated, setInseratCreated] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+  const [exportStatus, setExportStatus] = useState<Record<string, ExportStatus>>({
+    mobile_de: 'idle', autoscout24: 'idle', truckscout24: 'idle',
+  })
+
+  // ─── Handlers ───────────────────────────────────────────────────────────────
+
+  const handleVinLookup = () => {
+    setVinStatus('loading')
+    setTimeout(() => {
+      setVinData(VIN_MOCK)
+      setVinStatus('found')
+    }, 2200)
   }
 
   const handleGenerate = () => {
@@ -52,255 +243,859 @@ export default function NeuesInseratPage() {
     setTimeout(() => {
       setGenerating(false)
       setGenerated(true)
-    }, 2000)
+      setActiveDescription(MOCK_AI.description)
+    }, 2200)
   }
+
+  const handleImproveDescription = () => {
+    setImprovingDesc(true)
+    setTimeout(() => {
+      setImprovingDesc(false)
+      setDescImproved(true)
+      setActiveDescription(MOCK_AI.improvedDescription)
+    }, 1800)
+  }
+
+  const handleImproveKyc = () => {
+    setImprovingKyc(true)
+    setTimeout(() => {
+      setImprovingKyc(false)
+      setKycImproved(true)
+      setKycScore(MOCK_AI.improvedKycScore)
+    }, 1500)
+  }
+
+  const handleEnhance = (imageId: number, type: EnhancementType) => {
+    setImageEnhancements(prev => ({
+      ...prev,
+      [imageId]: { ...prev[imageId], [type]: 'processing' },
+    }))
+    setTimeout(() => {
+      setImageEnhancements(prev => ({
+        ...prev,
+        [imageId]: { ...prev[imageId], [type]: 'done' },
+      }))
+    }, 1600)
+  }
+
+  const handleCreateInserat = () => {
+    setInseratCreated(true)
+    setShowExport(true)
+  }
+
+  const handleExport = (platformId: string) => {
+    setExportStatus(prev => ({ ...prev, [platformId]: 'exporting' }))
+    setTimeout(() => {
+      setExportStatus(prev => ({ ...prev, [platformId]: 'done' }))
+    }, 1800 + Math.random() * 800)
+  }
+
+  const toggleSeries = (item: string) =>
+    setSelectedSeries(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item])
+
+  const toggleExtra = (item: string) =>
+    setSelectedExtras(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item])
+
+  const addCustomExtra = () => {
+    const val = customExtra.trim()
+    if (val && !selectedExtras.includes(val)) {
+      setSelectedExtras(prev => [...prev, val])
+      setCustomExtra('')
+    }
+  }
+
+  const setField = (key: keyof typeof formData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setFormData(prev => ({ ...prev, [key]: e.target.value }))
+
+  const showFormContent = inputMode === 'manual' || (inputMode === 'vin' && vinStatus === 'found')
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
+
+      {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/inserate">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="h-9 w-9">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
           <h1 className="text-2xl font-bold">Neues Inserat</h1>
-          <p className="text-muted-foreground">KI-unterstützte Inserat-Erstellung</p>
+          <p className="text-sm text-muted-foreground">KI-unterstützte Inserat-Erstellung</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Left: Form */}
-        <div className="lg:col-span-3 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Fahrzeugdaten</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Marke</Label>
-                  <Input
-                    placeholder="z.B. BMW"
-                    value={formData.make}
-                    onChange={e => setFormData(prev => ({ ...prev, make: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Modell</Label>
-                  <Input
-                    placeholder="z.B. 320d Touring"
-                    value={formData.model}
-                    onChange={e => setFormData(prev => ({ ...prev, model: e.target.value }))}
-                  />
-                </div>
+      {/* ─── Step 1: Choose Input Mode ──────────────────────────────────────── */}
+      {inputMode === 'choose' && (
+        <div className="max-w-xl mx-auto py-10">
+          <p className="text-center text-muted-foreground text-sm mb-8">
+            Wie möchten Sie die Fahrzeugdaten erfassen?
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => setInputMode('vin')}
+              className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                <ScanLine className="h-6 w-6 text-primary" />
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Baujahr</Label>
-                  <Input
-                    placeholder="2022"
-                    value={formData.year}
-                    onChange={e => setFormData(prev => ({ ...prev, year: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Kilometerstand</Label>
-                  <Input
-                    placeholder="45.200"
-                    value={formData.mileage}
-                    onChange={e => setFormData(prev => ({ ...prev, mileage: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Leistung (PS)</Label>
-                  <Input
-                    placeholder="190"
-                    value={formData.power}
-                    onChange={e => setFormData(prev => ({ ...prev, power: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Kraftstoff</Label>
-                  <Select value={formData.fuelType} onValueChange={v => setFormData(prev => ({ ...prev, fuelType: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Auswählen" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="benzin">Benzin</SelectItem>
-                      <SelectItem value="diesel">Diesel</SelectItem>
-                      <SelectItem value="elektro">Elektro</SelectItem>
-                      <SelectItem value="hybrid">Hybrid</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Farbe</Label>
-                  <Input
-                    placeholder="Mineralweiß"
-                    value={formData.color}
-                    onChange={e => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Preis (€)</Label>
-                <Input
-                  placeholder="34.900"
-                  value={formData.price}
-                  onChange={e => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Ausstattung / Extras</Label>
-                <Textarea
-                  placeholder="M Sport, Navi, LED, Panorama, HUD, Sitzheizung..."
-                  value={formData.extras}
-                  onChange={e => setFormData(prev => ({ ...prev, extras: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
+              <h3 className="font-semibold mb-1.5">VIN-Abfrage</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Fahrzeugdaten automatisch per Fahrgestellnummer abrufen
+              </p>
+              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+            </button>
 
-          {/* Image Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Bilder</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="border-2 border-dashed rounded-xl p-8 text-center">
-                <ImagePlus className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-sm text-muted-foreground">Bilder hierher ziehen oder klicken zum Hochladen</p>
-                <p className="text-xs text-muted-foreground mt-1">JPG, PNG bis 10MB, max. 20 Bilder</p>
-                <Button variant="outline" size="sm" className="mt-4">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Bilder auswählen
-                </Button>
+            <button
+              onClick={() => setInputMode('manual')}
+              className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                <Pencil className="h-6 w-6 text-primary" />
               </div>
-            </CardContent>
-          </Card>
+              <h3 className="font-semibold mb-1.5">Manuell eingeben</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Fahrzeugdaten, Ausstattung und Details selbst erfassen
+              </p>
+              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+            </button>
+          </div>
         </div>
+      )}
 
-        {/* Right: AI Copilot */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                KI-Assistent
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button
-                className="w-full"
-                onClick={handleGenerate}
-                disabled={generating}
+      {/* ─── Main Form ──────────────────────────────────────────────────────── */}
+      {inputMode !== 'choose' && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+          {/* ─── Left Column ────────────────────────────────────────────────── */}
+          <div className="lg:col-span-3 space-y-5">
+
+            {/* Mode switcher */}
+            <div className="flex rounded-lg border bg-muted p-1 w-fit gap-1">
+              <button
+                onClick={() => { setInputMode('vin'); setVinStatus('idle'); setVinData(null) }}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  inputMode === 'vin'
+                    ? 'bg-card shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
-                {generating ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Generiere...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    KI-Beschreibung generieren
-                  </>
-                )}
-              </Button>
+                <ScanLine className="h-3.5 w-3.5" />
+                VIN-Abfrage
+              </button>
+              <button
+                onClick={() => setInputMode('manual')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  inputMode === 'manual'
+                    ? 'bg-card shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Manuell
+              </button>
+            </div>
 
-              {generated && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                  {/* Confidence */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <Star
-                          key={i}
-                          className={`h-4 w-4 ${i <= Math.round(mockAiResult.confidence / 20) ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30'}`}
-                        />
-                      ))}
+            {/* ─── VIN Mode ───────────────────────────────────────────────── */}
+            {inputMode === 'vin' && (
+              <>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <ScanLine className="h-4 w-4 text-primary" />
+                      VIN / Fahrgestellnummer
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="z.B. WBA52AG0X0FH12345"
+                        value={vin}
+                        onChange={e => setVin(e.target.value.toUpperCase())}
+                        className="font-mono text-sm tracking-wider"
+                        maxLength={17}
+                        disabled={vinStatus === 'loading' || vinStatus === 'found'}
+                      />
+                      <Button
+                        onClick={handleVinLookup}
+                        disabled={vin.length < 5 || vinStatus === 'loading' || vinStatus === 'found'}
+                        className="shrink-0"
+                      >
+                        {vinStatus === 'loading'
+                          ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Abfragen...</>
+                          : <><ScanLine className="h-4 w-4 mr-2" />Abfragen</>
+                        }
+                      </Button>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      Konfidenz {mockAiResult.confidence}%
-                    </span>
+                    {vinStatus === 'loading' && (
+                      <div className="space-y-2 animate-in fade-in">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Fahrzeugdaten werden abgerufen...
+                        </div>
+                        <Progress value={66} className="h-1" />
+                      </div>
+                    )}
+                    {vinStatus === 'idle' && (
+                      <p className="text-xs text-muted-foreground">
+                        Demo: Geben Sie min. 5 Zeichen ein und klicken Sie auf Abfragen.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* VIN Results */}
+                {vinStatus === 'found' && vinData && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span className="text-sm text-emerald-600 font-medium">
+                        Fahrzeug gefunden: {vinData.make} {vinData.model}
+                      </span>
+                      <button
+                        onClick={() => { setVinStatus('idle'); setVinData(null); setVin('') }}
+                        className="ml-auto text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                      >
+                        Neue Abfrage
+                      </button>
+                    </div>
+
+                    {/* Fahrzeugdaten */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">Fahrzeugdaten</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-0 text-sm">
+                          {[
+                            ['Marke', vinData.make], ['Modell', vinData.model],
+                            ['Baujahr', vinData.year], ['Erstzulassung', vinData.firstRegistration],
+                            ['Kilometerstand', `${vinData.mileage} km`], ['HU bis', vinData.hu],
+                            ['Kraftstoff', 'Diesel'], ['Getriebe', 'Automatik (8-Gang)'],
+                            ['Leistung', `${vinData.power} PS`], ['Hubraum', `${vinData.displacement} ccm`],
+                            ['Farbe', vinData.color], ['Türen / Sitze', `${vinData.doors} / ${vinData.seats}`],
+                          ].map(([label, value]) => (
+                            <div key={label} className="flex justify-between py-2 border-b border-border/40 last:border-0">
+                              <span className="text-muted-foreground">{label}</span>
+                              <span className="font-medium text-right">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Serienausstattung */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center justify-between">
+                          Serienausstattung
+                          <Badge variant="secondary" className="text-[10px] font-normal">
+                            {vinData.serienausstattung.length} Merkmale
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-1.5">
+                          {vinData.serienausstattung.map(item => (
+                            <Badge key={item} variant="secondary" className="text-xs font-normal">
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Sonderausstattung */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center justify-between">
+                          Sonderausstattung
+                          <Badge className="text-[10px] font-normal bg-primary/10 text-primary border-0">
+                            {vinData.sonderausstattung.length} Extras
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-1.5">
+                          {vinData.sonderausstattung.map(item => (
+                            <Badge key={item} className="text-xs font-normal bg-primary/10 text-primary hover:bg-primary/20 border-0 cursor-default">
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Price override */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">Verkaufspreis festlegen</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center gap-3">
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                            <Input className="pl-7" defaultValue={vinData.price} />
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">Marktpreis ~€ 41.200</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ─── Manual Mode ────────────────────────────────────────────── */}
+            {inputMode === 'manual' && (
+              <div className="space-y-4">
+
+                {/* Grunddaten */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Grunddaten</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Marke</Label>
+                        <Input placeholder="z.B. BMW" value={formData.make} onChange={setField('make')} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Modell</Label>
+                        <Input placeholder="z.B. 520d Touring" value={formData.model} onChange={setField('model')} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Baujahr</Label>
+                        <Input placeholder="2021" value={formData.year} onChange={setField('year')} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Erstzulassung</Label>
+                        <Input placeholder="03.2021" value={formData.firstRegistration} onChange={setField('firstRegistration')} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">HU bis</Label>
+                        <Input placeholder="03.2025" value={formData.hu} onChange={setField('hu')} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Kilometerstand</Label>
+                        <Input placeholder="62.400" value={formData.mileage} onChange={setField('mileage')} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Kennzeichen</Label>
+                        <Input placeholder="KA-WH 1234" value={formData.licensePlate} onChange={setField('licensePlate')} />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Verkaufspreis (€)</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                        <Input className="pl-7" placeholder="38.900" value={formData.price} onChange={setField('price')} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Technische Daten */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Technische Daten</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Kraftstoff</Label>
+                        <Select value={formData.fuelType} onValueChange={v => setFormData(prev => ({ ...prev, fuelType: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Auswählen" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="benzin">Benzin</SelectItem>
+                            <SelectItem value="diesel">Diesel</SelectItem>
+                            <SelectItem value="elektro">Elektro</SelectItem>
+                            <SelectItem value="hybrid">Hybrid</SelectItem>
+                            <SelectItem value="plug_in_hybrid">Plug-in-Hybrid</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Getriebe</Label>
+                        <Select value={formData.transmission} onValueChange={v => setFormData(prev => ({ ...prev, transmission: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Auswählen" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="automatik">Automatik</SelectItem>
+                            <SelectItem value="schaltung">Schaltgetriebe</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Leistung (PS)</Label>
+                        <Input placeholder="190" value={formData.power} onChange={setField('power')} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Hubraum (ccm)</Label>
+                        <Input placeholder="1.995" value={formData.displacement} onChange={setField('displacement')} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Farbe</Label>
+                        <Input placeholder="Silber Metallic" value={formData.color} onChange={setField('color')} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Türen</Label>
+                        <Select value={formData.doors} onValueChange={v => setFormData(prev => ({ ...prev, doors: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Auswählen" /></SelectTrigger>
+                          <SelectContent>
+                            {['2', '3', '4', '5'].map(d => <SelectItem key={d} value={d}>{d} Türen</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Sitzplätze</Label>
+                        <Select value={formData.seats} onValueChange={v => setFormData(prev => ({ ...prev, seats: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Auswählen" /></SelectTrigger>
+                          <SelectContent>
+                            {['2', '4', '5', '6', '7', '8', '9'].map(s => <SelectItem key={s} value={s}>{s} Sitze</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Serienausstattung */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      Serienausstattung
+                      {selectedSeries.length > 0 && (
+                        <Badge variant="secondary" className="text-[10px] font-normal">
+                          {selectedSeries.length} ausgewählt
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {SERIES_OPTIONS.map(item => {
+                        const active = selectedSeries.includes(item)
+                        return (
+                          <button
+                            key={item}
+                            onClick={() => toggleSeries(item)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                              active
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                            }`}
+                          >
+                            {active && <Check className="inline h-2.5 w-2.5 mr-1 -mt-0.5" />}
+                            {item}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Sonderausstattung */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      Sonderausstattung
+                      {selectedExtras.length > 0 && (
+                        <Badge className="text-[10px] font-normal bg-primary/10 text-primary border-0">
+                          {selectedExtras.length} Extras
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {EXTRA_OPTIONS.map(item => {
+                        const active = selectedExtras.includes(item)
+                        return (
+                          <button
+                            key={item}
+                            onClick={() => toggleExtra(item)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                              active
+                                ? 'bg-primary/10 text-primary border-primary/40'
+                                : 'bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
+                            }`}
+                          >
+                            {active && <Check className="inline h-2.5 w-2.5 mr-1 -mt-0.5" />}
+                            {item}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Input
+                        placeholder="Eigenes Extra hinzufügen..."
+                        value={customExtra}
+                        onChange={e => setCustomExtra(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addCustomExtra()}
+                        className="text-sm h-8"
+                      />
+                      <Button size="sm" variant="outline" onClick={addCustomExtra} className="h-8 px-3">
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {selectedExtras.filter(e => !EXTRA_OPTIONS.includes(e)).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedExtras.filter(e => !EXTRA_OPTIONS.includes(e)).map(item => (
+                          <span key={item} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                            {item}
+                            <button onClick={() => toggleExtra(item)} className="hover:text-destructive transition-colors">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* ─── Bilder ─────────────────────────────────────────────────── */}
+            {showFormContent && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Bilder</span>
+                    <Badge variant="outline" className="text-xs font-normal">
+                      {MOCK_IMAGES.length} / 20
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    {MOCK_IMAGES.map(img => {
+                      const enhancements = imageEnhancements[img.id]
+                      return (
+                        <div key={img.id}>
+                          {/* Image placeholder */}
+                          <div className={`aspect-[4/3] rounded-xl bg-gradient-to-br ${img.colorClass} flex items-center justify-center relative overflow-hidden`}>
+                            <Car className="h-8 w-8 text-white/40" />
+                          </div>
+                          <p className="text-[10px] text-muted-foreground text-center mt-1.5 mb-2">{img.label}</p>
+
+                          {/* Enhancement actions */}
+                          <div className="space-y-1">
+                            {([
+                              { type: 'background' as const, icon: Wand2, label: 'Hintergrund' },
+                              { type: 'quality' as const, icon: Zap, label: 'Qualität' },
+                              { type: 'cutout' as const, icon: Scissors, label: 'Freistellen' },
+                            ] as const).map(({ type, icon: Icon, label }) => {
+                              const status = enhancements[type]
+                              return (
+                                <button
+                                  key={type}
+                                  onClick={() => status === 'idle' && handleEnhance(img.id, type)}
+                                  disabled={status === 'processing'}
+                                  className={`w-full flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-all ${
+                                    status === 'done'
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border-emerald-200 dark:border-emerald-800'
+                                      : status === 'processing'
+                                      ? 'bg-primary/5 text-primary border-primary/20 cursor-not-allowed'
+                                      : 'bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground cursor-pointer'
+                                  }`}
+                                >
+                                  {status === 'processing' ? (
+                                    <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                                  ) : status === 'done' ? (
+                                    <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                  ) : (
+                                    <Icon className="h-3 w-3 shrink-0" />
+                                  )}
+                                  {status === 'processing' ? 'Verarbeite...' : status === 'done' ? 'Fertig' : label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
 
-                  {/* Generated Title */}
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Generierter Titel</Label>
-                    <div className="p-3 bg-card rounded-lg border text-sm font-medium">
-                      {mockAiResult.title}
-                    </div>
-                    <Button size="sm" variant="outline" className="w-full">
-                      <Check className="h-3 w-3 mr-1" />
-                      Titel übernehmen
+                  {/* Upload more */}
+                  <div className="border-2 border-dashed rounded-xl p-5 text-center">
+                    <ImagePlus className="h-7 w-7 mx-auto text-muted-foreground/40 mb-2" />
+                    <p className="text-xs text-muted-foreground">Weitere Bilder hochladen</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG bis 10MB, max. 20 Bilder</p>
+                    <Button variant="outline" size="sm" className="mt-3 h-7 text-xs">
+                      <Upload className="h-3 w-3 mr-1.5" />
+                      Bilder auswählen
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-                  <Separator />
+          {/* ─── Right Column: KI-Assistent ─────────────────────────────────── */}
+          <div className="lg:col-span-2 space-y-5">
+            {showFormContent && (
+              <Card className="border-primary/20 bg-primary/[0.025]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    KI-Assistent
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
 
-                  {/* Generated Description */}
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Generierte Beschreibung</Label>
-                    <div className="p-3 bg-card rounded-lg border text-sm whitespace-pre-line max-h-48 overflow-y-auto">
-                      {mockAiResult.description}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1">
-                        <Check className="h-3 w-3 mr-1" />
-                        Übernehmen
-                      </Button>
-                      <Button size="sm" variant="ghost" className="flex-1" onClick={handleGenerate}>
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        Neu generieren
-                      </Button>
-                    </div>
-                  </div>
+                  {/* Generate button */}
+                  <Button
+                    className="w-full"
+                    onClick={handleGenerate}
+                    disabled={generating || inseratCreated}
+                  >
+                    {generating
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generiere...</>
+                      : generated
+                      ? <><RefreshCw className="h-4 w-4 mr-2" />Neu generieren</>
+                      : <><Sparkles className="h-4 w-4 mr-2" />KI-Beschreibung generieren</>
+                    }
+                  </Button>
 
-                  <Separator />
+                  {generated && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
 
-                  {/* Price Analysis */}
-                  <div className="space-y-3">
-                    <Label className="text-xs text-muted-foreground">Preisanalyse (mobile.de)</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Ihr Preis</span>
-                        <span className="font-bold">{formatCurrency(mockAiResult.priceAnalysis.suggestion)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Marktpreis</span>
-                        <span>{formatCurrency(mockAiResult.priceAnalysis.marketPrice)}</span>
-                      </div>
-                      <Badge
-                        className={`${priceCategoryConfig[mockAiResult.priceAnalysis.category].bg} ${priceCategoryConfig[mockAiResult.priceAnalysis.category].color} border-0`}
-                        variant="outline"
-                      >
-                        {priceCategoryConfig[mockAiResult.priceAnalysis.category].label}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1">
-                      {mockAiResult.priceAnalysis.thresholds.map((t, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">{t.label}</span>
-                          <span>bis {formatCurrency(t.max)}</span>
+                      {/* Confidence */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map(i => (
+                            <Star
+                              key={i}
+                              className={`h-3.5 w-3.5 ${i <= Math.round(MOCK_AI.confidence / 20) ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30'}`}
+                            />
+                          ))}
                         </div>
-                      ))}
+                        <span className="text-xs text-muted-foreground">Konfidenz {MOCK_AI.confidence}%</span>
+                      </div>
+
+                      {/* Title */}
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground uppercase tracking-widest">Titel</Label>
+                        <div className="p-2.5 bg-card rounded-lg border text-xs font-medium leading-snug">
+                          {MOCK_AI.title}
+                        </div>
+                        <Button size="sm" variant="outline" className="w-full h-7 text-xs">
+                          <Check className="h-3 w-3 mr-1" />
+                          Titel übernehmen
+                        </Button>
+                      </div>
+
+                      <Separator />
+
+                      {/* Description */}
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-muted-foreground uppercase tracking-widest">Beschreibung</Label>
+                        <div className="p-2.5 bg-card rounded-lg border text-xs whitespace-pre-line max-h-44 overflow-y-auto leading-relaxed">
+                          {activeDescription}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button size="sm" variant="outline" className="h-7 text-xs">
+                            <Check className="h-3 w-3 mr-1" />
+                            Übernehmen
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className={`h-7 text-xs ${
+                              descImproved
+                                ? 'text-emerald-600 border-emerald-300 dark:border-emerald-800'
+                                : 'text-primary border-primary/30'
+                            }`}
+                            onClick={handleImproveDescription}
+                            disabled={improvingDesc || inseratCreated}
+                          >
+                            {improvingDesc
+                              ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Verbessere...</>
+                              : descImproved
+                              ? <><CheckCircle2 className="h-3 w-3 mr-1" />Verbessert</>
+                              : <><Wand2 className="h-3 w-3 mr-1" />Verbessern</>
+                            }
+                          </Button>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Inserat-Qualität (KYC) */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                            Inserat-Qualität
+                          </Label>
+                          <span className={`text-sm font-bold tabular-nums ${
+                            kycScore >= 90 ? 'text-emerald-600' : kycScore >= 70 ? 'text-amber-600' : 'text-red-500'
+                          }`}>
+                            {kycScore}%
+                          </span>
+                        </div>
+                        <Progress value={kycScore} className="h-1.5" />
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                          <span>
+                            {kycScore >= 90 ? 'Ausgezeichnet' : kycScore >= 70 ? 'Gut' : 'Verbesserungspotential'}
+                          </span>
+                          {!kycImproved && (
+                            <span className="text-primary">{MOCK_AI.improvedKycScore}% möglich</span>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className={`w-full h-7 text-xs ${
+                            kycImproved
+                              ? 'text-emerald-600 border-emerald-300 dark:border-emerald-800'
+                              : 'text-primary border-primary/30'
+                          }`}
+                          onClick={handleImproveKyc}
+                          disabled={improvingKyc || kycImproved || inseratCreated}
+                        >
+                          {improvingKyc
+                            ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Optimiere...</>
+                            : kycImproved
+                            ? <><CheckCircle2 className="h-3 w-3 mr-1" />Qualität optimiert</>
+                            : <><Sparkles className="h-3 w-3 mr-1" />KI-Qualität verbessern</>
+                          }
+                        </Button>
+                      </div>
+
+                      <Separator />
+
+                      {/* Price Analysis */}
+                      <div className="space-y-2">
+                        <Label className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                          Preisanalyse
+                        </Label>
+                        <div className="p-3 bg-card rounded-lg border space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Ihr Preis</span>
+                            <span className="text-sm font-bold">{formatCurrency(MOCK_AI.priceAnalysis.suggestion)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Marktpreis (Ø)</span>
+                            <span className="text-xs">{formatCurrency(MOCK_AI.priceAnalysis.marketPrice)}</span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`${priceCategoryConfig[MOCK_AI.priceAnalysis.category].bg} ${priceCategoryConfig[MOCK_AI.priceAnalysis.category].color} border-0 text-xs`}
+                          >
+                            {priceCategoryConfig[MOCK_AI.priceAnalysis.category].label}
+                          </Badge>
+                          <div className="pt-0.5 space-y-1">
+                            {MOCK_AI.priceAnalysis.thresholds.map((t, i) => (
+                              <div key={i} className="flex justify-between text-[10px] text-muted-foreground">
+                                <span>{t.label}</span>
+                                <span>bis {formatCurrency(t.max)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Create / Export */}
+                      {!inseratCreated ? (
+                        <Button className="w-full" onClick={handleCreateInserat}>
+                          <Check className="h-4 w-4 mr-2" />
+                          Inserat erstellen
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 p-2.5 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                              Inserat erstellt!
+                            </span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => setShowExport(true)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Auf Plattformen exportieren
+                          </Button>
+                        </div>
+                      )}
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Export Dialog ──────────────────────────────────────────────────── */}
+      <Dialog open={showExport} onOpenChange={setShowExport}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ExternalLink className="h-5 w-5 text-primary" />
+              Inserat exportieren
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-1">
+            Veröffentlichen Sie das Inserat auf Ihren Wunschplattformen.
+          </p>
+          <div className="space-y-3 mt-1">
+            {EXPORT_PLATFORMS.map(platform => {
+              const status = exportStatus[platform.id]
+              return (
+                <div
+                  key={platform.id}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border ${platform.bgColor} ${platform.borderColor}`}
+                >
+                  {platform.icon}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground">{platform.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{platform.description}</p>
                   </div>
-
-                  <Separator />
-
-                  <Button className="w-full">
-                    Inserat erstellen
+                  <Button
+                    size="sm"
+                    style={status === 'idle' || status === 'exporting' ? platform.btnStyle : undefined}
+                    className={`text-white border-0 shrink-0 ${platform.btnHoverClass} ${
+                      status === 'done' ? 'bg-emerald-600 hover:bg-emerald-600' : ''
+                    }`}
+                    onClick={() => status === 'idle' && handleExport(platform.id)}
+                    disabled={status === 'exporting' || status === 'done'}
+                  >
+                    {status === 'exporting'
+                      ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Exportiere</>
+                      : status === 'done'
+                      ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Live</>
+                      : <><ExternalLink className="h-3.5 w-3.5 mr-1.5" />Exportieren</>
+                    }
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              )
+            })}
+          </div>
+
+          {Object.values(exportStatus).some(s => s === 'done') && (
+            <div className="mt-1 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              {Object.values(exportStatus).filter(s => s === 'done').length} von {EXPORT_PLATFORMS.length} Plattformen erfolgreich exportiert
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

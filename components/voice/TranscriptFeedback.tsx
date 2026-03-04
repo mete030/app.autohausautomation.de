@@ -1,10 +1,11 @@
 'use client'
 
-import { AlertTriangle, ArrowRight, Car, CheckCircle2, FileText, MapPin, Route, ShieldCheck, Phone } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Car, CheckCircle2, FileText, MapPin, Route, ShieldCheck, Phone, Mail } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { CallbackStatus, KYCStatus, ListingStatus, VehicleLocation, VehicleStatus } from '@/lib/types'
+import type { ConversationInboxView } from '@/lib/stores/conversation-store'
 import type { ParsedVoiceIntent } from '@/hooks/useVoiceIntentParser'
 
 interface TranscriptFeedbackProps {
@@ -36,6 +37,12 @@ const callbackStatusLabels: Record<CallbackStatus, string> = {
   ueberfaellig: 'Überfällig',
 }
 
+const conversationStatusLabels = {
+  offen: 'Offen',
+  spaeter: 'Später',
+  erledigt: 'Erledigt',
+} as const
+
 const listingStatusLabels: Record<ListingStatus, string> = {
   entwurf: 'Entwurf',
   live: 'Live',
@@ -48,6 +55,24 @@ const kycStatusLabels: Record<KYCStatus, string> = {
   verifiziert: 'Verifiziert',
   abgelehnt: 'Abgelehnt',
   manuell_pruefen: 'Manuell prüfen',
+}
+
+const inboxViewLabels: Record<ConversationInboxView, string> = {
+  alle: 'Alle Unterhaltungen',
+  ungelesen: 'Ungelesen',
+  mir: 'Mir zugewiesen',
+  nicht: 'Nicht zugewiesen',
+  markiert: 'Markiert',
+  papierkorb: 'Papierkorb',
+  spam: 'Spam',
+  Zentrale: 'Zentrale',
+  'Standort Berlin': 'Standort Berlin',
+  'Standort München': 'Standort München',
+  Vertrieb: 'Vertrieb',
+  Marketing: 'Marketing',
+  vip: 'VIP-Kunden',
+  'berlin-mktg': 'Berliner Marketing',
+  'london-mktg': 'Londoner Marketing',
 }
 
 function renderIntentDetails(intent: ParsedVoiceIntent) {
@@ -155,6 +180,44 @@ function renderIntentDetails(intent: ParsedVoiceIntent) {
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">Ziel</span>
           <Badge variant="secondary">{intent.routeLabel}</Badge>
+        </div>
+      </div>
+    )
+  }
+
+  if (intent.type === 'message_update') {
+    return (
+      <div className="space-y-2.5 rounded-lg border border-border/60 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Mail className="h-3.5 w-3.5" />
+            Unterhaltung
+          </span>
+          <span className="text-sm text-right font-medium">{intent.conversation?.customerName || 'Nicht erkannt'}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">Konversationsstatus</span>
+          <Badge variant="secondary">{intent.status ? conversationStatusLabels[intent.status] : 'Unverändert'}</Badge>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">Status-Filter</span>
+          <Badge variant="outline">{intent.statusFilter ? conversationStatusLabels[intent.statusFilter] : 'Unverändert'}</Badge>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">Inbox-Filter</span>
+          <Badge variant="outline">{intent.inboxView ? inboxViewLabels[intent.inboxView] : 'Unverändert'}</Badge>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">Zuweisung</span>
+          <span className="text-sm text-right">
+            {intent.assignmentAction
+              ? (intent.clearAssignment ? 'Nicht zugewiesen' : intent.assignee || 'Nicht erkannt')
+              : 'Unverändert'}
+          </span>
         </div>
       </div>
     )

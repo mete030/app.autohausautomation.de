@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { mockConversations } from '@/lib/mock-data'
+import { useConversationStore, type ConversationInboxView } from '@/lib/stores/conversation-store'
 import { cn } from '@/lib/utils'
 import type { Conversation, MessageChannel, ConversationStatus } from '@/lib/types'
 import {
@@ -120,12 +120,7 @@ const labelCls: Record<string, { pill: string; dot: string }> = {
 
 // ─── View dropdown ────────────────────────────────────────────────────────────
 
-type InboxView =
-  | 'alle' | 'ungelesen' | 'mir' | 'nicht' | 'markiert' | 'papierkorb' | 'spam'
-  | 'Zentrale' | 'Standort Berlin' | 'Standort München' | 'Vertrieb' | 'Marketing'
-  | 'vip' | 'berlin-mktg' | 'london-mktg'
-
-const viewLabel: Record<InboxView, string> = {
+const viewLabel: Record<ConversationInboxView, string> = {
   alle: 'Alle Unterhaltungen', ungelesen: 'Ungelesen', mir: 'Mir zugewiesen',
   nicht: 'Nicht zugewiesen', markiert: 'Markiert', papierkorb: 'Papierkorb', spam: 'Spam',
   Zentrale: 'Zentrale', 'Standort Berlin': 'Standort Berlin',
@@ -133,12 +128,30 @@ const viewLabel: Record<InboxView, string> = {
   vip: 'VIP-Kunden', 'berlin-mktg': 'Berliner Marketing', 'london-mktg': 'Londoner Marketing',
 }
 
-function ViewDropdown({ current, onChange }: { current: InboxView; onChange: (v: InboxView) => void }) {
+function ViewDropdown({
+  current,
+  onChange,
+  allConversations,
+}: {
+  current: ConversationInboxView
+  onChange: (v: ConversationInboxView) => void
+  allConversations: Conversation[]
+}) {
   const [open, setOpen] = useState(false)
-  const unread   = mockConversations.filter(c => c.unread).length
-  const mktgCnt  = mockConversations.filter(c => c.inbox === 'Marketing').length
+  const unread = allConversations.filter(c => c.unread).length
+  const mktgCnt = allConversations.filter(c => c.inbox === 'Marketing').length
 
-  function Item({ id, icon, label, count }: { id: InboxView; icon: React.ReactNode; label: string; count?: number }) {
+  const renderItem = ({
+    id,
+    icon,
+    label,
+    count,
+  }: {
+    id: ConversationInboxView
+    icon: React.ReactNode
+    label: string
+    count?: number
+  }) => {
     const active = current === id
     return (
       <button
@@ -167,30 +180,30 @@ function ViewDropdown({ current, onChange }: { current: InboxView; onChange: (v:
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={10} className="w-60 p-1.5">
-        <Item id="alle"       icon={<Hash className="w-3.5 h-3.5"/>}         label="Alle Unterhaltungen" count={mockConversations.length} />
-        <Item id="ungelesen"  icon={<Mail className="w-3.5 h-3.5"/>}         label="Ungelesen"           count={unread} />
-        <Item id="mir"        icon={<Users className="w-3.5 h-3.5"/>}        label="Mir zugewiesen" />
-        <Item id="nicht"      icon={<UserX className="w-3.5 h-3.5"/>}        label="Nicht zugewiesen" />
-        <Item id="markiert"   icon={<Star className="w-3.5 h-3.5"/>}         label="Markiert" />
-        <Item id="papierkorb" icon={<Trash2 className="w-3.5 h-3.5"/>}       label="Papierkorb" />
-        <Item id="spam"       icon={<AlertCircle className="w-3.5 h-3.5"/>}  label="Spam" />
+        {renderItem({ id: 'alle', icon: <Hash className="w-3.5 h-3.5"/>, label: 'Alle Unterhaltungen', count: allConversations.length })}
+        {renderItem({ id: 'ungelesen', icon: <Mail className="w-3.5 h-3.5"/>, label: 'Ungelesen', count: unread })}
+        {renderItem({ id: 'mir', icon: <Users className="w-3.5 h-3.5"/>, label: 'Mir zugewiesen' })}
+        {renderItem({ id: 'nicht', icon: <UserX className="w-3.5 h-3.5"/>, label: 'Nicht zugewiesen' })}
+        {renderItem({ id: 'markiert', icon: <Star className="w-3.5 h-3.5"/>, label: 'Markiert' })}
+        {renderItem({ id: 'papierkorb', icon: <Trash2 className="w-3.5 h-3.5"/>, label: 'Papierkorb' })}
+        {renderItem({ id: 'spam', icon: <AlertCircle className="w-3.5 h-3.5"/>, label: 'Spam' })}
 
         <Separator className="my-1.5" />
         <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Postfächer</p>
-        <Item id="Zentrale"          icon={<FolderOpen className="w-3.5 h-3.5"/>} label="Zentrale" />
-        <Item id="Standort Berlin"   icon={<FolderOpen className="w-3.5 h-3.5"/>} label="Standort Berlin" />
-        <Item id="Standort München"  icon={<FolderOpen className="w-3.5 h-3.5"/>} label="Standort München" />
-        <Item id="Vertrieb"          icon={<FolderOpen className="w-3.5 h-3.5"/>} label="Vertrieb" />
-        <Item id="Marketing"         icon={<FolderOpen className="w-3.5 h-3.5"/>} label="Marketing" count={mktgCnt} />
+        {renderItem({ id: 'Zentrale', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Zentrale' })}
+        {renderItem({ id: 'Standort Berlin', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Standort Berlin' })}
+        {renderItem({ id: 'Standort München', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Standort München' })}
+        {renderItem({ id: 'Vertrieb', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Vertrieb' })}
+        {renderItem({ id: 'Marketing', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Marketing', count: mktgCnt })}
         <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
           <Plus className="w-3.5 h-3.5" /><span>Neues Postfach</span>
         </button>
 
         <Separator className="my-1.5" />
         <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Gespeicherte Filter</p>
-        <Item id="vip"          icon={<Tag className="w-3.5 h-3.5"/>} label="VIP-Kunden" />
-        <Item id="berlin-mktg"  icon={<Tag className="w-3.5 h-3.5"/>} label="Berliner Marketing" />
-        <Item id="london-mktg"  icon={<Tag className="w-3.5 h-3.5"/>} label="Londoner Marketing" />
+        {renderItem({ id: 'vip', icon: <Tag className="w-3.5 h-3.5"/>, label: 'VIP-Kunden' })}
+        {renderItem({ id: 'berlin-mktg', icon: <Tag className="w-3.5 h-3.5"/>, label: 'Berliner Marketing' })}
+        {renderItem({ id: 'london-mktg', icon: <Tag className="w-3.5 h-3.5"/>, label: 'Londoner Marketing' })}
         <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
           <Settings className="w-3.5 h-3.5" /><span>Filter verwalten</span>
         </button>
@@ -205,14 +218,16 @@ function ViewDropdown({ current, onChange }: { current: InboxView; onChange: (v:
 // ─── Conversation List ────────────────────────────────────────────────────────
 
 function ConversationList({
+  allConversations,
   conversations, selected, onSelect,
   view, onViewChange, status, onStatusChange,
 }: {
+  allConversations: Conversation[]
   conversations: Conversation[]
   selected: Conversation | null
   onSelect: (c: Conversation) => void
-  view: InboxView
-  onViewChange: (v: InboxView) => void
+  view: ConversationInboxView
+  onViewChange: (v: ConversationInboxView) => void
   status: ConversationStatus
   onStatusChange: (s: ConversationStatus) => void
 }) {
@@ -237,7 +252,7 @@ function ConversationList({
 
       {/* ── Top header ── */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-        <ViewDropdown current={view} onChange={onViewChange} />
+        <ViewDropdown current={view} onChange={onViewChange} allConversations={allConversations} />
         <div className="flex items-center gap-1">
           <button className="p-1.5 rounded-full text-muted-foreground hover:bg-muted transition-colors" title="Suchen">
             <Search className="w-[15px] h-[15px]" />
@@ -699,32 +714,39 @@ function ContactPanel({ conv }: { conv: Conversation | null }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NachrichtenPage() {
-  const [view,        setView]         = useState<InboxView>('alle')
-  const [convStatus,  setConvStatus]   = useState<ConversationStatus>('offen')
-  const [selected,    setSelected]     = useState<Conversation | null>(mockConversations[0])
+  const conversations = useConversationStore((state) => state.conversations)
+  const view = useConversationStore((state) => state.view)
+  const setView = useConversationStore((state) => state.setView)
+  const convStatus = useConversationStore((state) => state.statusFilter)
+  const setConvStatus = useConversationStore((state) => state.setStatusFilter)
+  const selectedConversationId = useConversationStore((state) => state.selectedConversationId)
+  const setSelectedConversation = useConversationStore((state) => state.setSelectedConversation)
 
   const visible = (() => {
     switch (view) {
-      case 'alle':       return mockConversations
-      case 'ungelesen':  return mockConversations.filter(c => c.unread)
-      case 'mir':        return mockConversations.filter(c => !!c.assignedTo)
-      case 'nicht':      return mockConversations.filter(c => !c.assignedTo)
-      case 'vip':        return mockConversations.filter(c => c.label === 'VIP')
+      case 'alle':       return conversations
+      case 'ungelesen':  return conversations.filter(c => c.unread)
+      case 'mir':        return conversations.filter(c => !!c.assignedTo)
+      case 'nicht':      return conversations.filter(c => !c.assignedTo)
+      case 'vip':        return conversations.filter(c => c.label === 'VIP')
       case 'berlin-mktg':
-      case 'london-mktg': return mockConversations.filter(c => c.label === 'Marketing')
+      case 'london-mktg': return conversations.filter(c => c.label === 'Marketing')
       case 'markiert':
       case 'papierkorb':
-      case 'spam':       return mockConversations
-      default:           return mockConversations.filter(c => c.inbox === view)
+      case 'spam':       return conversations
+      default:           return conversations.filter(c => c.inbox === view)
     }
   })()
+
+  const selected = conversations.find((conversation) => conversation.id === selectedConversationId) ?? null
 
   return (
     <div className="flex h-full overflow-hidden">
       <ConversationList
+        allConversations={conversations}
         conversations={visible}
         selected={selected}
-        onSelect={setSelected}
+        onSelect={(conversation) => setSelectedConversation(conversation.id)}
         view={view}
         onViewChange={setView}
         status={convStatus}

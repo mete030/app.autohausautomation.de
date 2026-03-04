@@ -1,6 +1,7 @@
 'use client'
 
 import { use } from 'react'
+import dynamic from 'next/dynamic'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -13,6 +14,11 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ArrowLeft, MapPin, Fuel, Gauge, Calendar, Hash, Palette, Zap } from 'lucide-react'
 import type { VehicleStatus } from '@/lib/types'
+
+const MiniVehicleMap = dynamic(() => import('@/components/fahrzeuge/MiniVehicleMap'), {
+  ssr: false,
+  loading: () => <div className="h-48 rounded-lg bg-muted animate-pulse" />,
+})
 
 const statusLabels: Record<VehicleStatus, string> = {
   eingang: 'Eingang',
@@ -172,6 +178,34 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
             <CardContent className="pt-6 space-y-2">
               <Button className="w-full">Inserat erstellen</Button>
               <Button variant="outline" className="w-full">Status ändern</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/60 overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                Standort auf Karte
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="h-48 relative">
+                <MiniVehicleMap location={vehicle.location} />
+              </div>
+              <div className="px-4 py-2.5 border-t bg-muted/30 flex items-center gap-2">
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{
+                    background: {
+                      Showroom: '#3b82f6',
+                      'Hof A': '#22c55e',
+                      'Hof B': '#a855f7',
+                      Werkstatt: '#f97316',
+                    }[vehicle.location],
+                  }}
+                />
+                <span className="text-sm font-medium">{vehicle.location}</span>
+              </div>
             </CardContent>
           </Card>
         </div>

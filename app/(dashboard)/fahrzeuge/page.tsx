@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,10 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatCurrency, formatMileage, getEscalationLevel, getDaysRemaining } from '@/lib/utils'
 import { escalationColors } from '@/lib/constants'
 import { useVehicleStore } from '@/lib/stores/vehicle-store'
-import { Search, LayoutGrid, List, MapPin, Fuel, Gauge } from 'lucide-react'
+import { Search, LayoutGrid, List, MapPin, Fuel, Gauge, Map } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { VehicleStatus } from '@/lib/types'
+
+const VehicleMap = dynamic(() => import('@/components/fahrzeuge/VehicleMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-xl border border-border/60 bg-muted/30 animate-pulse" style={{ height: 'calc(100vh - 260px)', minHeight: '560px' }} />
+  ),
+})
 
 const statusLabels: Record<VehicleStatus, string> = {
   eingang: 'Eingang',
@@ -34,7 +42,7 @@ const statusColors: Record<VehicleStatus, string> = {
 
 export default function FahrzeugePage() {
   const vehicles = useVehicleStore((state) => state.vehicles)
-  const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [view, setView] = useState<'grid' | 'list' | 'map'>('map')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('alle')
   const [locationFilter, setLocationFilter] = useState<string>('alle')
@@ -112,6 +120,14 @@ export default function FahrzeugePage() {
           >
             <List className="h-4 w-4" />
           </Button>
+          <Button
+            variant={view === 'map' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setView('map')}
+          >
+            <Map className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -186,6 +202,11 @@ export default function FahrzeugePage() {
             )
           })}
         </div>
+      )}
+
+      {/* Map View */}
+      {view === 'map' && (
+        <VehicleMap vehicles={filtered} />
       )}
 
       {/* List View */}

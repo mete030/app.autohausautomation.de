@@ -7,6 +7,8 @@ import { useVehicleStore } from '@/lib/stores/vehicle-store'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import { useListingStore } from '@/lib/stores/listing-store'
 import { useKYCStore } from '@/lib/stores/kyc-store'
+import { mockAdvisors } from '@/lib/mock-data'
+import { useConversationStore } from '@/lib/stores/conversation-store'
 import { useVoiceIntentParser, type ParsedVoiceIntent } from '@/hooks/useVoiceIntentParser'
 import { VoiceButton } from '@/components/voice/VoiceButton'
 import { TranscriptFeedback } from '@/components/voice/TranscriptFeedback'
@@ -21,6 +23,12 @@ export function VoiceControl() {
   const updateListingStatus = useListingStore((state) => state.updateListingStatus)
   const submissions = useKYCStore((state) => state.submissions)
   const updateSubmissionStatus = useKYCStore((state) => state.updateSubmissionStatus)
+  const conversations = useConversationStore((state) => state.conversations)
+  const setConversationView = useConversationStore((state) => state.setView)
+  const setConversationStatusFilter = useConversationStore((state) => state.setStatusFilter)
+  const setSelectedConversation = useConversationStore((state) => state.setSelectedConversation)
+  const updateConversationStatus = useConversationStore((state) => state.updateConversationStatus)
+  const assignConversation = useConversationStore((state) => state.assignConversation)
   const { parseIntent } = useVoiceIntentParser()
 
   const [pendingIntent, setPendingIntent] = useState<ParsedVoiceIntent | null>(null)
@@ -43,10 +51,12 @@ export function VoiceControl() {
         callbacks,
         listings,
         submissions,
+        conversations,
+        advisors: mockAdvisors,
       })
       setPendingIntent(intent)
     },
-    [callbacks, listings, parseIntent, submissions, vehicles]
+    [callbacks, conversations, listings, parseIntent, submissions, vehicles]
   )
 
   const handleConfirm = useCallback(() => {
@@ -82,13 +92,39 @@ export function VoiceControl() {
       router.push(pendingIntent.route)
     }
 
+    if (pendingIntent.type === 'message_update') {
+      if (pendingIntent.inboxView) {
+        setConversationView(pendingIntent.inboxView)
+      }
+      if (pendingIntent.statusFilter) {
+        setConversationStatusFilter(pendingIntent.statusFilter)
+      }
+      if (pendingIntent.conversation) {
+        setSelectedConversation(pendingIntent.conversation.id)
+      }
+      if (pendingIntent.status && pendingIntent.conversation) {
+        updateConversationStatus(pendingIntent.conversation.id, pendingIntent.status)
+      }
+      if (pendingIntent.assignmentAction && pendingIntent.conversation) {
+        assignConversation(
+          pendingIntent.conversation.id,
+          pendingIntent.clearAssignment ? null : pendingIntent.assignee
+        )
+      }
+    }
+
     setSuccessMessage(pendingIntent.summary)
     setPendingIntent(null)
   }, [
     applyVoiceUpdate,
     pendingIntent,
     router,
+    assignConversation,
+    setConversationStatusFilter,
+    setConversationView,
+    setSelectedConversation,
     updateCallbackStatus,
+    updateConversationStatus,
     updateListingStatus,
     updateSubmissionStatus,
   ])

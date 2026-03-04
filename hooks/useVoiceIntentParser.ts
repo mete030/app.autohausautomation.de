@@ -2,9 +2,13 @@
 
 import { useCallback } from 'react'
 import { useVoiceParser } from '@/hooks/useVoiceParser'
+import type { ConversationInboxView } from '@/lib/stores/conversation-store'
 import type {
+  Advisor,
   Callback,
   CallbackStatus,
+  Conversation,
+  ConversationStatus,
   KYCStatus,
   KYCSubmission,
   Listing,
@@ -33,6 +37,30 @@ const kycStatusKeywords: Record<KYCStatus, string[]> = {
   verifiziert: ['verifiziert', 'freigeben', 'genehmigen'],
   abgelehnt: ['abgelehnt', 'ablehnen'],
   manuell_pruefen: ['manuell pruefen', 'manuell_pruefen', 'manuell'],
+}
+
+const conversationStatusKeywords: Record<ConversationStatus, string[]> = {
+  offen: ['offen'],
+  spaeter: ['spaeter', 'später'],
+  erledigt: ['erledigt', 'abschliessen', 'abschließen', 'abgeschlossen', 'fertig'],
+}
+
+const inboxViewKeywords: Record<ConversationInboxView, string[]> = {
+  alle: ['alle unterhaltungen', 'alle nachrichten'],
+  ungelesen: ['ungelesen', 'ungelesene'],
+  mir: ['mir zugewiesen', 'meine unterhaltungen'],
+  nicht: ['nicht zugewiesen', 'ohne zuweisung'],
+  markiert: ['markiert', 'markierte'],
+  papierkorb: ['papierkorb', 'archiv'],
+  spam: ['spam'],
+  Zentrale: ['zentrale'],
+  'Standort Berlin': ['standort berlin', 'berlin'],
+  'Standort München': ['standort muenchen', 'standort münchen', 'muenchen', 'münchen'],
+  Vertrieb: ['vertrieb'],
+  Marketing: ['marketing'],
+  vip: ['vip', 'vip kunden'],
+  'berlin-mktg': ['berliner marketing'],
+  'london-mktg': ['londoner marketing', 'london marketing'],
 }
 
 const navigationTargets = [
@@ -127,6 +155,8 @@ export interface VoiceIntentContext {
   callbacks: Callback[]
   listings: Listing[]
   submissions: KYCSubmission[]
+  conversations: Conversation[]
+  advisors: Advisor[]
 }
 
 interface VoiceIntentBase {
@@ -170,6 +200,17 @@ export interface KYCUpdateIntent extends VoiceIntentBase {
   status: KYCStatus | null
 }
 
+export interface MessageUpdateIntent extends VoiceIntentBase {
+  type: 'message_update'
+  conversation: Conversation | null
+  status: ConversationStatus | null
+  statusFilter: ConversationStatus | null
+  inboxView: ConversationInboxView | null
+  assignee: string | null
+  assignmentAction: boolean
+  clearAssignment: boolean
+}
+
 export interface UnknownIntent extends VoiceIntentBase {
   type: 'unknown'
 }
@@ -180,6 +221,7 @@ export type ParsedVoiceIntent =
   | CallbackUpdateIntent
   | ListingUpdateIntent
   | KYCUpdateIntent
+  | MessageUpdateIntent
   | UnknownIntent
 
 export function useVoiceIntentParser() {
@@ -187,6 +229,78 @@ export function useVoiceIntentParser() {
 
   const parseIntent = useCallback((transcript: string, context: VoiceIntentContext): ParsedVoiceIntent => {
     const normalizedTranscript = normalizeText(transcript)
+    const messageStatusKeyword = getLastKeywordMatch(normalizedTranscript, conversationStatusKeywords)
+    const inboxViewKeyword = getLastKeywordMatch(normalizedTranscript, inboxViewKeywords)
+    const hasMessageHint = /(nachricht|nachrichten|unterhaltung|konversation|chat|postfach|inbox)/.test(normalizedTranscript)
+    const hasFilterVerb = /(zeige|filter|nur|ansicht|liste|öffne|oeffne)/.test(normalizedTranscript)
+    const hasAssignmentAction =
+      /(zuweisen|weise .* zu|uebergeben|übergeben|zuordnung)/.test(normalizedTranscript)
+      || /(nicht zugewiesen|ohne zuweisung|zuweisung entfernen|entferne zuweisung)/.test(normalizedTranscript)
+    const clearAssignment = /(nicht zugewiesen|ohne zuweisung|zuweisung entfernen|entferne zuweisung)/.test(normalizedTranscript)
+
+    const conversationCandidate = findBestEntityMatch(
+      normalizedTranscript,
+      context.conversations,
+      (conversation) => `${conversation.customerName} ${conversation.vehicleInterest ?? ''} ${conversation.lastMessage}`
+    )
+    const matchedConversation = conversationCandidate.score >= 2 ? conversationCandidate.item : null
+
+    const advisorCandidate = findBestEntityMatch(
+      normalizedTranscript,
+      context.advisors,
+      (advisor) => advisor.name
+    )
+    const matchedAdvisor =
+      advisorCandidate.score >= 2
+        ? advisorCandidate.item?.name ?? null
+        : null
+
+    const shouldApplyStatusFilter =
+      Boolean(messageStatusKeyword)
+      && !matchedConversation
+      && hasFilterVerb
+    const messageStatus = shouldApplyStatusFilter ? null : messageStatusKeyword
+    const statusFilter = shouldApplyStatusFilter ? messageStatusKeyword : null
+
+    const hasMessageAction = Boolean(inboxViewKeyword || messageStatusKeyword || hasAssignmentAction)
+
+    if (hasMessageAction && (hasMessageHint || matchedConversation || inboxViewKeyword)) {
+      const statusCanApply = messageStatus ? Boolean(matchedConversation) : true
+      const assignmentCanApply = hasAssignmentAction
+        ? Boolean(matchedConversation && (clearAssignment || matchedAdvisor))
+        : true
+      const canApply = statusCanApply && assignmentCanApply
+
+      const summaryParts: string[] = []
+      if (inboxViewKeyword) summaryParts.push(`Inbox-Filter -> ${inboxViewKeyword}`)
+      if (statusFilter) summaryParts.push(`Status-Filter -> ${statusFilter}`)
+      if (messageStatus && matchedConversation) summaryParts.push(`Konversation -> ${matchedConversation.customerName} (${messageStatus})`)
+      if (hasAssignmentAction && matchedConversation) {
+        summaryParts.push(clearAssignment
+          ? `Zuweisung entfernt bei ${matchedConversation.customerName}`
+          : `Zuweisen -> ${matchedConversation.customerName} an ${matchedAdvisor ?? 'unbekannt'}`)
+      }
+
+      return {
+        type: 'message_update',
+        transcript,
+        conversation: matchedConversation,
+        status: messageStatus,
+        statusFilter,
+        inboxView: inboxViewKeyword,
+        assignee: clearAssignment ? null : matchedAdvisor,
+        assignmentAction: hasAssignmentAction,
+        clearAssignment,
+        summary: summaryParts.join(' | ') || 'Nachrichten-Update nicht vollständig erkannt',
+        canApply,
+        issues: [
+          ...(messageStatus && !matchedConversation ? ['Keine passende Unterhaltung für Status-Update erkannt.'] : []),
+          ...(hasAssignmentAction && !matchedConversation ? ['Keine passende Unterhaltung für Zuweisung erkannt.'] : []),
+          ...(hasAssignmentAction && !clearAssignment && !matchedAdvisor ? ['Kein Berater für Zuweisung erkannt.'] : []),
+        ],
+      }
+    }
+
     const hasNavigationVerb = /(oeffne|öffne|gehe zu|wechsel zu|navigiere|zeige|springe zu)/.test(normalizedTranscript)
 
     if (hasNavigationVerb) {
