@@ -473,15 +473,14 @@ export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
 
   return (
     <div
-      className="flex rounded-xl overflow-hidden border border-border/60 shadow-sm bg-background"
-      style={{ height: 'calc(100vh - 260px)', minHeight: '560px' }}
+      className="flex h-[calc(100dvh-220px)] min-h-[560px] flex-col overflow-hidden rounded-xl border border-border/60 bg-background shadow-sm xl:h-[calc(100vh-260px)] xl:flex-row"
     >
       {/* ── Map panel ─────────────────────────────────────────────────── */}
-      <div className="relative flex-1 min-w-0">
+      <div className="relative min-h-[300px] min-w-0 flex-[1.1]">
 
         {/* ── Setup overlay ── */}
         {setupOpen && (
-          <div className="absolute top-3 left-3 z-[1001] w-80 bg-white/96 backdrop-blur-md rounded-xl shadow-2xl border border-white/60">
+          <div className="absolute top-3 left-3 z-[1001] w-[calc(100%-1.5rem)] max-w-80 bg-white/96 backdrop-blur-md rounded-xl shadow-2xl border border-white/60">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b bg-zinc-50/80 rounded-t-xl overflow-hidden">
               <div className="flex items-center gap-2">
@@ -633,7 +632,7 @@ export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
 
         {/* ── Edit mode panel ── */}
         {editMode && dealership.isConfigured && (
-          <div className="absolute top-3 left-3 z-[1001] w-72 bg-white/96 backdrop-blur-md rounded-xl shadow-2xl border border-white/60">
+          <div className="absolute top-3 left-3 z-[1001] w-[calc(100%-1.5rem)] max-w-72 bg-white/96 backdrop-blur-md rounded-xl shadow-2xl border border-white/60">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b bg-zinc-50/80 rounded-t-xl overflow-hidden">
               <div className="flex items-center gap-2">
@@ -944,7 +943,7 @@ export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
       </div>
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="w-[340px] xl:w-[380px] flex flex-col border-l bg-background shrink-0">
+      <div className="h-[44%] min-h-[260px] w-full flex flex-col border-t bg-background shrink-0 xl:h-auto xl:w-[380px] xl:border-l xl:border-t-0">
 
         {/* ── Assignment mode ── */}
         {assigningSpotId && !editMode && (

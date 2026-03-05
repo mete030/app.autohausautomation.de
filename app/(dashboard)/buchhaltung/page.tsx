@@ -15,7 +15,6 @@ import {
   HandCoins,
   CircleDollarSign,
   Landmark,
-  Wallet,
 } from 'lucide-react'
 import {
   Bar,
@@ -268,6 +267,7 @@ export default function BuchhaltungPage() {
 
   const monthlyLoanRate = dummyLoanLiabilities.reduce((sum, item) => sum + item.monthlyRate, 0)
   const remainingLoanDebt = dummyLoanLiabilities.reduce((sum, item) => sum + item.remainingAmount, 0)
+  const openCreditRepaymentAmount = openPayablesAmount + monthlyLoanRate
   const nextLoanDueDate = dummyLoanLiabilities
     .map((item) => item.nextDueDate)
     .sort()[0]
@@ -297,9 +297,9 @@ export default function BuchhaltungPage() {
             Belege prüfen, KI-Vorschläge freigeben und Exportpaket für den Steuerberater erstellen.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <Select value={activeMonth} onValueChange={setMonthFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -310,13 +310,13 @@ export default function BuchhaltungPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => setActiveTab('steuerberater')}>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => setActiveTab('steuerberater')}>
             <ArrowUpRight className="h-4 w-4 mr-1.5" />
             Exportpaket
           </Button>
           <Button
             onClick={() => setScanDialogOpen(true)}
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border-0"
+            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border-0 sm:w-auto"
           >
             <Sparkles className="h-4 w-4 mr-1.5" />
             KI-Rechnung scannen
@@ -324,76 +324,69 @@ export default function BuchhaltungPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <Card className="border-border/60">
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-              <HandCoins className="h-3.5 w-3.5" />
-              Offene Forderungen
-            </p>
-            <p className="text-2xl font-bold mt-1 tabular-nums text-amber-600 dark:text-amber-400">
-              {formatCurrency(openReceivablesAmount)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {openReceivables.length} Rechnung{openReceivables.length === 1 ? '' : 'en'} offen
-            </p>
-          </CardContent>
-        </Card>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BuchhaltungTab)} className="gap-4">
+        <div className="rounded-2xl border border-border/60 bg-card/40 p-1">
+          <TabsList variant="line" className="w-full justify-start overflow-x-auto whitespace-nowrap pb-1">
+            <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+            <TabsTrigger value="eingang">Eingangsrechnungen</TabsTrigger>
+            <TabsTrigger value="ausgang">Ausgangsrechnungen</TabsTrigger>
+            <TabsTrigger value="steuerberater">Steuerberater</TabsTrigger>
+          </TabsList>
+        </div>
 
-        <Card className="border-border/60">
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-              <CircleDollarSign className="h-3.5 w-3.5" />
-              Bereits bezahlt
-            </p>
-            <p className="text-2xl font-bold mt-1 tabular-nums text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(paidReceivablesAmount)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {paidReceivables.length} Zahlung{paidReceivables.length === 1 ? '' : 'en'} eingegangen
-            </p>
-          </CardContent>
-        </Card>
+        <TabsContent value="uebersicht" className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <HandCoins className="h-3.5 w-3.5" />
+                  Offene Forderungen
+                </p>
+                <p className="text-2xl font-bold mt-1 tabular-nums text-amber-600 dark:text-amber-400">
+                  {formatCurrency(openReceivablesAmount)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {openReceivables.length} Rechnung{openReceivables.length === 1 ? '' : 'en'} offen
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card className="border-border/60">
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-              <Wallet className="h-3.5 w-3.5" />
-              Offene Verbindlichkeiten
-            </p>
-            <p className="text-2xl font-bold mt-1 tabular-nums text-rose-600 dark:text-rose-400">
-              {formatCurrency(openPayablesAmount)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {openPayables.length} Rechnung{openPayables.length === 1 ? '' : 'en'} zu zahlen
-            </p>
-          </CardContent>
-        </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <CircleDollarSign className="h-3.5 w-3.5" />
+                  Bereits bezahlt
+                </p>
+                <p className="text-2xl font-bold mt-1 tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(paidReceivablesAmount)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {paidReceivables.length} Zahlung{paidReceivables.length === 1 ? '' : 'en'} eingegangen
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card className="border-border/60">
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-              <Landmark className="h-3.5 w-3.5" />
-              Kreditverbindlichkeiten (Dummy)
-            </p>
-            <p className="text-2xl font-bold mt-1 tabular-nums">{formatCurrency(monthlyLoanRate)}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Monatsrate · Restschuld {formatCurrency(remainingLoanDebt)}
-              {nextLoanDueDate ? ` · Nächste Rate ${format(new Date(`${nextLoanDueDate}T00:00:00`), 'dd.MM.yyyy')}` : ''}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <Landmark className="h-3.5 w-3.5" />
+                  Offene Kredittilgung
+                </p>
+                <p className="text-2xl font-bold mt-1 tabular-nums text-rose-600 dark:text-rose-400">
+                  {formatCurrency(openCreditRepaymentAmount)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {openPayables.length} Rechnung{openPayables.length === 1 ? '' : 'en'} offen ({formatCurrency(openPayablesAmount)})
+                  {' '}+ Kreditrate {formatCurrency(monthlyLoanRate)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Restschuld {formatCurrency(remainingLoanDebt)}
+                  {nextLoanDueDate ? ` · Nächste Rate ${format(new Date(`${nextLoanDueDate}T00:00:00`), 'dd.MM.yyyy')}` : ''}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BuchhaltungTab)}>
-        <TabsList>
-          <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
-          <TabsTrigger value="eingang">Eingangsrechnungen</TabsTrigger>
-          <TabsTrigger value="ausgang">Ausgangsrechnungen</TabsTrigger>
-          <TabsTrigger value="steuerberater">Steuerberater</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="uebersicht" className="mt-3 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <Card className="border-border/60">
               <CardContent className="p-4">
@@ -501,13 +494,17 @@ export default function BuchhaltungPage() {
                     <span className="font-medium">{pendingFreigabe}</span> freizugeben
                     {' '}· <span className="font-medium">{formatCurrency(monthDocuments.filter((document) => document.status === 'freigabe_noetig').reduce((sum, document) => sum + document.grossAmount, 0))}</span>
                   </p>
+                  <p>
+                    <span className="font-medium">Kredittilgung</span>
+                    {' '}· <span className="font-medium">{formatCurrency(openCreditRepaymentAmount)}</span>
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="eingang" className="mt-3 space-y-3">
+        <TabsContent value="eingang" className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div className="relative md:col-span-2">
               <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
@@ -564,7 +561,7 @@ export default function BuchhaltungPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="ausgang" className="mt-3 space-y-3">
+        <TabsContent value="ausgang" className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div className="relative md:col-span-2">
               <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
@@ -622,7 +619,7 @@ export default function BuchhaltungPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="steuerberater" className="mt-3">
+        <TabsContent value="steuerberater">
           <div className="rounded-xl border border-border/60 p-4 mb-4">
             <h3 className="text-base font-semibold">Steuerliche Zusammenfassung ({activeMonth})</h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3 text-sm">

@@ -19,7 +19,7 @@ import type { VehicleStatus } from '@/lib/types'
 const VehicleMap = dynamic(() => import('@/components/fahrzeuge/VehicleMap'), {
   ssr: false,
   loading: () => (
-    <div className="rounded-xl border border-border/60 bg-muted/30 animate-pulse" style={{ height: 'calc(100vh - 260px)', minHeight: '560px' }} />
+    <div className="h-[calc(100dvh-220px)] min-h-[560px] rounded-xl border border-border/60 bg-muted/30 animate-pulse xl:h-[calc(100vh-260px)]" />
   ),
 })
 
@@ -65,13 +65,13 @@ export default function FahrzeugePage() {
           <p className="text-sm text-muted-foreground mt-1">{filtered.length} Fahrzeuge im Bestand</p>
         </div>
         <Link href="/fahrzeuge/werkstatt">
-          <Button>Werkstatt-Board</Button>
+          <Button className="w-full sm:w-auto">Werkstatt-Board</Button>
         </Link>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Marke, Modell, Kennzeichen oder #Nummer..."
@@ -81,7 +81,7 @@ export default function FahrzeugePage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[170px]">
+          <SelectTrigger className="w-full sm:w-[170px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -94,7 +94,7 @@ export default function FahrzeugePage() {
           </SelectContent>
         </Select>
         <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="w-[170px]">
+          <SelectTrigger className="w-full sm:w-[170px]">
             <SelectValue placeholder="Standort" />
           </SelectTrigger>
           <SelectContent>
@@ -105,7 +105,7 @@ export default function FahrzeugePage() {
             <SelectItem value="Showroom">Showroom</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex gap-0.5 border rounded-lg p-0.5">
+        <div className="flex gap-0.5 self-start rounded-lg border p-0.5 sm:self-auto">
           <Button
             variant={view === 'grid' ? 'secondary' : 'ghost'}
             size="icon"

@@ -202,7 +202,7 @@ export function AIInvoiceScanDialog({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Lieferant</Label>
                 <Input
@@ -294,9 +294,9 @@ export function AIInvoiceScanDialog({
               </p>
             )}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => handleDialogChange(false)}>Abbrechen</Button>
-              <Button onClick={handleSave}>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button className="w-full sm:w-auto" variant="outline" onClick={() => handleDialogChange(false)}>Abbrechen</Button>
+              <Button className="w-full sm:w-auto" onClick={handleSave}>
                 <CheckCircle2 className="h-4 w-4 mr-1.5" />
                 Rechnung speichern
               </Button>

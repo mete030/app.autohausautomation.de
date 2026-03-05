@@ -234,7 +234,7 @@ export function AdvisorExportPanel({
                   {latestBatch.status === 'erstellt' ? 'Erstellt' : 'Bereit'}
                 </Badge>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
                 <div>
                   <p className="text-muted-foreground">Belege</p>
                   <p className="font-semibold">{latestBatch.documentCount}</p>

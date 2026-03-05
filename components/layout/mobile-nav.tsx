@@ -35,10 +35,10 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-72 p-0">
+      <SheetContent side="left" className="w-[88vw] max-w-xs p-0 sm:max-w-sm">
         <SheetHeader className="border-b px-4 py-4">
           <SheetTitle className="flex items-center">
-            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-auto max-w-[180px] invert dark:invert-0" />
+            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-auto max-w-[160px] invert dark:invert-0 sm:max-w-[180px]" />
           </SheetTitle>
         </SheetHeader>
         <ScrollArea className="flex-1 py-4">

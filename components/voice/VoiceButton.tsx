@@ -149,7 +149,7 @@ export function VoiceButton({ onTranscript, disabled = false }: VoiceButtonProps
   return (
     <>
       {(state === 'listening' || state === 'processing' || errorMessage) && (
-        <div className="fixed bottom-24 right-6 z-50 max-w-xs animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-50 w-[min(340px,calc(100vw-1.25rem))] animate-in fade-in slide-in-from-bottom-4 duration-300 sm:right-6 sm:max-w-xs">
           <div className="rounded-2xl bg-card border border-border/60 shadow-xl px-4 py-3 backdrop-blur-sm">
             {state === 'listening' && (
               <div className="flex items-center gap-2.5">
@@ -186,7 +186,7 @@ export function VoiceButton({ onTranscript, disabled = false }: VoiceButtonProps
         onClick={handleClick}
         disabled={disabled || state === 'processing'}
         className={cn(
-          'fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+          'fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:bottom-6 sm:right-6',
           state === 'idle' && 'bg-primary text-primary-foreground hover:shadow-xl hover:scale-105 active:scale-95',
           state === 'listening' && 'bg-red-500 text-white shadow-red-500/20 shadow-xl scale-110',
           state === 'processing' && 'bg-primary/80 text-primary-foreground'

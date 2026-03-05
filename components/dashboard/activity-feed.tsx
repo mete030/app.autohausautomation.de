@@ -115,7 +115,7 @@ function ActivityItem({ entry }: { entry: ActivityEntry }) {
         <div className="overflow-hidden">
           <div className="ml-11 mr-1 mb-2 mt-0.5 p-3.5 rounded-lg bg-muted/30 border border-border/40">
             {entry.details && entry.details.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
                 {entry.details.map((d, i) => (
                   <div key={i} className="flex flex-col gap-0.5">
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">

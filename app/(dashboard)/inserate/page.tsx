@@ -59,7 +59,7 @@ export default function InseratePage() {
           <p className="text-muted-foreground">{listings.length} Inserate gesamt</p>
         </div>
         <Link href="/inserate/neu">
-          <Button>
+          <Button className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Neues Inserat
           </Button>
@@ -67,7 +67,7 @@ export default function InseratePage() {
       </div>
 
       <Tabs id="inserate-tabs-root" defaultValue="alle">
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap">
           <TabsTrigger value="alle" id={triggerDomId('alle')} aria-controls={contentDomId('alle')}>
             Alle ({listings.length})
           </TabsTrigger>
@@ -96,8 +96,8 @@ export default function InseratePage() {
                 <Link key={listing.id} href={`/inserate/${listing.id}`}>
                   <Card className="hover:shadow-md transition-shadow cursor-pointer mb-3">
                     <CardContent className="p-4">
-                      <div className="flex gap-4">
-                        <div className="w-32 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                        <div className="h-44 w-full rounded-lg overflow-hidden bg-muted shrink-0 sm:h-20 sm:w-32">
                           {LISTING_PHOTOS[listing.id] ? (
                             <img
                               src={LISTING_PHOTOS[listing.id]}
@@ -109,7 +109,7 @@ export default function InseratePage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
                             <h3 className="font-semibold text-sm line-clamp-1">{listing.title}</h3>
                             <Badge className={statusColors[listing.status]} variant="secondary">
                               {statusLabels[listing.status]}
@@ -118,7 +118,7 @@ export default function InseratePage() {
                           {listing.description && (
                             <p className="text-xs text-muted-foreground line-clamp-2">{listing.description}</p>
                           )}
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                             <span className="font-semibold text-sm text-foreground">
                               {formatCurrency(listing.price)}
                             </span>
@@ -144,7 +144,7 @@ export default function InseratePage() {
                               </>
                             )}
                             {listing.platform.length > 0 && (
-                              <span>{listing.platform.join(', ')}</span>
+                              <span className="truncate">{listing.platform.join(', ')}</span>
                             )}
                           </div>
                         </div>

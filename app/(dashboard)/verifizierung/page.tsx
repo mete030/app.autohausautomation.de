@@ -196,12 +196,12 @@ function VehicleDetailModal({ vehicle, open, onClose }: { vehicle: Vehicle | nul
             <span className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {vehicle.location}</span>
           </div>
           <Separator />
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div className="flex items-center gap-2"><Gauge className="h-4 w-4 text-muted-foreground shrink-0" /><div><p className="text-xs text-muted-foreground">Kilometerstand</p><p className="font-medium">{formatMileage(vehicle.mileage)}</p></div></div>
             <div className="flex items-center gap-2"><Fuel className="h-4 w-4 text-muted-foreground shrink-0" /><div><p className="text-xs text-muted-foreground">Kraftstoff</p><p className="font-medium">{vehicle.fuelType}</p></div></div>
             <div className="flex items-center gap-2"><Car className="h-4 w-4 text-muted-foreground shrink-0" /><div><p className="text-xs text-muted-foreground">Leistung</p><p className="font-medium">{vehicle.power} PS</p></div></div>
             <div className="flex items-center gap-2"><Hash className="h-4 w-4 text-muted-foreground shrink-0" /><div><p className="text-xs text-muted-foreground">Getriebe</p><p className="font-medium">{vehicle.transmission}</p></div></div>
-            <div className="col-span-2 flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground shrink-0" /><div><p className="text-xs text-muted-foreground">FIN</p><p className="font-medium font-mono text-xs">{vehicle.vin}</p></div></div>
+            <div className="col-span-1 flex items-center gap-2 sm:col-span-2"><Calendar className="h-4 w-4 text-muted-foreground shrink-0" /><div><p className="text-xs text-muted-foreground">FIN</p><p className="font-medium font-mono text-xs">{vehicle.vin}</p></div></div>
           </div>
           {vehicle.notes && (<><Separator /><p className="text-xs text-muted-foreground">{vehicle.notes}</p></>)}
           <Button variant="outline" className="w-full" size="sm" onClick={onClose}>Schließen</Button>
@@ -352,7 +352,7 @@ function DocumentSection({
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         {status === 'idle' && (
           <Button variant="outline" className="flex-1" onClick={() => onGenerate(submission)}>
             <Package className="h-4 w-4 mr-2" />Dokumente erstellen
@@ -404,25 +404,25 @@ function DocumentPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[calc(100vw-1rem)] max-h-[90vh] p-0 overflow-hidden flex flex-col sm:max-w-2xl">
         {/* Chrome bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30 shrink-0">
+        <div className="flex flex-col gap-2 border-b bg-muted/30 px-4 py-3 shrink-0 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">Dokument-Vorschau</p>
             <p className="text-xs text-muted-foreground">{submission.customerName}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <Button variant="outline" size="sm" className="h-7 flex-1 px-2 text-xs sm:flex-none">
               <Printer className="h-3.5 w-3.5 mr-1" />Drucken
             </Button>
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+            <Button variant="outline" size="sm" className="h-7 flex-1 px-2 text-xs sm:flex-none">
               <Download className="h-3.5 w-3.5 mr-1" />PDF
             </Button>
           </div>
         </div>
 
         {/* Tab bar */}
-        <div className="flex border-b shrink-0 px-4">
+        <div className="flex overflow-x-auto border-b shrink-0 px-4">
           {DOC_ROWS.map(row => (
             <button
               key={row.type}
@@ -438,8 +438,8 @@ function DocumentPreviewModal({
         </div>
 
         {/* Document area */}
-        <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-6">
-          <div className="bg-white dark:bg-slate-950 rounded-lg shadow-sm max-w-xl mx-auto p-8 text-sm">
+        <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-3 sm:p-6">
+          <div className="bg-white dark:bg-slate-950 rounded-lg shadow-sm max-w-xl mx-auto p-4 text-sm sm:p-8">
 
             {/* ── KAUFBESTÄTIGUNG ── */}
             {activeTab === 'kaufbestaetigung' && (
@@ -461,7 +461,7 @@ function DocumentPreviewModal({
                 <Separator />
 
                 {/* Parties */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Verkäufer</p>
                     <p className="font-medium">Wackenhut Autohaus GmbH</p>
@@ -484,7 +484,7 @@ function DocumentPreviewModal({
                   {vehicle ? (
                     <>
                       <p className="font-semibold">{vehicle.make} {vehicle.model} · {vehicle.year}</p>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 text-xs text-muted-foreground">
                         <span>FIN: <span className="font-mono">{vehicle.vin}</span></span>
                         <span>Kennzeichen: {vehicle.licensePlate}</span>
                         <span>Farbe: {vehicle.color}</span>
@@ -508,7 +508,7 @@ function DocumentPreviewModal({
                 )}
 
                 {/* Signature */}
-                <div className="grid grid-cols-2 gap-8 pt-4">
+                <div className="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2 sm:gap-8">
                   {['Verkäufer', 'Käufer'].map(party => (
                     <div key={party}>
                       <div className="border-t-2 border-dashed pt-2">
@@ -537,7 +537,7 @@ function DocumentPreviewModal({
 
                 <Separator />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 space-y-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fahrzeug</p>
                     {vehicle ? (
@@ -562,7 +562,7 @@ function DocumentPreviewModal({
                 {/* Checklist */}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Übergabe-Checkliste</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
                     {[
                       'Fahrzeugschlüssel übergeben', 'Zulassungsbescheinigung Teil I',
                       'Zulassungsbescheinigung Teil II', 'Servicehefte übergeben',
@@ -584,7 +584,7 @@ function DocumentPreviewModal({
                 </div>
 
                 {/* Signatures */}
-                <div className="grid grid-cols-2 gap-8 pt-4">
+                <div className="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2 sm:gap-8">
                   {['Übergabe durch (Verkäufer)', 'Empfang bestätigt (Käufer)'].map(party => (
                     <div key={party}>
                       <div className="border-t-2 border-dashed pt-2">
@@ -625,25 +625,27 @@ function DocumentPreviewModal({
                 {/* Line items */}
                 {vehicle ? (
                   <div className="space-y-2">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-1.5 font-semibold text-muted-foreground">Pos.</th>
-                          <th className="text-left py-1.5 font-semibold text-muted-foreground">Beschreibung</th>
-                          <th className="text-right py-1.5 font-semibold text-muted-foreground">Betrag</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b">
-                          <td className="py-2 align-top">1</td>
-                          <td className="py-2 align-top">
-                            <p className="font-medium">{vehicle.make} {vehicle.model} {vehicle.year}</p>
-                            <p className="text-muted-foreground">FIN: {vehicle.vin} · {vehicle.licensePlate}</p>
-                          </td>
-                          <td className="py-2 align-top text-right">{formatCurrency(Math.round(vehicle.price / 1.19))}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[420px] text-xs">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-1.5 font-semibold text-muted-foreground">Pos.</th>
+                            <th className="text-left py-1.5 font-semibold text-muted-foreground">Beschreibung</th>
+                            <th className="text-right py-1.5 font-semibold text-muted-foreground">Betrag</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b">
+                            <td className="py-2 align-top">1</td>
+                            <td className="py-2 align-top">
+                              <p className="font-medium">{vehicle.make} {vehicle.model} {vehicle.year}</p>
+                              <p className="text-muted-foreground">FIN: {vehicle.vin} · {vehicle.licensePlate}</p>
+                            </td>
+                            <td className="py-2 align-top text-right">{formatCurrency(Math.round(vehicle.price / 1.19))}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
 
                     <div className="space-y-1 pt-2">
                       <div className="flex justify-between text-xs">
@@ -671,6 +673,108 @@ function DocumentPreviewModal({
                   <p className="text-xs text-muted-foreground">IBAN: DE89 3704 0044 0532 0130 00 · BIC: COBADEFFXXX</p>
                   <p className="text-xs text-muted-foreground">Verwendungszweck: <span className="font-mono">{invoiceNr}</span></p>
                   <p className="text-xs text-muted-foreground">Zahlungsziel: 14 Tage netto</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── GELANGENSBESTÄTIGUNG ── */}
+            {activeTab === 'gelangensbestaetigung' && (
+              <div className="space-y-6">
+                {/* Letterhead */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-base">Wackenhut Autohaus GmbH</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p>
+                    <p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-base">Gelangensbestätigung</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">gem. § 17a UStDV</p>
+                    <p className="text-xs text-muted-foreground">Datum: {today}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Legal intro */}
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Hiermit bestätigt der Empfänger, dass der nachstehend bezeichnete Liefergegenstand
+                    im Rahmen einer innergemeinschaftlichen Lieferung gemäß § 6a UStG in das übrige
+                    Gemeinschaftsgebiet gelangt ist.
+                  </p>
+                </div>
+
+                {/* Parties */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lieferer (Verkäufer)</p>
+                    <p className="font-medium text-xs">Wackenhut Autohaus GmbH</p>
+                    <p className="text-xs text-muted-foreground">Königstraße 1, 70173 Stuttgart</p>
+                    <p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Empfänger (Käufer)</p>
+                    <p className="font-medium text-xs">{submission.customerName}</p>
+                    {submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}
+                    {submission.ustIdNr && <p className="text-xs text-muted-foreground">USt-IdNr: {submission.ustIdNr}</p>}
+                    {submission.companyName && <p className="text-xs text-muted-foreground">{submission.companyName}</p>}
+                  </div>
+                </div>
+
+                {/* Vehicle */}
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Liefergegenstand</p>
+                  {vehicle ? (
+                    <div className="rounded-lg border p-3 space-y-1">
+                      <p className="font-medium text-xs">{vehicle.make} {vehicle.model} {vehicle.year} · {vehicle.color}</p>
+                      <p className="text-xs text-muted-foreground">FIN: <span className="font-mono">{vehicle.vin}</span></p>
+                      <p className="text-xs text-muted-foreground">Amtl. Kennzeichen: {vehicle.licensePlate}</p>
+                      <p className="text-xs text-muted-foreground">Rechnungsnummer: <span className="font-mono">{invoiceNr}</span> · Rechnungsdatum: {today}</p>
+                      {multiVehicle && <p className="text-xs text-amber-600 dark:text-amber-400">Hinweis: Weitere Fahrzeuge erfordern separate Gelangensbestätigungen.</p>}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Kein Fahrzeug zugeordnet</p>
+                  )}
+                </div>
+
+                {/* Transport details */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Angaben zum Transport</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Bestimmungsort (Ort, Land)</p>
+                      <div className="border rounded-md h-8 bg-slate-50 dark:bg-slate-900" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Monat des Erhalts</p>
+                      <div className="border rounded-md h-8 bg-slate-50 dark:bg-slate-900" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Declaration */}
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3">
+                  <p className="text-xs text-blue-700 dark:text-blue-400">
+                    Ich / Wir bestätigen, dass obiger Liefergegenstand in das übrige Gemeinschaftsgebiet
+                    gelangt ist und versichere/n die Richtigkeit dieser Angaben.
+                    Eine falsche Bestätigung kann steuerrechtliche und strafrechtliche Konsequenzen haben.
+                  </p>
+                </div>
+
+                {/* Signature */}
+                <div className="grid grid-cols-1 gap-6 pt-2 sm:grid-cols-2 sm:gap-8">
+                  <div>
+                    <div className="border-t-2 border-dashed pt-2">
+                      <p className="text-xs text-muted-foreground">Empfänger (Käufer)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Ort, Datum · Unterschrift</p>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="border-t-2 border-dashed pt-2">
+                      <p className="text-xs text-muted-foreground">Firmenstempel (falls vorhanden)</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -826,7 +930,7 @@ export default function VerifizierungPage() {
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div><h1 className="text-2xl font-bold">Verifizierung</h1><p className="text-sm text-muted-foreground">KYC & Kundenverifizierung</p></div>
-        <Button onClick={handleOpenDialog}><Plus className="h-4 w-4 mr-2" />Neue Verifizierung</Button>
+        <Button className="w-full sm:w-auto" onClick={handleOpenDialog}><Plus className="h-4 w-4 mr-2" />Neue Verifizierung</Button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -849,7 +953,7 @@ export default function VerifizierungPage() {
       </div>
 
       <Tabs defaultValue="alle">
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap">
           <TabsTrigger value="alle">Alle ({submissions.length})</TabsTrigger>
           <TabsTrigger value="eingereicht">Eingereicht</TabsTrigger>
           <TabsTrigger value="in_pruefung">In Prüfung</TabsTrigger>
@@ -864,18 +968,18 @@ export default function VerifizierungPage() {
               return (
                 <Card key={sub.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedSubmission(sub)}>
                   <CardContent className="p-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                      <div className="flex items-start gap-3 min-w-0">
                         <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
                           {sub.customerType === 'privat' ? <User className="h-4 w-4 text-muted-foreground" /> : <Building className="h-4 w-4 text-muted-foreground" />}
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-sm">{sub.customerName}</h3>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-sm truncate">{sub.customerName}</h3>
                           <p className="text-xs text-muted-foreground">{sub.customerType === 'privat' ? 'Privatkunde' : 'Gewerbekunde'}{' · '}{sub.email}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">Eingereicht: {formatDateTime(sub.submittedAt)}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 sm:self-start">
                         {sub.vehicleIds && sub.vehicleIds.length > 1 && (
                           <span className="text-xs text-muted-foreground font-medium">{sub.vehicleIds.length} Fzg.</span>
                         )}
@@ -918,7 +1022,7 @@ export default function VerifizierungPage() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[calc(100vw-1rem)] max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Verifizierung: {selectedSubmission?.customerName}</DialogTitle>
           </DialogHeader>
@@ -939,7 +1043,7 @@ export default function VerifizierungPage() {
                 </div>
               )}
               <Separator />
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
                 <div><span className="text-muted-foreground">E-Mail</span><p className="font-medium">{selectedSubmission.email}</p></div>
                 <div><span className="text-muted-foreground">Telefon</span><p className="font-medium">{selectedSubmission.phone}</p></div>
                 {selectedSubmission.customerType === 'privat' && (<>
@@ -983,7 +1087,7 @@ export default function VerifizierungPage() {
 
               {(selectedSubmission.status === 'eingereicht' || selectedSubmission.status === 'manuell_pruefen') && (<>
                 <Separator />
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Button className="flex-1" variant="default"><CheckCircle className="h-4 w-4 mr-2" />Verifizieren</Button>
                   <Button className="flex-1" variant="destructive"><XCircle className="h-4 w-4 mr-2" />Ablehnen</Button>
                 </div>
@@ -995,7 +1099,7 @@ export default function VerifizierungPage() {
 
       {/* New Verification Dialog */}
       <Dialog open={newDialog} onOpenChange={handleCloseDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[calc(100vw-1rem)] max-h-[90vh] overflow-y-auto sm:max-w-lg">
 
           {dialogStep === 'form' && (<>
             <DialogHeader><DialogTitle>Neue Verifizierung</DialogTitle></DialogHeader>
@@ -1003,13 +1107,13 @@ export default function VerifizierungPage() {
               <div className="space-y-2">
                 <Label>Kundentyp</Label>
                 <Tabs value={customerType} onValueChange={v => setCustomerType(v as CustomerType)}>
-                  <TabsList className="w-full">
+                  <TabsList className="w-full overflow-x-auto whitespace-nowrap">
                     <TabsTrigger value="privat" className="flex-1"><User className="h-4 w-4 mr-2" />Privatkunde</TabsTrigger>
                     <TabsTrigger value="gewerbe" className="flex-1"><Building className="h-4 w-4 mr-2" />Gewerbekunde</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2"><Label>Name</Label><Input placeholder="Max Mustermann" /></div>
                 <div className="space-y-2"><Label>E-Mail</Label><Input placeholder="email@beispiel.de" type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} /></div>
               </div>
@@ -1032,7 +1136,7 @@ export default function VerifizierungPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>ID-Prüfung Methode</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {([
                       { method: 'upload' as PrivatMethod, Icon: Upload, label: 'Dokument hochladen', sub: 'Jetzt direkt' },
                       { method: 'link' as PrivatMethod, Icon: Link2, label: 'Link senden', sub: 'Per E-Mail' },
@@ -1069,7 +1173,7 @@ export default function VerifizierungPage() {
 
               {customerType === 'gewerbe' && (<>
                 <div className="space-y-2"><Label>Firmenname</Label><Input placeholder="Musterfirma GmbH" /></div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2"><Label>Handelsregisternr.</Label><Input placeholder="HRB 123456" value={formHRB} onChange={e => setFormHRB(e.target.value)} /></div>
                   <div className="space-y-2"><Label>USt-IdNr.</Label><Input placeholder="DE123456789" value={formUstId} onChange={e => setFormUstId(e.target.value)} /></div>
                 </div>

@@ -136,7 +136,7 @@ export function VoiceControl() {
   return (
     <>
       {successMessage && (
-        <div className="fixed bottom-24 right-6 z-50 max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-50 w-[min(360px,calc(100vw-1.25rem))] animate-in fade-in slide-in-from-bottom-4 duration-300 sm:right-6 sm:max-w-sm">
           <div className="rounded-2xl bg-card border border-border/60 shadow-xl px-4 py-3 backdrop-blur-sm">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />

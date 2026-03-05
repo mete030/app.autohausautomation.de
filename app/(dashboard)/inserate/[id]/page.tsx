@@ -155,23 +155,25 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
     setExportStatus(prev => ({ ...prev, [platformId]: 'exporting' }))
     setTimeout(() => {
       setExportStatus(prev => ({ ...prev, [platformId]: 'done' }))
-    }, 1800 + Math.random() * 800)
+    }, 2200)
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/inserate">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold">Inserat</h1>
-          <p className="text-sm text-muted-foreground">{listing.title}</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/inserate">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold">Inserat</h1>
+            <p className="text-sm text-muted-foreground truncate">{listing.title}</p>
+          </div>
         </div>
-        <Badge className={`ml-auto ${statusColors[listing.status]}`} variant="secondary">
+        <Badge className={`self-start sm:ml-auto sm:self-auto ${statusColors[listing.status]}`} variant="secondary">
           {statusLabels[listing.status]}
         </Badge>
       </div>
@@ -212,7 +214,7 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
               </div>
             )}
 
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 space-y-4 sm:p-6">
               <h2 className="text-xl font-bold leading-snug">{listing.title}</h2>
               {listing.description ? (
                 <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
@@ -282,9 +284,9 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
                   return (
                     <div key={p.id} className="flex items-center gap-2">
                       <div style={{ width: 20, height: 20 }}>
-                        <div className="rounded-md flex items-center justify-center shrink-0 w-5 h-5"
-                          style={{ background: isLive ? (p.id === 'mobile_de' ? '#FF6600' : p.id === 'autoscout24' ? '#003F87' : '#009C3B') : undefined }}
+                        <div
                           className={`rounded-md w-5 h-5 flex items-center justify-center ${!isLive ? 'bg-muted' : ''}`}
+                          style={{ background: isLive ? (p.id === 'mobile_de' ? '#FF6600' : p.id === 'autoscout24' ? '#003F87' : '#009C3B') : undefined }}
                         >
                           {isLive ? (
                             <CheckCircle2 className="h-3 w-3 text-white" />
@@ -343,7 +345,7 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
 
       {/* ─── Export Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={showExport} onOpenChange={setShowExport}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send className="h-5 w-5 text-primary" />
@@ -365,7 +367,7 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
               return (
                 <div
                   key={platform.id}
-                  className={`flex items-center gap-3 p-3.5 rounded-xl border ${platform.bgColor} ${platform.borderColor}`}
+                  className={`flex flex-col items-start gap-3 p-3.5 rounded-xl border sm:flex-row sm:items-center ${platform.bgColor} ${platform.borderColor}`}
                 >
                   {platform.icon}
                   <div className="flex-1 min-w-0">
@@ -375,7 +377,7 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
                   <Button
                     size="sm"
                     style={!isDone && status !== 'exporting' ? platform.btnStyle : undefined}
-                    className={`text-white border-0 shrink-0 hover:opacity-90 ${
+                    className={`w-full text-white border-0 hover:opacity-90 sm:w-auto sm:shrink-0 ${
                       isDone ? 'bg-emerald-600 hover:bg-emerald-600' : ''
                     }`}
                     onClick={() => !isDone && handleExport(platform.id)}

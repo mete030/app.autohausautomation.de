@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,11 +10,11 @@ import { useConversationStore, type ConversationInboxView } from '@/lib/stores/c
 import { cn } from '@/lib/utils'
 import type { Conversation, MessageChannel, ConversationStatus } from '@/lib/types'
 import {
-  Search, Send, Sparkles, ChevronDown,
+  Search, Send, ChevronDown,
   Star, Trash2, AlertCircle, Users, UserX, Mail,
   ArrowLeftRight, UserPlus, X, Tag, Clock, CheckCircle2, MoreHorizontal,
   Phone, AtSign, FolderOpen, Plus, Settings, Paperclip,
-  Smile, Image, Hash, PenSquare, Check, Zap, Filter,
+  Smile, Image as ImageIcon, Hash, PenSquare, Check, Zap, Filter, ChevronLeft,
 } from 'lucide-react'
 
 // ─── Brand SVG Icons ──────────────────────────────────────────────────────────
@@ -231,7 +229,7 @@ function ConversationList({
   status: ConversationStatus
   onStatusChange: (s: ConversationStatus) => void
 }) {
-  const [search, setSearch] = useState('')
+  const [search] = useState('')
 
   const filtered = conversations.filter(c => {
     const mStatus = (c.status ?? 'offen') === status
@@ -248,7 +246,7 @@ function ConversationList({
   ]
 
   return (
-    <div className="w-[280px] border-r flex flex-col h-full shrink-0 bg-background">
+    <div className="w-full border-r flex flex-col h-full bg-background lg:w-[280px] lg:shrink-0">
 
       {/* ── Top header ── */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
@@ -387,7 +385,15 @@ const suggestedReplies = [
   'Details per E-Mail zusenden',
 ]
 
-function ChatView({ conv }: { conv: Conversation | null }) {
+function ChatView({
+  conv,
+  onBack,
+  onOpenContact,
+}: {
+  conv: Conversation | null
+  onBack?: () => void
+  onOpenContact?: () => void
+}) {
   const [input, setInput] = useState('')
 
   if (!conv) {
@@ -419,7 +425,16 @@ function ChatView({ conv }: { conv: Conversation | null }) {
     <div className="flex-1 flex flex-col min-w-0 bg-background">
 
       {/* ── Chat header ── */}
-      <div className="px-5 py-3 border-b flex items-center gap-3 bg-white min-h-[57px]">
+      <div className="px-3 py-3 border-b flex items-center gap-2 bg-white min-h-[57px] sm:px-5 sm:gap-3">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            title="Zurück zur Liste"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
         {/* Initials avatar (Superchat uses initials in the chat header, not channel icon) */}
         <Avatar className="w-8 h-8 shrink-0">
           <AvatarFallback className="text-xs font-bold bg-muted text-foreground/70">
@@ -437,7 +452,7 @@ function ChatView({ conv }: { conv: Conversation | null }) {
           </div>
         </div>
         {/* Right actions */}
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="hidden items-center gap-0.5 shrink-0 sm:flex">
           {conv.assignedTo && (
             <div className="flex items-center -space-x-1 mr-2">
               <Avatar className="w-6 h-6 ring-2 ring-white">
@@ -462,6 +477,15 @@ function ChatView({ conv }: { conv: Conversation | null }) {
             </button>
           ))}
         </div>
+        {onOpenContact && (
+          <button
+            onClick={onOpenContact}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            title="Kontakt öffnen"
+          >
+            <Users className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* ── Messages ── */}
@@ -490,7 +514,7 @@ function ChatView({ conv }: { conv: Conversation | null }) {
                   return (
                     <div key={msg.id} className={cn('flex gap-2', isAdvisor ? 'justify-end' : 'justify-start')}>
                       <div className={cn(
-                        'max-w-[65%] rounded-2xl px-3.5 py-2.5',
+                        'max-w-[84%] rounded-2xl px-3.5 py-2.5 sm:max-w-[72%] lg:max-w-[65%]',
                         isAdvisor
                           ? 'bg-[#1a73e8] text-white rounded-br-[4px]'
                           : 'bg-white border border-border/60 text-foreground rounded-bl-[4px] shadow-xs'
@@ -541,7 +565,7 @@ function ChatView({ conv }: { conv: Conversation | null }) {
               <Paperclip className="w-4 h-4" />
             </button>
             <button className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors">
-              <Image className="w-4 h-4" />
+              <ImageIcon className="w-4 h-4" />
             </button>
           </div>
           <Textarea
@@ -575,7 +599,13 @@ function ChatView({ conv }: { conv: Conversation | null }) {
 
 // ─── Contact Panel ────────────────────────────────────────────────────────────
 
-function ContactPanel({ conv }: { conv: Conversation | null }) {
+function ContactPanel({
+  conv,
+  onBack,
+}: {
+  conv: Conversation | null
+  onBack?: () => void
+}) {
   const [attrsOpen, setAttrsOpen] = useState(true)
   const [convOpen,  setConvOpen]  = useState(true)
 
@@ -583,11 +613,22 @@ function ContactPanel({ conv }: { conv: Conversation | null }) {
   const lc = conv.label ? labelCls[conv.label] : null
 
   return (
-    <div className="w-[272px] border-l flex flex-col h-full shrink-0 bg-background">
+    <div className="w-full border-t flex flex-col h-full bg-background lg:w-[272px] lg:shrink-0 lg:border-l lg:border-t-0">
 
       {/* Header */}
       <div className="px-4 py-3 border-b flex items-center justify-between min-h-[57px]">
-        <span className="font-semibold text-[14px]">Kontakt</span>
+        <div className="flex items-center gap-1.5">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+              title="Zurück zum Chat"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
+          <span className="font-semibold text-[14px]">Kontakt</span>
+        </div>
         <div className="flex items-center gap-0.5">
           {([
             { icon: <ArrowLeftRight className="w-3.5 h-3.5"/>, title: 'Weiterleiten' },
@@ -666,18 +707,18 @@ function ContactPanel({ conv }: { conv: Conversation | null }) {
           </button>
           {attrsOpen && (
             <div className="px-4 pb-3 space-y-2.5">
-              {[
-                { icon: <Users className="w-3 h-3"/>, label: 'Vorname',  value: conv.customerName.split(' ')[0] },
-                { icon: <Users className="w-3 h-3"/>, label: 'Nachname', value: conv.customerName.split(' ').slice(1).join(' ') || '—' },
-                { icon: <AtSign className="w-3 h-3"/>, label: 'E-Mail',  value: conv.customerEmail ?? '—' },
-                { icon: <Phone className="w-3 h-3"/>,  label: 'Telefon', value: conv.customerPhone ?? '—' },
-              ].map(row => (
-                <div key={row.label} className="flex items-center gap-2 min-w-0">
-                  <span className="text-muted-foreground shrink-0">{row.icon}</span>
-                  <span className="text-[11px] text-muted-foreground w-[52px] shrink-0">{row.label}</span>
-                  <span className="text-[11px] text-foreground truncate flex-1">{row.value}</span>
-                </div>
-              ))}
+                {[
+                  { icon: <Users className="w-3 h-3"/>, label: 'Vorname',  value: conv.customerName.split(' ')[0] },
+                  { icon: <Users className="w-3 h-3"/>, label: 'Nachname', value: conv.customerName.split(' ').slice(1).join(' ') || '—' },
+                  { icon: <AtSign className="w-3 h-3"/>, label: 'E-Mail',  value: conv.customerEmail ?? '—' },
+                  { icon: <Phone className="w-3 h-3"/>,  label: 'Telefon', value: conv.customerPhone ?? '—' },
+                ].map(row => (
+                  <div key={row.label} className="flex items-center gap-2 min-w-0">
+                    <span className="text-muted-foreground shrink-0">{row.icon}</span>
+                    <span className="text-[11px] text-muted-foreground w-14 shrink-0 sm:w-[52px]">{row.label}</span>
+                    <span className="text-[11px] text-foreground truncate flex-1">{row.value}</span>
+                  </div>
+                ))}
               <button className="text-[11px] text-[#1a73e8] hover:underline mt-0.5 font-medium">Alle anzeigen</button>
             </div>
           )}
@@ -721,6 +762,7 @@ export default function NachrichtenPage() {
   const setConvStatus = useConversationStore((state) => state.setStatusFilter)
   const selectedConversationId = useConversationStore((state) => state.selectedConversationId)
   const setSelectedConversation = useConversationStore((state) => state.setSelectedConversation)
+  const [mobilePanel, setMobilePanel] = useState<'list' | 'chat' | 'contact'>('list')
 
   const visible = (() => {
     switch (view) {
@@ -742,18 +784,38 @@ export default function NachrichtenPage() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <ConversationList
-        allConversations={conversations}
-        conversations={visible}
-        selected={selected}
-        onSelect={(conversation) => setSelectedConversation(conversation.id)}
-        view={view}
-        onViewChange={setView}
-        status={convStatus}
-        onStatusChange={setConvStatus}
-      />
-      <ChatView conv={selected} />
-      <ContactPanel conv={selected} />
+      <div className={cn('h-full w-full lg:w-[280px] lg:shrink-0', mobilePanel === 'list' ? 'flex' : 'hidden lg:flex')}>
+        <ConversationList
+          allConversations={conversations}
+          conversations={visible}
+          selected={selected}
+          onSelect={(conversation) => {
+            setSelectedConversation(conversation.id)
+            setMobilePanel('chat')
+          }}
+          view={view}
+          onViewChange={setView}
+          status={convStatus}
+          onStatusChange={setConvStatus}
+        />
+      </div>
+
+      <div className={cn('h-full min-w-0 flex-1', mobilePanel === 'chat' ? 'flex' : 'hidden lg:flex')}>
+        <ChatView
+          conv={selected}
+          onBack={() => setMobilePanel('list')}
+          onOpenContact={() => setMobilePanel('contact')}
+        />
+      </div>
+
+      {(selected || mobilePanel === 'contact') && (
+        <div className={cn('h-full w-full lg:w-[272px] lg:shrink-0', mobilePanel === 'contact' ? 'flex' : 'hidden lg:flex')}>
+          <ContactPanel
+            conv={selected}
+            onBack={() => setMobilePanel('chat')}
+          />
+        </div>
+      )}
     </div>
   )
 }

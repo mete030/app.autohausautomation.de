@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -16,8 +15,9 @@ import { priceCategoryConfig } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Sparkles, RefreshCw, Check, Star, Upload, ImagePlus,
-  ScanLine, Pencil, Loader2, Car, X, Wand2,
+  ScanLine, Pencil, Loader2, X, Wand2,
   Scissors, Zap, ExternalLink, CheckCircle2, ChevronRight, Plus,
+  Camera, Images,
 } from 'lucide-react'
 
 // ─── Platform Brand Icons ────────────────────────────────────────────────────
@@ -308,7 +308,7 @@ export default function NeuesInseratPage() {
     setExportStatus(prev => ({ ...prev, [platformId]: 'exporting' }))
     setTimeout(() => {
       setExportStatus(prev => ({ ...prev, [platformId]: 'done' }))
-    }, 1800 + Math.random() * 800)
+    }, 2200)
   }
 
   const toggleSeries = (item: string) =>
@@ -355,7 +355,7 @@ export default function NeuesInseratPage() {
           <p className="text-center text-muted-foreground text-sm mb-8">
             Wie möchten Sie die Fahrzeugdaten erfassen?
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <button
               onClick={() => setInputMode('vin')}
               className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
@@ -395,10 +395,10 @@ export default function NeuesInseratPage() {
           <div className="lg:col-span-3 space-y-5">
 
             {/* Mode switcher */}
-            <div className="flex rounded-lg border bg-muted p-1 w-fit gap-1">
+            <div className="flex w-full gap-1 rounded-lg border bg-muted p-1 sm:w-fit">
               <button
                 onClick={() => { setInputMode('vin'); setVinStatus('idle'); setVinData(null) }}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all sm:flex-none ${
                   inputMode === 'vin'
                     ? 'bg-card shadow-sm text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
@@ -409,7 +409,7 @@ export default function NeuesInseratPage() {
               </button>
               <button
                 onClick={() => setInputMode('manual')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all sm:flex-none ${
                   inputMode === 'manual'
                     ? 'bg-card shadow-sm text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
@@ -431,7 +431,7 @@ export default function NeuesInseratPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <Input
                         placeholder="z.B. WBA52AG0X0FH12345"
                         value={vin}
@@ -490,7 +490,7 @@ export default function NeuesInseratPage() {
                         <CardTitle className="text-sm">Fahrzeugdaten</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-0 text-sm">
+                        <div className="grid grid-cols-1 gap-x-8 gap-y-0 text-sm sm:grid-cols-2">
                           {[
                             ['Marke', vinData.make], ['Modell', vinData.model],
                             ['Baujahr', vinData.year], ['Erstzulassung', vinData.firstRegistration],
@@ -556,7 +556,7 @@ export default function NeuesInseratPage() {
                         <CardTitle className="text-sm">Verkaufspreis festlegen</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                           <div className="relative flex-1">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
                             <Input className="pl-7" defaultValue={vinData.price} />
@@ -580,7 +580,7 @@ export default function NeuesInseratPage() {
                     <CardTitle className="text-sm">Grunddaten</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Marke</Label>
                         <Input placeholder="z.B. BMW" value={formData.make} onChange={setField('make')} />
@@ -590,7 +590,7 @@ export default function NeuesInseratPage() {
                         <Input placeholder="z.B. 520d Touring" value={formData.model} onChange={setField('model')} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Baujahr</Label>
                         <Input placeholder="2021" value={formData.year} onChange={setField('year')} />
@@ -604,7 +604,7 @@ export default function NeuesInseratPage() {
                         <Input placeholder="03.2025" value={formData.hu} onChange={setField('hu')} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Kilometerstand</Label>
                         <Input placeholder="62.400" value={formData.mileage} onChange={setField('mileage')} />
@@ -630,7 +630,7 @@ export default function NeuesInseratPage() {
                     <CardTitle className="text-sm">Technische Daten</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Kraftstoff</Label>
                         <Select value={formData.fuelType} onValueChange={v => setFormData(prev => ({ ...prev, fuelType: v }))}>
@@ -655,7 +655,7 @@ export default function NeuesInseratPage() {
                         </Select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Leistung (PS)</Label>
                         <Input placeholder="190" value={formData.power} onChange={setField('power')} />
@@ -669,7 +669,7 @@ export default function NeuesInseratPage() {
                         <Input placeholder="Silber Metallic" value={formData.color} onChange={setField('color')} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Türen</Label>
                         <Select value={formData.doors} onValueChange={v => setFormData(prev => ({ ...prev, doors: v }))}>
@@ -759,7 +759,7 @@ export default function NeuesInseratPage() {
                         )
                       })}
                     </div>
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                       <Input
                         placeholder="Eigenes Extra hinzufügen..."
                         value={customExtra}
@@ -800,7 +800,7 @@ export default function NeuesInseratPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {IMAGE_SLOTS.map(slot => {
                       const state = slotStates[slot.id]
                       const processing = processingSlot[slot.id]
@@ -901,15 +901,60 @@ export default function NeuesInseratPage() {
                     })}
                   </div>
 
-                  {/* Upload more */}
-                  <div className="border-2 border-dashed rounded-xl p-5 text-center">
+                  {/* Upload more — Desktop */}
+                  <div className="hidden sm:block border-2 border-dashed rounded-xl p-5 text-center">
                     <ImagePlus className="h-7 w-7 mx-auto text-muted-foreground/40 mb-2" />
                     <p className="text-xs text-muted-foreground">Weitere Bilder hochladen</p>
                     <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG bis 10MB, max. 20 Bilder</p>
-                    <Button variant="outline" size="sm" className="mt-3 h-7 text-xs">
-                      <Upload className="h-3 w-3 mr-1.5" />
-                      Bilder auswählen
+                    <Button variant="outline" size="sm" className="mt-3 h-7 text-xs" asChild>
+                      <label className="cursor-pointer">
+                        <Upload className="h-3 w-3 mr-1.5" />
+                        Bilder auswählen
+                        <input type="file" accept="image/*" multiple className="sr-only" />
+                      </label>
                     </Button>
+                  </div>
+
+                  {/* Upload more — Mobile: Camera + Gallery */}
+                  <div className="sm:hidden space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Camera */}
+                      <label className="group relative flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed border-border bg-muted/30 p-5 cursor-pointer active:scale-[0.97] transition-all duration-150 active:bg-muted/60">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-background shadow-sm ring-1 ring-border/60 group-active:shadow-none transition-shadow">
+                          <Camera className="h-5 w-5 text-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-semibold leading-tight">Aufnehmen</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Kamera öffnen</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="sr-only"
+                        />
+                      </label>
+
+                      {/* Gallery */}
+                      <label className="group relative flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed border-border bg-muted/30 p-5 cursor-pointer active:scale-[0.97] transition-all duration-150 active:bg-muted/60">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-background shadow-sm ring-1 ring-border/60 group-active:shadow-none transition-shadow">
+                          <Images className="h-5 w-5 text-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-semibold leading-tight">Galerie</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Fotos auswählen</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="sr-only"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-center text-[10px] text-muted-foreground/60">
+                      JPG, PNG · max. 10 MB · bis zu 20 Bilder
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -978,7 +1023,7 @@ export default function NeuesInseratPage() {
                         <div className="p-2.5 bg-card rounded-lg border text-xs whitespace-pre-line max-h-44 overflow-y-auto leading-relaxed">
                           {activeDescription}
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <Button size="sm" variant="outline" className="h-7 text-xs">
                             <Check className="h-3 w-3 mr-1" />
                             Übernehmen
@@ -1117,7 +1162,7 @@ export default function NeuesInseratPage() {
 
       {/* ─── Export Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={showExport} onOpenChange={setShowExport}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ExternalLink className="h-5 w-5 text-primary" />

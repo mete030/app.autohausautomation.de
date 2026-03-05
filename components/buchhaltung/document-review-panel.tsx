@@ -40,7 +40,7 @@ export function DocumentReviewPanel({
 
   if (!document) {
     return (
-      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 min-h-[460px] grid place-items-center text-center p-8">
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 min-h-[320px] sm:min-h-[460px] grid place-items-center text-center p-8">
         <div>
           <ReceiptText className="h-8 w-8 mx-auto text-muted-foreground/60 mb-3" />
           <p className="text-sm font-medium">Kein Beleg ausgewählt</p>
@@ -115,7 +115,7 @@ export function DocumentReviewPanel({
       <Separator />
 
       <Tabs defaultValue="dokument" className="p-4">
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap">
           <TabsTrigger value="dokument">
             <FileText className="h-3.5 w-3.5 mr-1.5" />
             Dokument
@@ -129,7 +129,7 @@ export function DocumentReviewPanel({
             <iframe
               src={document.pdfUrl}
               title={`PDF Vorschau ${document.invoiceNumber}`}
-              className="h-[420px] w-full"
+              className="h-[320px] w-full sm:h-[420px]"
             />
           </div>
         </TabsContent>
@@ -177,7 +177,7 @@ export function DocumentReviewPanel({
         </TabsContent>
 
         <TabsContent value="buchung" className="mt-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2.5 text-sm">
+          <div className="grid grid-cols-1 gap-2.5 text-sm sm:grid-cols-2">
             <div className="rounded-lg border p-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Konto Soll</p>
               <p className="font-medium mt-1">{document.bookingProposal.kontoSoll}</p>
@@ -197,7 +197,7 @@ export function DocumentReviewPanel({
           </div>
 
           <div className="rounded-lg border border-border/60 p-3">
-            <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
               <div>
                 <p className="text-xs text-muted-foreground">Netto</p>
                 <p className="font-semibold">{formatCurrency(document.bookingProposal.netto)}</p>

@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex h-dvh min-h-dvh overflow-hidden bg-background">
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex">
           <Sidebar
@@ -35,12 +35,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header onMenuToggle={() => setMobileNavOpen(true)} />
           {isNachrichten ? (
-            <main className="flex-1 overflow-hidden">
+            <main className="flex-1 overflow-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
               {children}
             </main>
           ) : (
             <main className="flex-1 overflow-y-auto">
-              <div className="p-4 lg:p-6 max-w-[1600px]">
+              <div className="mx-auto w-full max-w-[1600px] px-3 py-3 pb-24 sm:px-4 sm:py-4 sm:pb-28 lg:px-6 lg:py-6 lg:pb-6">
                 {children}
               </div>
             </main>

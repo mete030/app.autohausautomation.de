@@ -86,14 +86,14 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <Link href="/fahrzeuge">
           <Button variant="ghost" size="icon" className="h-9 w-9">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{vehicle.make} {vehicle.model}</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{vehicle.make} {vehicle.model}</h1>
           <p className="text-sm text-muted-foreground">{vehicle.year} · {vehicle.licensePlate}</p>
         </div>
       </div>
@@ -118,10 +118,10 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
           {/* Details Grid */}
           <Card className="border-border/60">
             <CardHeader>
-              <CardTitle className="text-base">Fahrzeugdaten</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-5 gap-x-4">
+            <CardTitle className="text-base">Fahrzeugdaten</CardTitle>
+          </CardHeader>
+          <CardContent>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
                 {[
                   { icon: Calendar, label: 'Baujahr', value: String(vehicle.year) },
                   { icon: Gauge, label: 'Kilometerstand', value: formatMileage(vehicle.mileage) },
@@ -137,7 +137,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                       <item.icon className="h-3.5 w-3.5" />
                       {item.label}
                     </div>
-                    <p className="text-sm font-medium">{item.value}</p>
+                    <p className="text-sm font-medium break-words">{item.value}</p>
                   </div>
                 ))}
               </div>
@@ -179,11 +179,11 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
         <div className="space-y-6">
           <Card className="border-border/60">
             <CardContent className="pt-6 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <span className="text-sm text-muted-foreground">Status</span>
                 <Badge variant="secondary">{statusLabels[vehicle.status]}</Badge>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <span className="text-sm text-muted-foreground">Deadline</span>
                 <Badge variant="outline" className={`${escConfig.bg} ${escConfig.text} border-0`}>
                   {daysLeft < 0 ? `${Math.abs(daysLeft)} Tage überfällig` : `${daysLeft} Tage übrig`}
@@ -229,7 +229,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
           </Card>
 
           <Dialog open={platformOpen} onOpenChange={setPlatformOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Plattform auswählen</DialogTitle>
                 <p className="text-sm text-muted-foreground">

@@ -58,7 +58,7 @@ export default function WerkstattPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link href="/fahrzeuge">
             <Button variant="ghost" size="icon">
@@ -79,13 +79,13 @@ export default function WerkstattPage() {
       </div>
 
       {/* Kanban Board */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-4 overflow-x-auto pb-2 sm:pb-4">
         {kanbanColumns.map((column) => {
           const columnVehicles = getColumnVehicles(column.id)
           return (
             <div
               key={column.id}
-              className="flex-shrink-0 w-72"
+              className="w-[84vw] max-w-[300px] flex-shrink-0 sm:w-72"
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, column.id)}
             >

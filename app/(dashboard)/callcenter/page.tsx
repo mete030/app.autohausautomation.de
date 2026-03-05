@@ -53,7 +53,7 @@ function AdvisorSection({ group, onComplete }: { group: GroupData; onComplete: (
   return (
     <Card className={cn('overflow-hidden', group.overdueCount > 0 && 'border-red-200 dark:border-red-900/40')}>
       {/* Advisor header */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 border-b">
+      <div className="flex flex-col gap-2 px-4 py-2.5 bg-muted/30 border-b sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
           <Avatar className="h-7 w-7">
             <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-semibold">
@@ -62,7 +62,7 @@ function AdvisorSection({ group, onComplete }: { group: GroupData; onComplete: (
           </Avatar>
           <span className="font-semibold text-sm">{group.name}</span>
         </div>
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           {group.overdueCount > 0 && (
             <span className="flex items-center gap-1 font-semibold text-red-600">
               <AlertTriangle className="h-3 w-3" />
@@ -144,7 +144,7 @@ function CallbackRow({ cb, onComplete }: { cb: Callback; onComplete: (id: string
           <Button
             size="sm"
             variant={isOverdue ? 'destructive' : 'ghost'}
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-6 w-6 p-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
             onClick={() => onComplete(cb.id)}
             title="Als erledigt markieren"
           >
@@ -216,12 +216,12 @@ export default function CallcenterPage() {
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Callcenter</h1>
           <p className="text-sm text-muted-foreground">Rückrufe nach Berater</p>
         </div>
-        <div className="flex items-center gap-4 text-sm pt-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:justify-end">
           {totalOverdue > 0 && (
             <span className="flex items-center gap-1 text-red-600 font-semibold">
               <AlertTriangle className="h-3.5 w-3.5" />
@@ -234,7 +234,7 @@ export default function CallcenterPage() {
       </div>
 
       {/* Filter pills */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
         {([
           { value: 'aktiv', label: 'Offen & Überfällig' },
           { value: 'alle', label: 'Alle' },
@@ -244,7 +244,7 @@ export default function CallcenterPage() {
             key={f.value}
             onClick={() => setFilter(f.value)}
             className={cn(
-              'px-3 py-1 text-xs rounded-full border font-medium transition-colors',
+              'px-3 py-1 text-xs rounded-full border font-medium transition-colors whitespace-nowrap',
               filter === f.value
                 ? 'bg-foreground text-background border-foreground'
                 : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/50',

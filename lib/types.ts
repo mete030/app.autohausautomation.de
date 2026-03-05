@@ -193,7 +193,7 @@ export interface KYCCheckResult {
 }
 
 export type DocumentBundleStatus = 'idle' | 'generating' | 'ready' | 'sending' | 'sent'
-export type KYCDocumentType = 'kaufbestaetigung' | 'abholschein' | 'rechnung'
+export type KYCDocumentType = 'kaufbestaetigung' | 'abholschein' | 'rechnung' | 'gelangensbestaetigung'
 
 export interface DocumentBundleState {
   status: DocumentBundleStatus
