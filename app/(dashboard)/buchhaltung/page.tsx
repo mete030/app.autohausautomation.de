@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
@@ -112,7 +112,7 @@ function getRollingMonths(baseMonth: string, count: number) {
   return months
 }
 
-export default function BuchhaltungPage() {
+function BuchhaltungPageContent() {
   const documents = useAccountingStore((state) => state.documents)
   const vehicleCases = useAccountingStore((state) => state.vehicleCases)
   const exportBatches = useAccountingStore((state) => state.exportBatches)
@@ -666,5 +666,13 @@ export default function BuchhaltungPage() {
         }}
       />
     </div>
+  )
+}
+
+export default function BuchhaltungPage() {
+  return (
+    <Suspense fallback={<div className="space-y-4" />}>
+      <BuchhaltungPageContent />
+    </Suspense>
   )
 }

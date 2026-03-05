@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Suspense } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
@@ -19,17 +20,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex h-dvh min-h-dvh overflow-hidden bg-background">
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex">
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
+          <Suspense fallback={null}>
+            <Sidebar
+              collapsed={sidebarCollapsed}
+              onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
+          </Suspense>
         </div>
 
         {/* Mobile Navigation */}
-        <MobileNav
-          open={mobileNavOpen}
-          onClose={() => setMobileNavOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <MobileNav
+            open={mobileNavOpen}
+            onClose={() => setMobileNavOpen(false)}
+          />
+        </Suspense>
 
         {/* Main Content */}
         <div className="flex flex-1 flex-col overflow-hidden">
