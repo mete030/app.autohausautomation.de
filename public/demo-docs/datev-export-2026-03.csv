@@ -1,0 +1,5 @@
+datum,belegnummer,konto_soll,konto_haben,netto,steuer_schluessel,ust_betrag,brutto,fahrzeug_id,partner
+2026-03-01,ER-2026-0315,3200,70000,23949.58,V19,4550.42,28500.00,v1,Autohaus Nord GmbH
+2026-03-04,AR-2026-1187,1200,8400,29327.73,U19,5572.27,34900.00,v1,Klaus Becker
+2026-03-02,ER-2026-0322,3200,70000,31200.00,D25,0.00,31200.00,v2,Privatankauf Süd
+2026-03-04,AR-2026-1199,1200,8320,38500.00,D25,0.00,38500.00,v2,Autohaus Partner KG

@@ -183,12 +183,115 @@ export interface KYCSubmission {
   // Results
   checkResults?: KYCCheckResult[]
   notes?: string
+  documentBundle?: DocumentBundleState
 }
 
 export interface KYCCheckResult {
   check: string
   passed: boolean
   detail: string
+}
+
+export type DocumentBundleStatus = 'idle' | 'generating' | 'ready' | 'sending' | 'sent'
+export type KYCDocumentType = 'kaufbestaetigung' | 'abholschein' | 'rechnung'
+
+export interface DocumentBundleState {
+  status: DocumentBundleStatus
+  generatedAt?: string  // ISO datetime
+  sentAt?: string       // ISO datetime
+}
+
+// ---- Buchhaltung (Problem 6) ----
+
+export type AccountingDocumentType = 'eingangsrechnung' | 'ausgangsrechnung'
+export type AccountingDocumentStatus = 'neu' | 'ki_extrahiert' | 'freigabe_noetig' | 'freigegeben' | 'gebucht' | 'fehler'
+export type AccountingTaxMode = 'regelbesteuerung_19' | 'differenzbesteuerung_25a'
+export type AccountingPaymentStatus = 'bezahlt' | 'offen' | 'ueberfaellig'
+export type AccountingFlagSeverity = 'info' | 'warn' | 'critical'
+export type VehicleAccountingCaseStatus = 'offen' | 'pruefung' | 'exportbereit' | 'exportiert'
+export type AccountingExportBatchStatus = 'bereit' | 'erstellt'
+
+export interface AccountingFlag {
+  id: string
+  code: string
+  severity: AccountingFlagSeverity
+  message: string
+  resolved: boolean
+}
+
+export interface AccountingExtractionField {
+  key: string
+  label: string
+  value: string
+  confidence: number // 0-100
+  required?: boolean
+}
+
+export interface AccountingBookingProposal {
+  kontoSoll: string
+  kontoHaben: string
+  steuerSchluessel: string
+  netto: number
+  ust: number
+  brutto: number
+}
+
+export interface AccountingDocument {
+  id: string
+  month: string // YYYY-MM
+  vehicleId: string | null
+  type: AccountingDocumentType
+  status: AccountingDocumentStatus
+  paymentStatus: AccountingPaymentStatus
+  taxMode: AccountingTaxMode
+  invoiceNumber: string
+  invoiceDate: string // ISO date
+  partnerName: string
+  netAmount: number
+  vatAmount: number
+  grossAmount: number
+  currency: 'EUR'
+  pdfUrl: string
+  aiConfidence: number // 0-100
+  extractionFields: AccountingExtractionField[]
+  bookingProposal: AccountingBookingProposal
+  flags: AccountingFlag[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface VehicleAccountingCase {
+  id: string
+  month: string // YYYY-MM
+  vehicleId: string
+  incomingDocumentId?: string
+  outgoingDocumentId?: string
+  hasIncomingInvoice: boolean
+  hasOutgoingInvoice: boolean
+  taxMode: AccountingTaxMode
+  purchaseAmount?: number
+  saleAmount?: number
+  marginAmount?: number
+  vatAmount?: number
+  status: VehicleAccountingCaseStatus
+  blockers: string[]
+}
+
+export interface AccountingExportBatch {
+  id: string
+  month: string // YYYY-MM
+  status: AccountingExportBatchStatus
+  createdAt: string
+  createdBy: string
+  documentCount: number
+  totals: {
+    net: number
+    vat: number
+    gross: number
+  }
+  datevCsvUrl: string
+  belegZipUrl: string
+  protocolUrl?: string
 }
 
 // ---- Dashboard ----
@@ -199,6 +302,7 @@ export interface DashboardStats {
   inserate: { zuErstellen: number; zuVeroeffentlichen: number }
   nachrichten: { ungelesen: number; heuteNeu: number }
   kyc: { offen: number; zuPruefen: number }
+  buchhaltung: { offen: number; kritisch: number }
 }
 
 export interface ActivityDetail {
@@ -208,7 +312,7 @@ export interface ActivityDetail {
 
 export interface ActivityEntry {
   id: string
-  module: 'werkstatt' | 'callcenter' | 'inserate' | 'nachrichten' | 'kyc'
+  module: 'werkstatt' | 'callcenter' | 'inserate' | 'nachrichten' | 'kyc' | 'buchhaltung'
   action: string
   subject: string
   description: string

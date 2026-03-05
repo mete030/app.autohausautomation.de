@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { navigation } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
 
   const toggleExpand = (title: string) => {
@@ -28,6 +29,18 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/'
     return pathname.startsWith(href)
+  }
+
+  const isChildActive = (href: string) => {
+    const [targetPath, targetQuery] = href.split('?')
+    if (pathname !== targetPath) return false
+    if (!targetQuery) return true
+
+    const requiredParams = new URLSearchParams(targetQuery)
+    for (const [key, value] of requiredParams.entries()) {
+      if (searchParams.get(key) !== value) return false
+    }
+    return true
   }
 
   return (
@@ -118,7 +131,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         href={child.href}
                         className={cn(
                           'rounded-md px-2.5 py-1 text-[13px] transition-colors',
-                          pathname === child.href
+                          isChildActive(child.href)
                             ? 'text-primary font-medium'
                             : 'text-muted-foreground hover:text-foreground'
                         )}

@@ -1,9 +1,9 @@
 import {
   LayoutDashboard,
   Car,
-  Wrench,
   Phone,
   FileText,
+  ReceiptText,
   MessageSquare,
   ShieldCheck,
   type LucideIcon,
@@ -44,6 +44,17 @@ export const navigation: NavItem[] = [
     children: [
       { title: 'Übersicht', href: '/inserate' },
       { title: 'Neues Inserat', href: '/inserate/neu' },
+    ],
+  },
+  {
+    title: 'Buchhaltung',
+    href: '/buchhaltung',
+    icon: ReceiptText,
+    children: [
+      { title: 'Übersicht', href: '/buchhaltung' },
+      { title: 'Eingangsrechnungen', href: '/buchhaltung?tab=eingang' },
+      { title: 'Ausgangsrechnungen', href: '/buchhaltung?tab=ausgang' },
+      { title: 'Steuerberater', href: '/buchhaltung?tab=steuerberater' },
     ],
   },
   {

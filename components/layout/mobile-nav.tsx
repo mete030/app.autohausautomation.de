@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { navigation } from '@/lib/constants'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -14,10 +14,23 @@ interface MobileNavProps {
 
 export function MobileNav({ open, onClose }: MobileNavProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/'
     return pathname.startsWith(href)
+  }
+
+  const isChildActive = (href: string) => {
+    const [targetPath, targetQuery] = href.split('?')
+    if (pathname !== targetPath) return false
+    if (!targetQuery) return true
+
+    const requiredParams = new URLSearchParams(targetQuery)
+    for (const [key, value] of requiredParams.entries()) {
+      if (searchParams.get(key) !== value) return false
+    }
+    return true
   }
 
   return (
@@ -58,7 +71,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                           onClick={onClose}
                           className={cn(
                             'rounded-lg px-3 py-1.5 text-sm transition-colors',
-                            pathname === child.href
+                            isChildActive(child.href)
                               ? 'text-primary font-medium'
                               : 'text-muted-foreground hover:text-foreground'
                           )}

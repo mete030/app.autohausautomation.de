@@ -43,13 +43,14 @@ const statusColors: Record<VehicleStatus, string> = {
 
 export default function FahrzeugePage() {
   const vehicles = useVehicleStore((state) => state.vehicles)
-  const [view, setView] = useState<'grid' | 'list' | 'map'>('map')
+  const [view, setView] = useState<'grid' | 'list' | 'map'>('list')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('alle')
   const [locationFilter, setLocationFilter] = useState<string>('alle')
 
   const filtered = vehicles.filter(v => {
-    const matchSearch = `${v.make} ${v.model} ${v.licensePlate}`.toLowerCase().includes(search.toLowerCase())
+    const autoId = `24${v.id.replace(/[^\d]/g, '').padStart(3, '0')}`
+    const matchSearch = `${v.make} ${v.model} ${v.licensePlate} #${autoId} ${v.vin}`.toLowerCase().includes(search.toLowerCase().replace(/^#/, ''))
     const matchStatus = statusFilter === 'alle' || v.status === statusFilter
     const matchLocation = locationFilter === 'alle' || v.location === locationFilter
     return matchSearch && matchStatus && matchLocation
@@ -73,7 +74,7 @@ export default function FahrzeugePage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Marke, Modell oder Kennzeichen..."
+            placeholder="Marke, Modell, Kennzeichen oder #Nummer..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"

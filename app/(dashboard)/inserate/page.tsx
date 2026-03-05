@@ -31,10 +31,22 @@ const statusColors: Record<ListingStatus, string> = {
   archiviert: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
 }
 
+const listingTabs = ['alle', 'live', 'entwurf', 'archiviert'] as const
+type ListingTab = (typeof listingTabs)[number]
+const tabsDomIdPrefix = 'inserate-tabs'
+
+function triggerDomId(tab: ListingTab) {
+  return `${tabsDomIdPrefix}-trigger-${tab}`
+}
+
+function contentDomId(tab: ListingTab) {
+  return `${tabsDomIdPrefix}-content-${tab}`
+}
+
 export default function InseratePage() {
   const listings = useListingStore((state) => state.listings)
 
-  const filterListings = (status: string) => {
+  const filterListings = (status: ListingTab) => {
     if (status === 'alle') return listings
     return listings.filter(l => l.status === status)
   }
@@ -54,16 +66,30 @@ export default function InseratePage() {
         </Link>
       </div>
 
-      <Tabs defaultValue="alle">
+      <Tabs id="inserate-tabs-root" defaultValue="alle">
         <TabsList>
-          <TabsTrigger value="alle">Alle ({listings.length})</TabsTrigger>
-          <TabsTrigger value="live">Live ({filterListings('live').length})</TabsTrigger>
-          <TabsTrigger value="entwurf">Entwürfe ({filterListings('entwurf').length})</TabsTrigger>
-          <TabsTrigger value="archiviert">Archiviert ({filterListings('archiviert').length})</TabsTrigger>
+          <TabsTrigger value="alle" id={triggerDomId('alle')} aria-controls={contentDomId('alle')}>
+            Alle ({listings.length})
+          </TabsTrigger>
+          <TabsTrigger value="live" id={triggerDomId('live')} aria-controls={contentDomId('live')}>
+            Live ({filterListings('live').length})
+          </TabsTrigger>
+          <TabsTrigger value="entwurf" id={triggerDomId('entwurf')} aria-controls={contentDomId('entwurf')}>
+            Entwürfe ({filterListings('entwurf').length})
+          </TabsTrigger>
+          <TabsTrigger value="archiviert" id={triggerDomId('archiviert')} aria-controls={contentDomId('archiviert')}>
+            Archiviert ({filterListings('archiviert').length})
+          </TabsTrigger>
         </TabsList>
 
-        {['alle', 'live', 'entwurf', 'archiviert'].map(tab => (
-          <TabsContent key={tab} value={tab} className="space-y-3 mt-4">
+        {listingTabs.map(tab => (
+          <TabsContent
+            key={tab}
+            value={tab}
+            id={contentDomId(tab)}
+            aria-labelledby={triggerDomId(tab)}
+            className="space-y-3 mt-4"
+          >
             {filterListings(tab).map(listing => {
               const priceConfig = priceCategoryConfig[listing.priceCategory]
               return (

@@ -9,8 +9,75 @@ import { priceCategoryConfig } from '@/lib/constants'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Eye, MessageSquare, Star, ExternalLink } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Separator } from '@/components/ui/separator'
+import { ArrowLeft, Eye, MessageSquare, Star, ExternalLink, Upload, Loader2, CheckCircle2, Send } from 'lucide-react'
 import type { ListingStatus } from '@/lib/types'
+
+// ─── Platform Brand Icons (shared with neu/page.tsx) ─────────────────────────
+
+const MobileDeIcon = ({ size = 40 }: { size?: number }) => (
+  <div className="rounded-2xl flex items-center justify-center shrink-0" style={{ width: size, height: size, background: '#FF6600' }}>
+    <svg viewBox="0 0 24 24" style={{ width: size * 0.58, height: size * 0.58 }} fill="white">
+      <path d="M18.92 6.01L15 2H9L5.08 6.01C4.4 6.73 4 7.7 4 8.75V19c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8.75c0-1.05-.4-2.02-1.08-2.74zM12 17.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 12.5 12 12.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM9.5 7l1.5-3h2l1.5 3h-5z" />
+    </svg>
+  </div>
+)
+
+const AutoScout24Icon = ({ size = 40 }: { size?: number }) => (
+  <div className="rounded-2xl flex items-center justify-center shrink-0" style={{ width: size, height: size, background: '#003F87' }}>
+    <svg viewBox="0 0 24 24" style={{ width: size * 0.58, height: size * 0.58 }} fill="none">
+      <circle cx="10.5" cy="10" r="6" stroke="white" strokeWidth="2" />
+      <line x1="15" y1="14.5" x2="21" y2="20.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M7.5 10.5h6M8.5 8.5l.9-1.5h2.2l.9 1.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9.2" cy="11.8" r="0.9" fill="white" />
+      <circle cx="12.8" cy="11.8" r="0.9" fill="white" />
+    </svg>
+  </div>
+)
+
+const TruckScout24Icon = ({ size = 40 }: { size?: number }) => (
+  <div className="rounded-2xl flex items-center justify-center shrink-0" style={{ width: size, height: size, background: '#009C3B' }}>
+    <svg viewBox="0 0 24 24" style={{ width: size * 0.58, height: size * 0.58 }} fill="white">
+      <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9 1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+    </svg>
+  </div>
+)
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const EXPORT_PLATFORMS = [
+  {
+    id: 'mobile_de',
+    name: 'mobile.de',
+    description: 'Größter deutscher Automarkt',
+    icon: <MobileDeIcon size={44} />,
+    borderColor: 'border-orange-200 dark:border-orange-800',
+    bgColor: 'bg-orange-50 dark:bg-orange-950/30',
+    btnStyle: { background: '#FF6600' } as React.CSSProperties,
+    viewUrl: 'https://www.mobile.de',
+  },
+  {
+    id: 'autoscout24',
+    name: 'AutoScout24',
+    description: 'Europäisches Automarktportal',
+    icon: <AutoScout24Icon size={44} />,
+    borderColor: 'border-blue-200 dark:border-blue-900',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+    btnStyle: { background: '#003F87' } as React.CSSProperties,
+    viewUrl: 'https://www.autoscout24.de',
+  },
+  {
+    id: 'truckscout24',
+    name: 'TruckScout24',
+    description: 'Nutzfahrzeuge & Transporter',
+    icon: <TruckScout24Icon size={44} />,
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
+    btnStyle: { background: '#009C3B' } as React.CSSProperties,
+    viewUrl: 'https://www.truckscout24.de',
+  },
+]
 
 const statusLabels: Record<ListingStatus, string> = {
   entwurf: 'Entwurf',
@@ -24,7 +91,7 @@ const statusColors: Record<ListingStatus, string> = {
   archiviert: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
 }
 
-// Multiple dummy photos per listing (hero + gallery thumbnails)
+// Dummy car photos per listing
 const DETAIL_PHOTOS: Record<string, string[]> = {
   l1: [
     'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=1200&q=85&fit=crop&auto=format',
@@ -62,20 +129,38 @@ const FALLBACK_PHOTOS = [
   'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=400&q=80&fit=crop&auto=format',
 ]
 
+type ExportStatus = 'idle' | 'exporting' | 'done'
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function InseratDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const listings = useListingStore((state) => state.listings)
   const { id } = use(params)
   const listing = listings.find(l => l.id === id)
 
   const [activePhoto, setActivePhoto] = useState(0)
+  const [showExport, setShowExport] = useState(false)
+  const [exportStatus, setExportStatus] = useState<Record<string, ExportStatus>>({
+    mobile_de: 'idle', autoscout24: 'idle', truckscout24: 'idle',
+  })
 
   if (!listing) return notFound()
 
   const photos = DETAIL_PHOTOS[listing.id] ?? FALLBACK_PHOTOS
   const priceConfig = priceCategoryConfig[listing.priceCategory]
+  const exportedCount = Object.values(exportStatus).filter(s => s === 'done').length
+  const alreadyExported = exportedCount > 0
+
+  const handleExport = (platformId: string) => {
+    setExportStatus(prev => ({ ...prev, [platformId]: 'exporting' }))
+    setTimeout(() => {
+      setExportStatus(prev => ({ ...prev, [platformId]: 'done' }))
+    }, 1800 + Math.random() * 800)
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/inserate">
           <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -103,7 +188,6 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
                 alt={listing.title}
                 className="w-full h-full object-cover transition-opacity duration-300"
               />
-              {/* Photo counter */}
               <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm">
                 {activePhoto + 1} / {photos.length}
               </div>
@@ -122,11 +206,7 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
                         : 'border-transparent opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img
-                      src={photo}
-                      alt={`Bild ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={photo} alt={`Bild ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -147,6 +227,7 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
 
         {/* ─── Right: Info + Actions ───────────────────────────────────── */}
         <div className="space-y-5">
+          {/* Stats */}
           <Card>
             <CardContent className="pt-6 space-y-3">
               <div className="flex items-center justify-between">
@@ -186,31 +267,140 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
                   </div>
                 </>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Plattformen</span>
-                <span className="text-sm text-right max-w-[160px]">
-                  {listing.platform.join(', ') || '—'}
-                </span>
+
+              {/* Platform status */}
+              <Separator />
+              <div className="space-y-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Plattformen</span>
+                {EXPORT_PLATFORMS.map(p => {
+                  const status = exportStatus[p.id]
+                  // listing already on this platform?
+                  const alreadyLive = listing.platform.some(pl =>
+                    pl.toLowerCase().replace(/\s/g, '').includes(p.id.replace('_', ''))
+                  )
+                  const isLive = status === 'done' || alreadyLive
+                  return (
+                    <div key={p.id} className="flex items-center gap-2">
+                      <div style={{ width: 20, height: 20 }}>
+                        <div className="rounded-md flex items-center justify-center shrink-0 w-5 h-5"
+                          style={{ background: isLive ? (p.id === 'mobile_de' ? '#FF6600' : p.id === 'autoscout24' ? '#003F87' : '#009C3B') : undefined }}
+                          className={`rounded-md w-5 h-5 flex items-center justify-center ${!isLive ? 'bg-muted' : ''}`}
+                        >
+                          {isLive ? (
+                            <CheckCircle2 className="h-3 w-3 text-white" />
+                          ) : (
+                            <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                          )}
+                        </div>
+                      </div>
+                      <span className={`text-xs ${isLive ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                        {p.name}
+                      </span>
+                      {isLive && (
+                        <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0">
+                          Live
+                        </Badge>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
 
+          {/* Actions */}
           <Card>
-            <CardContent className="pt-6 space-y-2">
-              {listing.status === 'entwurf' && (
-                <Button className="w-full">Veröffentlichen</Button>
-              )}
+            <CardContent className="pt-5 space-y-2">
+              {/* Primary export/publish CTA */}
+              <Button
+                className="w-full"
+                onClick={() => setShowExport(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {alreadyExported
+                  ? 'Weitere Plattformen'
+                  : listing.status === 'entwurf'
+                  ? 'Veröffentlichen'
+                  : 'Auf Plattformen exportieren'
+                }
+              </Button>
+
+              {/* Quick platform links if already live */}
               {listing.status === 'live' && (
-                <Button variant="outline" className="w-full">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Auf mobile.de ansehen
+                <Button variant="outline" className="w-full" asChild>
+                  <a href="https://www.mobile.de" target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Auf mobile.de ansehen
+                  </a>
                 </Button>
               )}
+
               <Button variant="outline" className="w-full">Bearbeiten</Button>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* ─── Export Dialog ──────────────────────────────────────────────────── */}
+      <Dialog open={showExport} onOpenChange={setShowExport}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-primary" />
+              Inserat exportieren
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-1">
+            Veröffentlichen Sie das Inserat auf Ihren Wunschplattformen.
+          </p>
+
+          <div className="space-y-3 mt-1">
+            {EXPORT_PLATFORMS.map(platform => {
+              const status = exportStatus[platform.id]
+              const alreadyLive = listing.platform.some(pl =>
+                pl.toLowerCase().replace(/\s/g, '').includes(platform.id.replace('_', ''))
+              )
+              const isDone = status === 'done' || alreadyLive
+
+              return (
+                <div
+                  key={platform.id}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border ${platform.bgColor} ${platform.borderColor}`}
+                >
+                  {platform.icon}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground">{platform.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{platform.description}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    style={!isDone && status !== 'exporting' ? platform.btnStyle : undefined}
+                    className={`text-white border-0 shrink-0 hover:opacity-90 ${
+                      isDone ? 'bg-emerald-600 hover:bg-emerald-600' : ''
+                    }`}
+                    onClick={() => !isDone && handleExport(platform.id)}
+                    disabled={status === 'exporting' || isDone}
+                  >
+                    {status === 'exporting'
+                      ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Exportiere</>
+                      : isDone
+                      ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Live</>
+                      : <><ExternalLink className="h-3.5 w-3.5 mr-1.5" />Exportieren</>
+                    }
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+
+          {exportedCount > 0 && (
+            <div className="mt-1 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              {exportedCount} von {EXPORT_PLATFORMS.length} Plattformen erfolgreich exportiert
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -167,21 +167,35 @@ const EXPORT_PLATFORMS = [
   },
 ]
 
-const MOCK_IMAGES = [
+// Each slot has an "ugly" original + 3 AI-enhanced versions
+// original = base photo with CSS degradation filter applied
+// cutout   = clean white/neutral studio background (Freigestellt)
+// background = dramatic cinematic backdrop (Hintergrund optimiert)
+// quality  = ultra sharp professional press photo (Qualität optimiert)
+const IMAGE_SLOTS = [
   {
     id: 0,
     label: 'Frontansicht',
-    photo: 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=600&q=80&fit=crop&auto=format',
+    original: 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=600&q=40&fit=crop&auto=format',
+    cutout:     'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=600&q=85&fit=crop&auto=format',
+    background: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&q=85&fit=crop&auto=format',
+    quality:    'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600&q=90&fit=crop&auto=format',
   },
   {
     id: 1,
     label: 'Seitenansicht',
-    photo: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600&q=80&fit=crop&auto=format',
+    original: 'https://images.unsplash.com/photo-1542362567-b07e54358753?w=600&q=40&fit=crop&auto=format',
+    cutout:     'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=600&q=85&fit=crop&auto=format',
+    background: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600&q=85&fit=crop&auto=format',
+    quality:    'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=600&q=90&fit=crop&auto=format',
   },
   {
     id: 2,
     label: 'Heckansicht',
-    photo: 'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=600&q=80&fit=crop&auto=format',
+    original: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=600&q=40&fit=crop&auto=format',
+    cutout:     'https://images.unsplash.com/photo-1549317661-cf369843b03a?w=600&q=85&fit=crop&auto=format',
+    background: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=600&q=85&fit=crop&auto=format',
+    quality:    'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=600&q=90&fit=crop&auto=format',
   },
 ]
 
@@ -189,11 +203,9 @@ const MOCK_IMAGES = [
 
 type InputMode = 'choose' | 'vin' | 'manual'
 type VinStatus = 'idle' | 'loading' | 'found'
-type EnhancementType = 'background' | 'quality' | 'cutout'
-type EnhancementStatus = 'idle' | 'processing' | 'done'
+type EnhancementType = 'cutout' | 'background' | 'quality'
+type SlotState = 'original' | EnhancementType
 type ExportStatus = 'idle' | 'exporting' | 'done'
-
-type EnhancementState = Record<number, Record<EnhancementType, EnhancementStatus>>
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -226,11 +238,12 @@ export default function NeuesInseratPage() {
   const [improvingKyc, setImprovingKyc] = useState(false)
   const [kycImproved, setKycImproved] = useState(false)
 
-  // Images
-  const [imageEnhancements, setImageEnhancements] = useState<EnhancementState>({
-    0: { background: 'idle', quality: 'idle', cutout: 'idle' },
-    1: { background: 'idle', quality: 'idle', cutout: 'idle' },
-    2: { background: 'idle', quality: 'idle', cutout: 'idle' },
+  // Images — which version is currently showing per slot
+  const [slotStates, setSlotStates] = useState<Record<number, SlotState>>({
+    0: 'original', 1: 'original', 2: 'original',
+  })
+  const [processingSlot, setProcessingSlot] = useState<Record<number, EnhancementType | null>>({
+    0: null, 1: null, 2: null,
   })
 
   // Export
@@ -278,15 +291,11 @@ export default function NeuesInseratPage() {
   }
 
   const handleEnhance = (imageId: number, type: EnhancementType) => {
-    setImageEnhancements(prev => ({
-      ...prev,
-      [imageId]: { ...prev[imageId], [type]: 'processing' },
-    }))
+    if (processingSlot[imageId] !== null) return
+    setProcessingSlot(prev => ({ ...prev, [imageId]: type }))
     setTimeout(() => {
-      setImageEnhancements(prev => ({
-        ...prev,
-        [imageId]: { ...prev[imageId], [type]: 'done' },
-      }))
+      setSlotStates(prev => ({ ...prev, [imageId]: type }))
+      setProcessingSlot(prev => ({ ...prev, [imageId]: null }))
     }, 1600)
   }
 
@@ -786,55 +795,103 @@ export default function NeuesInseratPage() {
                   <CardTitle className="flex items-center justify-between">
                     <span>Bilder</span>
                     <Badge variant="outline" className="text-xs font-normal">
-                      {MOCK_IMAGES.length} / 20
+                      {IMAGE_SLOTS.length} / 20
                     </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
-                    {MOCK_IMAGES.map(img => {
-                      const enhancements = imageEnhancements[img.id]
-                      return (
-                        <div key={img.id}>
-                          {/* Image */}
-                          <div className="aspect-[4/3] rounded-xl overflow-hidden bg-muted">
-                            <img
-                              src={img.photo}
-                              alt={img.label}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <p className="text-[10px] text-muted-foreground text-center mt-1.5 mb-2">{img.label}</p>
+                    {IMAGE_SLOTS.map(slot => {
+                      const state = slotStates[slot.id]
+                      const processing = processingSlot[slot.id]
+                      const isOriginal = state === 'original'
+                      const activeUrl = slot[state]
 
-                          {/* Enhancement actions */}
+                      const stateLabel = {
+                        original:   slot.label,
+                        cutout:     '✓ Freigestellt',
+                        background: '✓ Hintergrund',
+                        quality:    '✓ Qualität',
+                      }[state]
+
+                      const stateLabelColor = {
+                        original:   'text-muted-foreground',
+                        cutout:     'text-blue-600 dark:text-blue-400',
+                        background: 'text-purple-600 dark:text-purple-400',
+                        quality:    'text-amber-600 dark:text-amber-400',
+                      }[state]
+
+                      return (
+                        <div key={slot.id}>
+                          {/* Photo */}
+                          <div className="aspect-[4/3] rounded-xl overflow-hidden bg-muted relative">
+                            <img
+                              src={activeUrl}
+                              alt={slot.label}
+                              className="w-full h-full object-cover transition-all duration-500"
+                              style={isOriginal
+                                ? { filter: 'brightness(0.58) contrast(0.82) saturate(0.32) blur(0.7px)' }
+                                : undefined
+                              }
+                            />
+                            {/* Processing overlay */}
+                            {processing && (
+                              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2">
+                                <Loader2 className="h-5 w-5 text-white animate-spin" />
+                                <span className="text-white text-[11px] font-medium">KI verarbeitet…</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* State label */}
+                          <p className={`text-[10px] text-center mt-1.5 mb-2 font-medium transition-colors ${stateLabelColor}`}>
+                            {stateLabel}
+                          </p>
+
+                          {/* Enhancement buttons */}
                           <div className="space-y-1">
                             {([
-                              { type: 'background' as const, icon: Wand2, label: 'Hintergrund' },
-                              { type: 'quality' as const, icon: Zap, label: 'Qualität' },
-                              { type: 'cutout' as const, icon: Scissors, label: 'Freistellen' },
-                            ] as const).map(({ type, icon: Icon, label }) => {
-                              const status = enhancements[type]
+                              {
+                                type: 'cutout' as const,
+                                icon: Scissors,
+                                label: 'Freistellen',
+                                activeClass: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+                              },
+                              {
+                                type: 'background' as const,
+                                icon: Wand2,
+                                label: 'Hintergrund',
+                                activeClass: 'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+                              },
+                              {
+                                type: 'quality' as const,
+                                icon: Zap,
+                                label: 'Qualität',
+                                activeClass: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+                              },
+                            ]).map(({ type, icon: Icon, label, activeClass }) => {
+                              const isActive = state === type
+                              const isProcessing = processing === type
                               return (
                                 <button
                                   key={type}
-                                  onClick={() => status === 'idle' && handleEnhance(img.id, type)}
-                                  disabled={status === 'processing'}
+                                  onClick={() => !isActive && !processing && handleEnhance(slot.id, type)}
+                                  disabled={!!processing}
                                   className={`w-full flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-all ${
-                                    status === 'done'
-                                      ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border-emerald-200 dark:border-emerald-800'
-                                      : status === 'processing'
+                                    isActive
+                                      ? activeClass
+                                      : isProcessing
                                       ? 'bg-primary/5 text-primary border-primary/20 cursor-not-allowed'
                                       : 'bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground cursor-pointer'
                                   }`}
                                 >
-                                  {status === 'processing' ? (
-                                    <Loader2 className="h-3 w-3 animate-spin shrink-0" />
-                                  ) : status === 'done' ? (
-                                    <CheckCircle2 className="h-3 w-3 shrink-0" />
-                                  ) : (
-                                    <Icon className="h-3 w-3 shrink-0" />
-                                  )}
-                                  {status === 'processing' ? 'Verarbeite...' : status === 'done' ? 'Fertig' : label}
+                                  {isProcessing
+                                    ? <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                                    : isActive
+                                    ? <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                    : <Icon className="h-3 w-3 shrink-0" />
+                                  }
+                                  {isProcessing ? 'KI verarbeitet…' : label}
                                 </button>
                               )
                             })}

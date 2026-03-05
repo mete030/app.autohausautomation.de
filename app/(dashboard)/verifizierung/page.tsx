@@ -18,13 +18,16 @@ import {
   ShieldCheck, Upload, CheckCircle, XCircle, AlertCircle, User, Building,
   FileText, Plus, Car, Loader2, Link2, Mail, Copy, ExternalLink,
   ChevronRight, Fuel, Gauge, Calendar, MapPin, Hash, ChevronDown, X,
+  Package, Send, Eye, Download, FileCheck, Clock, Printer,
 } from 'lucide-react'
-import type { KYCSubmission, CustomerType, Vehicle } from '@/lib/types'
+import type { KYCSubmission, CustomerType, Vehicle, DocumentBundleState } from '@/lib/types'
 
 type DialogStep = 'form' | 'processing' | 'success' | 'link_sent'
 type PrivatMethod = 'upload' | 'link'
 type StepStatus = 'pending' | 'loading' | 'done' | 'error'
 interface ProcessingStep { id: string; label: string; detail: string; status: StepStatus }
+type PreviewDocType = 'kaufbestaetigung' | 'abholschein' | 'rechnung' | 'gelangensbestaetigung'
+interface DocGenStepItem { id: string; label: string; detail: string; status: 'pending' | 'loading' | 'done' }
 
 function vehicleInternalNr(id: string) {
   const idx = mockVehicles.findIndex(v => v.id === id)
@@ -76,7 +79,6 @@ function VehicleMultiSelect({
                   onClick={() => toggle(v.id)}
                   className={'flex items-center gap-3 w-full px-3 py-2.5 text-left hover:bg-muted/60 transition-colors ' + (checked ? 'bg-primary/5' : '')}
                 >
-                  {/* Checkbox */}
                   <div className={'h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ' + (checked ? 'border-primary bg-primary' : 'border-muted-foreground/40')}>
                     {checked && <CheckCircle className="h-3 w-3 text-white" />}
                   </div>
@@ -99,7 +101,6 @@ function VehicleMultiSelect({
         </PopoverContent>
       </Popover>
 
-      {/* Selected chips */}
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selected.map(id => {
@@ -229,6 +230,458 @@ function ProcessingStepItem({ step }: { step: ProcessingStep }) {
   )
 }
 
+// ─── Document Section ─────────────────────────────────────────────────────────
+
+const DOC_ROWS: { type: PreviewDocType; label: string; desc: string }[] = [
+  { type: 'kaufbestaetigung', label: 'Kaufbestätigung', desc: 'Vertragsbestätigung mit Käufer- & Fahrzeugdaten' },
+  { type: 'abholschein', label: 'Abholschein', desc: 'Übergabeprotokoll mit Checkliste' },
+  { type: 'rechnung', label: 'Rechnung', desc: 'Steuerrechnung mit MwSt.-Aufschlüsselung' },
+  { type: 'gelangensbestaetigung', label: 'Gelangensbestätigung', desc: 'Bestätigung des Erhalts gem. § 17a UStDV' },
+]
+
+function DocumentSection({
+  submission,
+  bundleState,
+  docGenSteps,
+  onGenerate,
+  onSend,
+  onPreview,
+}: {
+  submission: KYCSubmission
+  bundleState: DocumentBundleState | undefined
+  docGenSteps: DocGenStepItem[]
+  onGenerate: (sub: KYCSubmission) => void
+  onSend: (sub: KYCSubmission) => void
+  onPreview: (sub: KYCSubmission, docType: PreviewDocType) => void
+}) {
+  const status = bundleState?.status ?? 'idle'
+  const isReady = status === 'ready' || status === 'sending' || status === 'sent'
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Package className="h-4 w-4 text-muted-foreground" />
+        <h4 className="font-semibold text-sm">Dokument-Paket</h4>
+      </div>
+
+      {/* Document rows */}
+      <div className="space-y-1.5">
+        {DOC_ROWS.map(row => (
+          <div
+            key={row.type}
+            className="flex items-center gap-3 rounded-lg border bg-muted/20 px-3 py-2.5"
+          >
+            <div className={'h-2 w-2 rounded-full shrink-0 ' + (isReady ? 'bg-emerald-500' : 'bg-muted-foreground/30')} />
+            <FileCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold">{row.label}</p>
+              <p className="text-xs text-muted-foreground truncate">{row.desc}</p>
+            </div>
+            {isReady && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => onPreview(submission, row.type)}
+              >
+                <Eye className="h-3.5 w-3.5 mr-1" />Vorschau
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Generation animation */}
+      {status === 'generating' && (
+        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-spin" />
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Dokumente werden erstellt…</p>
+          </div>
+          <div className="space-y-2.5">
+            {docGenSteps.map(step => (
+              <div
+                key={step.id}
+                className={'flex items-start gap-2.5 transition-all duration-300 ' + (step.status === 'pending' ? 'opacity-30' : 'opacity-100')}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {step.status === 'loading' && <Loader2 className="h-3.5 w-3.5 text-amber-600 animate-spin" />}
+                  {step.status === 'done' && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+                  {step.status === 'pending' && <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30" />}
+                </div>
+                <div>
+                  <p className={'text-xs font-medium ' + (step.status === 'loading' ? 'text-amber-700 dark:text-amber-400' : step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground')}>{step.label}</p>
+                  {step.status !== 'pending' && <p className="text-xs text-muted-foreground mt-0.5">{step.detail}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sending animation */}
+      {status === 'sending' && (
+        <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 flex items-center gap-3">
+          <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Wird gesendet…</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">Dokumente werden an {submission.email} übermittelt</p>
+          </div>
+        </div>
+      )}
+
+      {/* Sent success banner */}
+      {status === 'sent' && bundleState?.sentAt && (
+        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3 flex items-start gap-3">
+          <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">Dokumente gesendet</p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+              An {submission.email} gesendet · {formatDateTime(bundleState.sentAt)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Meta info when ready */}
+      {(status === 'ready' || status === 'sending' || status === 'sent') && bundleState?.generatedAt && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>Erstellt: {formatDateTime(bundleState.generatedAt)}</span>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex gap-2">
+        {status === 'idle' && (
+          <Button variant="outline" className="flex-1" onClick={() => onGenerate(submission)}>
+            <Package className="h-4 w-4 mr-2" />Dokumente erstellen
+          </Button>
+        )}
+        {(status === 'ready' || status === 'sending') && (
+          <Button className="flex-1" disabled={status === 'sending'} onClick={() => onSend(submission)}>
+            {status === 'sending'
+              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Wird gesendet…</>
+              : <><Send className="h-4 w-4 mr-2" />Dokument-Paket senden</>}
+          </Button>
+        )}
+        {status === 'sent' && (
+          <Button variant="outline" className="flex-1" onClick={() => onGenerate(submission)}>
+            <Package className="h-4 w-4 mr-2" />Erneut erstellen
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Document Preview Modal ────────────────────────────────────────────────────
+
+function DocumentPreviewModal({
+  open,
+  onClose,
+  docType: initialDocType,
+  submission,
+}: {
+  open: boolean
+  onClose: () => void
+  docType: PreviewDocType
+  submission: KYCSubmission | null
+}) {
+  const [activeTab, setActiveTab] = useState<PreviewDocType>(initialDocType)
+
+  useEffect(() => { setActiveTab(initialDocType) }, [initialDocType])
+
+  if (!submission) return null
+
+  const primaryVehicleId = submission.vehicleIds?.[0]
+  const vehicle = primaryVehicleId ? mockVehicles.find(v => v.id === primaryVehicleId) : null
+  const multiVehicle = (submission.vehicleIds?.length ?? 0) > 1
+  const nr = vehicle ? vehicleInternalNr(vehicle.id) : null
+
+  const today = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const invoiceNr = 'RE-2026-' + submission.id.toUpperCase().replace('KYC', '')
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+        {/* Chrome bar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30 shrink-0">
+          <div>
+            <p className="text-sm font-semibold">Dokument-Vorschau</p>
+            <p className="text-xs text-muted-foreground">{submission.customerName}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+              <Printer className="h-3.5 w-3.5 mr-1" />Drucken
+            </Button>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+              <Download className="h-3.5 w-3.5 mr-1" />PDF
+            </Button>
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex border-b shrink-0 px-4">
+          {DOC_ROWS.map(row => (
+            <button
+              key={row.type}
+              onClick={() => setActiveTab(row.type)}
+              className={'px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px ' +
+                (activeTab === row.type
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground')}
+            >
+              {row.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Document area */}
+        <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-6">
+          <div className="bg-white dark:bg-slate-950 rounded-lg shadow-sm max-w-xl mx-auto p-8 text-sm">
+
+            {/* ── KAUFBESTÄTIGUNG ── */}
+            {activeTab === 'kaufbestaetigung' && (
+              <div className="space-y-6">
+                {/* Letterhead */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-base">Wackenhut Autohaus GmbH</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p>
+                    <p className="text-xs text-muted-foreground">Tel: +49 711 123456 · info@wackenhut.de</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-base">Kaufbestätigung</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Datum: {today}</p>
+                    <p className="text-xs text-muted-foreground">Nr.: KB-2026-{submission.id.toUpperCase().replace('KYC', '')}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Parties */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Verkäufer</p>
+                    <p className="font-medium">Wackenhut Autohaus GmbH</p>
+                    <p className="text-xs text-muted-foreground">Königstraße 1</p>
+                    <p className="text-xs text-muted-foreground">70173 Stuttgart</p>
+                    <p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Käufer</p>
+                    <p className="font-medium">{submission.customerName}</p>
+                    {submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}
+                    <p className="text-xs text-muted-foreground">{submission.email}</p>
+                    <p className="text-xs text-muted-foreground">{submission.phone}</p>
+                  </div>
+                </div>
+
+                {/* Vehicle */}
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kaufgegenstand</p>
+                  {vehicle ? (
+                    <>
+                      <p className="font-semibold">{vehicle.make} {vehicle.model} · {vehicle.year}</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>FIN: <span className="font-mono">{vehicle.vin}</span></span>
+                        <span>Kennzeichen: {vehicle.licensePlate}</span>
+                        <span>Farbe: {vehicle.color}</span>
+                        <span>Laufleistung: {formatMileage(vehicle.mileage)}</span>
+                        <span>Kraftstoff: {vehicle.fuelType}</span>
+                        <span>Getriebe: {vehicle.transmission}</span>
+                      </div>
+                      {multiVehicle && <p className="text-xs text-amber-600 dark:text-amber-400">+ {(submission.vehicleIds!.length - 1)} weiteres Fahrzeug — separate Dokumente empfohlen</p>}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground text-xs">Kein Fahrzeug zugeordnet</p>
+                  )}
+                </div>
+
+                {/* Price */}
+                {vehicle && (
+                  <div className="flex items-center justify-between py-2 border-t border-b">
+                    <p className="font-semibold">Kaufpreis (inkl. MwSt.)</p>
+                    <p className="font-bold text-lg">{formatCurrency(vehicle.price)}</p>
+                  </div>
+                )}
+
+                {/* Signature */}
+                <div className="grid grid-cols-2 gap-8 pt-4">
+                  {['Verkäufer', 'Käufer'].map(party => (
+                    <div key={party}>
+                      <div className="border-t-2 border-dashed pt-2">
+                        <p className="text-xs text-muted-foreground">{party}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Ort, Datum · Unterschrift</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── ABHOLSCHEIN ── */}
+            {activeTab === 'abholschein' && (
+              <div className="space-y-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-base">Wackenhut Autohaus GmbH</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-base">Abholschein / Übergabeprotokoll</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Datum: {today}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fahrzeug</p>
+                    {vehicle ? (
+                      <>
+                        <p className="font-medium text-xs">{nr} · {vehicle.make} {vehicle.model}</p>
+                        <p className="text-xs text-muted-foreground">FIN: <span className="font-mono">{vehicle.vin}</span></p>
+                        <p className="text-xs text-muted-foreground">{vehicle.licensePlate} · {vehicle.color}</p>
+                        <p className="text-xs text-muted-foreground">{formatMileage(vehicle.mileage)} km</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Kein Fahrzeug zugeordnet</p>
+                    )}
+                  </div>
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Käufer</p>
+                    <p className="font-medium text-xs">{submission.customerName}</p>
+                    {submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}
+                    <p className="text-xs text-muted-foreground">{submission.phone}</p>
+                  </div>
+                </div>
+
+                {/* Checklist */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Übergabe-Checkliste</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {[
+                      'Fahrzeugschlüssel übergeben', 'Zulassungsbescheinigung Teil I',
+                      'Zulassungsbescheinigung Teil II', 'Servicehefte übergeben',
+                      'Reserverad / Notrad vorhanden', 'Warndreieck & Verbandskasten',
+                      'Fahrzeuganleitung vorhanden', 'Tankanzeige geprüft',
+                    ].map(item => (
+                      <div key={item} className="flex items-center gap-2">
+                        <div className="h-4 w-4 rounded border-2 border-muted-foreground/40 shrink-0" />
+                        <span className="text-xs">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Remarks */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Anmerkungen</p>
+                  <div className="border rounded-lg h-16 bg-slate-50 dark:bg-slate-900" />
+                </div>
+
+                {/* Signatures */}
+                <div className="grid grid-cols-2 gap-8 pt-4">
+                  {['Übergabe durch (Verkäufer)', 'Empfang bestätigt (Käufer)'].map(party => (
+                    <div key={party}>
+                      <div className="border-t-2 border-dashed pt-2">
+                        <p className="text-xs text-muted-foreground">{party}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Ort, Datum · Unterschrift</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── RECHNUNG ── */}
+            {activeTab === 'rechnung' && (
+              <div className="space-y-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-base">Wackenhut Autohaus GmbH</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p>
+                    <p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p>
+                    <p className="text-xs text-muted-foreground">Steuernr: 99/815/08150</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-base">Rechnung</p>
+                    <p className="text-xs font-mono text-muted-foreground mt-0.5">{invoiceNr}</p>
+                    <p className="text-xs text-muted-foreground">Datum: {today}</p>
+                  </div>
+                </div>
+
+                {/* Bill to */}
+                <div className="rounded-lg border p-3 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rechnungsempfänger</p>
+                  <p className="font-medium">{submission.customerName}</p>
+                  {submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}
+                  {submission.ustIdNr && <p className="text-xs text-muted-foreground">USt-IdNr: {submission.ustIdNr}</p>}
+                </div>
+
+                {/* Line items */}
+                {vehicle ? (
+                  <div className="space-y-2">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-1.5 font-semibold text-muted-foreground">Pos.</th>
+                          <th className="text-left py-1.5 font-semibold text-muted-foreground">Beschreibung</th>
+                          <th className="text-right py-1.5 font-semibold text-muted-foreground">Betrag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b">
+                          <td className="py-2 align-top">1</td>
+                          <td className="py-2 align-top">
+                            <p className="font-medium">{vehicle.make} {vehicle.model} {vehicle.year}</p>
+                            <p className="text-muted-foreground">FIN: {vehicle.vin} · {vehicle.licensePlate}</p>
+                          </td>
+                          <td className="py-2 align-top text-right">{formatCurrency(Math.round(vehicle.price / 1.19))}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div className="space-y-1 pt-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Nettobetrag</span>
+                        <span>{formatCurrency(Math.round(vehicle.price / 1.19))}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Umsatzsteuer 19 %</span>
+                        <span>{formatCurrency(vehicle.price - Math.round(vehicle.price / 1.19))}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-bold border-t pt-1.5 mt-1">
+                        <span>Gesamtbetrag</span>
+                        <span>{formatCurrency(vehicle.price)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Kein Fahrzeug zugeordnet — keine Positionen</p>
+                )}
+
+                {/* Payment info */}
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Zahlungsinformationen</p>
+                  <p className="text-xs">Bankverbindung: Wackenhut Autohaus GmbH</p>
+                  <p className="text-xs text-muted-foreground">IBAN: DE89 3704 0044 0532 0130 00 · BIC: COBADEFFXXX</p>
+                  <p className="text-xs text-muted-foreground">Verwendungszweck: <span className="font-mono">{invoiceNr}</span></p>
+                  <p className="text-xs text-muted-foreground">Zahlungsziel: 14 Tage netto</p>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function VerifizierungPage() {
@@ -247,6 +700,20 @@ export default function VerifizierungPage() {
   const [linkCopied, setLinkCopied] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
+  // Document bundle state
+  const [documentBundles, setDocumentBundles] = useState<Map<string, DocumentBundleState>>(
+    () => {
+      const m = new Map<string, DocumentBundleState>()
+      mockKYCSubmissions.forEach(s => { if (s.documentBundle) m.set(s.id, { ...s.documentBundle }) })
+      return m
+    }
+  )
+  const [docGenSteps, setDocGenSteps] = useState<DocGenStepItem[]>([])
+  const docGenTimerRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewDoc, setPreviewDoc] = useState<PreviewDocType>('kaufbestaetigung')
+  const [previewSubmission, setPreviewSubmission] = useState<KYCSubmission | null>(null)
+
   const filterByStatus = (status: string) => status === 'alle' ? submissions : submissions.filter(s => s.status === status)
   const statCounts = {
     eingereicht: submissions.filter(s => s.status === 'eingereicht').length,
@@ -256,6 +723,7 @@ export default function VerifizierungPage() {
   }
 
   const clearTimers = () => { timerRef.current.forEach(clearTimeout); timerRef.current = [] }
+  const clearDocGenTimers = () => { docGenTimerRef.current.forEach(clearTimeout); docGenTimerRef.current = [] }
 
   const handleOpenDialog = () => {
     setDialogStep('form'); setCustomerType('privat'); setPrivatMethod('upload')
@@ -301,7 +769,58 @@ export default function VerifizierungPage() {
     runProcessing(steps, customerType, privatMethod)
   }
 
+  const handleGenerateDocs = (sub: KYCSubmission) => {
+    clearDocGenTimers()
+    const steps: DocGenStepItem[] = [
+      { id: 'd1', label: 'Kaufbestätigung', detail: 'Käufer- & Fahrzeugdaten werden eingetragen…', status: 'pending' },
+      { id: 'd2', label: 'Abholschein', detail: 'Übergabe-Checkliste wird erstellt…', status: 'pending' },
+      { id: 'd3', label: 'Rechnung', detail: 'Steuerrechnung mit MwSt.-Aufschlüsselung…', status: 'pending' },
+      { id: 'd4', label: 'Gelangensbestätigung', detail: 'Empfangsbestätigung gem. § 17a UStDV…', status: 'pending' },
+    ]
+    setDocGenSteps(steps)
+    setDocumentBundles(prev => new Map(prev).set(sub.id, { status: 'generating' }))
+
+    const timers: ReturnType<typeof setTimeout>[] = []
+    let delay = 300
+    steps.forEach((_, index) => {
+      const t1 = setTimeout(() => setDocGenSteps(prev => prev.map((s, i) => i === index ? { ...s, status: 'loading' } : s)), delay)
+      timers.push(t1); delay += 1400
+      const t2 = setTimeout(() => setDocGenSteps(prev => prev.map((s, i) => i === index ? { ...s, status: 'done' } : s)), delay)
+      timers.push(t2); delay += 300
+    })
+    const tFinal = setTimeout(() => {
+      setDocumentBundles(prev => new Map(prev).set(sub.id, {
+        status: 'ready',
+        generatedAt: new Date().toISOString(),
+      }))
+    }, delay + 400)
+    timers.push(tFinal)
+    docGenTimerRef.current = timers
+  }
+
+  const handleSendDocs = (sub: KYCSubmission) => {
+    setDocumentBundles(prev => new Map(prev).set(sub.id, {
+      ...prev.get(sub.id),
+      status: 'sending',
+    }))
+    const t = setTimeout(() => {
+      setDocumentBundles(prev => new Map(prev).set(sub.id, {
+        ...prev.get(sub.id),
+        status: 'sent',
+        sentAt: new Date().toISOString(),
+      }))
+    }, 2200)
+    docGenTimerRef.current.push(t)
+  }
+
+  const handleOpenPreview = (sub: KYCSubmission, docType: PreviewDocType) => {
+    setPreviewSubmission(sub)
+    setPreviewDoc(docType)
+    setPreviewOpen(true)
+  }
+
   useEffect(() => { if (!newDialog) clearTimers() }, [newDialog])
+  useEffect(() => { return () => { clearDocGenTimers() } }, [])
 
   return (
     <div className="space-y-3">
@@ -363,7 +882,6 @@ export default function VerifizierungPage() {
                         <Badge className={config.color} variant="secondary">{config.label}</Badge>
                       </div>
                     </div>
-                    {/* Vehicle mini cards */}
                     {sub.vehicleIds && sub.vehicleIds.length > 0 && (
                       <div className="mt-1 space-y-0">
                         {sub.vehicleIds.map(vid => (
@@ -391,9 +909,16 @@ export default function VerifizierungPage() {
 
       <VehicleDetailModal vehicle={vehicleModal} open={!!vehicleModal} onClose={() => setVehicleModal(null)} />
 
+      <DocumentPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        docType={previewDoc}
+        submission={previewSubmission}
+      />
+
       {/* Detail Dialog */}
       <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Verifizierung: {selectedSubmission?.customerName}</DialogTitle>
           </DialogHeader>
@@ -443,6 +968,19 @@ export default function VerifizierungPage() {
                 </div>
               </>)}
               {selectedSubmission.notes && (<><Separator /><div><h4 className="font-semibold text-sm mb-1">Notizen</h4><p className="text-sm text-muted-foreground">{selectedSubmission.notes}</p></div></>)}
+
+              {selectedSubmission.status === 'verifiziert' && (<>
+                <Separator />
+                <DocumentSection
+                  submission={selectedSubmission}
+                  bundleState={documentBundles.get(selectedSubmission.id)}
+                  docGenSteps={docGenSteps}
+                  onGenerate={handleGenerateDocs}
+                  onSend={handleSendDocs}
+                  onPreview={handleOpenPreview}
+                />
+              </>)}
+
               {(selectedSubmission.status === 'eingereicht' || selectedSubmission.status === 'manuell_pruefen') && (<>
                 <Separator />
                 <div className="flex gap-2">
@@ -477,7 +1015,6 @@ export default function VerifizierungPage() {
               </div>
               <div className="space-y-2"><Label>Telefon</Label><Input placeholder="+49 711 1234567" /></div>
 
-              {/* Multi-vehicle select */}
               <div className="space-y-2">
                 <Label>
                   Fahrzeuge

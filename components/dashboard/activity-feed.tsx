@@ -8,6 +8,7 @@ import {
   Car,
   Phone,
   FileText,
+  ReceiptText,
   MessageSquare,
   ShieldCheck,
   ChevronRight,
@@ -18,6 +19,7 @@ const moduleIcons = {
   werkstatt: Car,
   callcenter: Phone,
   inserate: FileText,
+  buchhaltung: ReceiptText,
   nachrichten: MessageSquare,
   kyc: ShieldCheck,
 }
@@ -26,6 +28,7 @@ const moduleColors = {
   werkstatt: 'text-blue-500',
   callcenter: 'text-orange-500',
   inserate: 'text-emerald-500',
+  buchhaltung: 'text-indigo-500',
   nachrichten: 'text-violet-500',
   kyc: 'text-cyan-500',
 }
@@ -34,6 +37,7 @@ const moduleBgColors = {
   werkstatt: 'bg-blue-50 dark:bg-blue-950/30',
   callcenter: 'bg-orange-50 dark:bg-orange-950/30',
   inserate: 'bg-emerald-50 dark:bg-emerald-950/30',
+  buchhaltung: 'bg-indigo-50 dark:bg-indigo-950/30',
   nachrichten: 'bg-violet-50 dark:bg-violet-950/30',
   kyc: 'bg-cyan-50 dark:bg-cyan-950/30',
 }
@@ -42,6 +46,7 @@ const moduleLinkLabels: Record<string, string> = {
   werkstatt: 'Fahrzeug anzeigen',
   callcenter: 'Rückruf anzeigen',
   inserate: 'Inserat anzeigen',
+  buchhaltung: 'Buchhaltung öffnen',
   nachrichten: 'Konversation öffnen',
   kyc: 'Verifizierung anzeigen',
 }
