@@ -4,30 +4,20 @@ import { AlertTriangle, ArrowRight, Car, CheckCircle2, FileText, MapPin, Route, 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { CallbackStatus, KYCStatus, ListingStatus, VehicleLocation, VehicleStatus } from '@/lib/types'
+import type { CallbackStatus, KYCStatus, ListingStatus } from '@/lib/types'
 import type { ConversationInboxView } from '@/lib/stores/conversation-store'
 import type { ParsedVoiceIntent } from '@/hooks/useVoiceIntentParser'
+import {
+  vehicleBlockerLabels,
+  vehicleLocationLabels,
+  vehicleOwnerRoleLabels,
+  vehicleStatusLabels,
+} from '@/lib/vehicle-operations'
 
 interface TranscriptFeedbackProps {
   intent: ParsedVoiceIntent | null
   onConfirm: () => void
   onCancel: () => void
-}
-
-const vehicleStatusLabels: Record<VehicleStatus, string> = {
-  eingang: 'Eingang',
-  inspektion: 'Inspektion',
-  werkstatt: 'Werkstatt',
-  aufbereitung: 'Aufbereitung',
-  verkaufsbereit: 'Verkaufsbereit',
-  verkauft: 'Verkauft',
-}
-
-const locationLabels: Record<VehicleLocation, string> = {
-  'Hof A': 'Hof A',
-  'Hof B': 'Hof B',
-  Werkstatt: 'Werkstatt',
-  Showroom: 'Showroom',
 }
 
 const callbackStatusLabels: Record<CallbackStatus, string> = {
@@ -97,7 +87,15 @@ function renderIntentDetails(intent: ParsedVoiceIntent) {
             <MapPin className="h-3.5 w-3.5" />
             Standort
           </span>
-          <Badge variant="outline">{intent.location ? locationLabels[intent.location] : 'Unverändert'}</Badge>
+          <Badge variant="outline">{intent.location ? vehicleLocationLabels[intent.location] : 'Unverändert'}</Badge>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">Blocker</span>
+          <Badge variant="outline">{intent.blocker ? vehicleBlockerLabels[intent.blocker] : 'Unverändert'}</Badge>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">Owner</span>
+          <Badge variant="outline">{intent.ownerRole ? vehicleOwnerRoleLabels[intent.ownerRole] : 'Unverändert'}</Badge>
         </div>
         <div className="space-y-1">
           <span className="text-xs text-muted-foreground flex items-center gap-1">

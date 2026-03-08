@@ -3,12 +3,18 @@ import type {
   KYCSubmission, DashboardStats, ActivityEntry, VehicleListRowLegacy,
   AccountingDocument, VehicleAccountingCase, AccountingExportBatch,
 } from './types'
+import { inferOwnerRoleFromText } from './vehicle-operations'
 
 // ============================================
 // Fahrzeuge
 // ============================================
 
-export const mockVehicles: Vehicle[] = [
+type VehicleSeed = Omit<
+  Vehicle,
+  'nextStep' | 'ownerRole' | 'blocker' | 'currentStepStartedAt' | 'lastUpdatedAt' | 'slaDueAt' | 'priorityNote'
+>
+
+const baseMockVehicles: VehicleSeed[] = [
   {
     id: 'v1',
     make: 'BMW',
@@ -580,6 +586,219 @@ export const mockVehicles: Vehicle[] = [
     ],
   },
 ]
+
+const defaultNextStepByStatus: Record<Vehicle['status'], string> = {
+  eingang: 'Inspektion einsteuern',
+  inspektion: 'Werkstatt freigeben',
+  werkstatt: 'Aufbereitung einplanen',
+  aufbereitung: 'Fotozone buchen',
+  verkaufsbereit: 'An Verkauf übergeben',
+  verkauft: 'Auslieferung vorbereiten',
+}
+
+const defaultOwnerRoleByStatus: Record<Vehicle['status'], Vehicle['ownerRole']> = {
+  eingang: 'vorpark',
+  inspektion: 'service',
+  werkstatt: 'werkstatt',
+  aufbereitung: 'aufbereitung',
+  verkaufsbereit: 'verkauf',
+  verkauft: 'verkauf',
+}
+
+const operationalVehicleOverrides: Record<
+  string,
+  Partial<
+    Pick<
+      Vehicle,
+      'nextStep' | 'ownerRole' | 'blocker' | 'currentStepStartedAt' | 'lastUpdatedAt' | 'slaDueAt' | 'priorityNote' | 'location'
+    >
+  >
+> = {
+  v1: {
+    nextStep: 'Freigabe Serviceleiter',
+    ownerRole: 'werkstatt',
+    blocker: 'wartet_auf_teile',
+    currentStepStartedAt: '2026-03-05T09:20:00',
+    lastUpdatedAt: '2026-03-06T08:15:00',
+    priorityNote: 'Steht seit 2 Tagen auf derselben Bühne.',
+  },
+  v2: {
+    nextStep: 'Fotozone reservieren',
+    ownerRole: 'aufbereitung',
+    currentStepStartedAt: '2026-03-04T11:00:00',
+    lastUpdatedAt: '2026-03-05T16:20:00',
+    location: 'Aufbereitung',
+  },
+  v3: {
+    nextStep: 'Inserat live schalten',
+    ownerRole: 'foto_inserat',
+    blocker: 'wartet_auf_inserat',
+    currentStepStartedAt: '2026-03-01T08:30:00',
+    lastUpdatedAt: '2026-03-03T10:40:00',
+    location: 'Fotozone',
+    priorityNote: 'Verkaufsfähig, aber noch nicht online.',
+  },
+  v4: {
+    nextStep: '',
+    ownerRole: 'vorpark',
+    currentStepStartedAt: '2026-03-03T13:30:00',
+    lastUpdatedAt: '2026-03-03T13:30:00',
+    priorityNote: 'Hat noch keinen klaren nächsten Schritt.',
+  },
+  v5: {
+    nextStep: 'Bitte an Werkstatt zur Hochvolt-Prüfung',
+    ownerRole: 'service',
+    currentStepStartedAt: '2026-03-06T07:15:00',
+    lastUpdatedAt: '2026-03-06T09:00:00',
+  },
+  v6: {
+    nextStep: 'Bitte an Verkauf für Showroom-Freigabe',
+    ownerRole: 'foto_inserat',
+    currentStepStartedAt: '2026-03-05T14:10:00',
+    lastUpdatedAt: '2026-03-06T15:20:00',
+    location: 'Fotozone',
+  },
+  v7: {
+    nextStep: 'Zurück in Werkstatt nach Lack',
+    ownerRole: 'werkstatt',
+    blocker: 'wartet_auf_lackierer',
+    currentStepStartedAt: '2026-03-02T08:00:00',
+    lastUpdatedAt: '2026-03-04T12:05:00',
+    location: 'Externer Lackierer',
+    priorityNote: 'Externer Dienstleister hat noch keinen fixen Rückgabetermin bestätigt.',
+  },
+  v8: {
+    nextStep: 'Bitte an Verkauf für Probefahrt-Freigabe',
+    ownerRole: 'vorpark',
+    currentStepStartedAt: '2026-03-05T10:15:00',
+    lastUpdatedAt: '2026-03-06T10:10:00',
+  },
+  v9: {
+    nextStep: 'Bitte an Aufbereitung',
+    ownerRole: 'werkstatt',
+    currentStepStartedAt: '2026-03-05T12:40:00',
+    lastUpdatedAt: '2026-03-05T18:30:00',
+  },
+  v10: {
+    nextStep: 'Inserattext finalisieren',
+    ownerRole: 'foto_inserat',
+    blocker: 'wartet_auf_fotos',
+    currentStepStartedAt: '2026-03-04T15:20:00',
+    lastUpdatedAt: '2026-03-06T11:25:00',
+    location: 'Fotozone',
+  },
+  v11: {
+    nextStep: 'Freigabe Serviceleiter',
+    ownerRole: 'service',
+    blocker: 'wartet_auf_freigabe',
+    currentStepStartedAt: '2026-03-05T08:45:00',
+    lastUpdatedAt: '2026-03-06T08:10:00',
+  },
+  v12: {
+    nextStep: 'Bitte an Foto-Team',
+    ownerRole: 'aufbereitung',
+    currentStepStartedAt: '2026-03-06T09:40:00',
+    lastUpdatedAt: '2026-03-06T13:15:00',
+    location: 'Aufbereitung',
+  },
+  v13: {
+    nextStep: 'Kunde für Rückruf freigeben',
+    ownerRole: 'verkauf',
+    blocker: 'wartet_auf_rueckruf',
+    currentStepStartedAt: '2026-03-03T17:10:00',
+    lastUpdatedAt: '2026-03-05T09:50:00',
+    priorityNote: 'Probefahrt hängt am offenen Rückruf aus dem Callcenter.',
+  },
+  v14: {
+    nextStep: 'Bitte an Service zur Eingangsdiagnose',
+    ownerRole: 'vorpark',
+    currentStepStartedAt: '2026-03-04T10:50:00',
+    lastUpdatedAt: '2026-03-04T10:50:00',
+  },
+  v15: {
+    nextStep: 'Fotozone reservieren',
+    ownerRole: 'aufbereitung',
+    blocker: 'wartet_auf_aufbereitung',
+    currentStepStartedAt: '2026-03-05T09:05:00',
+    lastUpdatedAt: '2026-03-06T14:05:00',
+    location: 'Aufbereitung',
+  },
+  v16: {
+    nextStep: 'Bitte an Verkauf für Showroom',
+    ownerRole: 'foto_inserat',
+    currentStepStartedAt: '2026-03-04T16:00:00',
+    lastUpdatedAt: '2026-03-05T16:00:00',
+    location: 'Fotozone',
+  },
+  v17: {
+    nextStep: 'Achsvermessung abschließen',
+    ownerRole: 'werkstatt',
+    currentStepStartedAt: '2026-03-05T11:00:00',
+    lastUpdatedAt: '2026-03-05T15:15:00',
+  },
+  v18: {
+    nextStep: 'Bitte an Foto-Team',
+    ownerRole: 'aufbereitung',
+    currentStepStartedAt: '2026-03-04T14:00:00',
+    lastUpdatedAt: '2026-03-05T12:00:00',
+    location: 'Aufbereitung',
+  },
+  v19: {
+    nextStep: 'Preisschild im Showroom aktualisieren',
+    ownerRole: 'verkauf',
+    currentStepStartedAt: '2026-03-01T09:20:00',
+    lastUpdatedAt: '2026-03-02T13:50:00',
+    priorityNote: 'Steht verkaufsbereit, aber ohne frische Aktivität.',
+  },
+  v20: {
+    nextStep: 'Bitte an Verkauf für B2B-Angebot',
+    ownerRole: 'foto_inserat',
+    currentStepStartedAt: '2026-03-03T15:05:00',
+    lastUpdatedAt: '2026-03-04T10:10:00',
+    location: 'Fotozone',
+  },
+  v21: {
+    nextStep: 'Teilelieferung prüfen und Werkstatt freigeben',
+    ownerRole: 'service',
+    blocker: 'wartet_auf_teile',
+    currentStepStartedAt: '2026-03-04T08:30:00',
+    lastUpdatedAt: '2026-03-05T17:30:00',
+  },
+  v22: {
+    nextStep: '',
+    ownerRole: 'ankauf',
+    currentStepStartedAt: '2026-03-04T09:10:00',
+    lastUpdatedAt: '2026-03-04T09:10:00',
+    priorityNote: 'Ankauf abgeschlossen, aber kein Handoff in den Prozess erfolgt.',
+  },
+}
+
+export const mockVehicles: Vehicle[] = baseMockVehicles.map((vehicle) => {
+  const override = operationalVehicleOverrides[vehicle.id] ?? {}
+  const nextStep = override.nextStep ?? defaultNextStepByStatus[vehicle.status]
+  const ownerRole =
+    override.ownerRole
+    ?? inferOwnerRoleFromText(nextStep)
+    ?? defaultOwnerRoleByStatus[vehicle.status]
+  const lastHistoryDate = vehicle.history[vehicle.history.length - 1]?.date ?? vehicle.intakeDate
+  const lastUpdatedAt = override.lastUpdatedAt ?? lastHistoryDate
+
+  return {
+    ...vehicle,
+    location: override.location ?? vehicle.location,
+    nextStep,
+    ownerRole,
+    blocker: override.blocker ?? 'keiner',
+    currentStepStartedAt: override.currentStepStartedAt ?? lastUpdatedAt,
+    lastUpdatedAt,
+    slaDueAt: override.slaDueAt ?? vehicle.deadline,
+    priorityNote: override.priorityNote,
+    history: vehicle.history.map((entry) => ({
+      ...entry,
+      source: entry.source ?? 'system',
+    })),
+  }
+})
 
 export const mockVehicleListRowsLegacy: VehicleListRowLegacy[] = [
   {
@@ -1827,7 +2046,7 @@ export const mockActivity: ActivityEntry[] = [
     description: 'Inspektion → Werkstatt',
     user: 'Michael S.',
     timestamp: '2026-03-04T11:30:00',
-    link: '/fahrzeuge/werkstatt',
+    link: '/fahrzeuge/hofsteuerung',
     details: [
       { label: 'Fahrzeug', value: 'BMW 320d xDrive (2023)' },
       { label: 'Kennzeichen', value: 'S-WH 1234' },
@@ -1923,7 +2142,7 @@ export const mockActivity: ActivityEntry[] = [
     description: 'Neues Fahrzeug — Inspektion eingeleitet',
     user: 'Thomas M.',
     timestamp: '2026-03-04T08:00:00',
-    link: '/fahrzeuge/werkstatt',
+    link: '/fahrzeuge/hofsteuerung',
     details: [
       { label: 'Fahrzeug', value: 'Audi e-tron GT (2025)' },
       { label: 'Kilometerstand', value: '12.500 km' },

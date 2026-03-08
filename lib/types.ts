@@ -5,7 +5,32 @@
 // ---- Fahrzeuge & Werkstatt (Problem 1) ----
 
 export type VehicleStatus = 'eingang' | 'inspektion' | 'werkstatt' | 'aufbereitung' | 'verkaufsbereit' | 'verkauft'
-export type VehicleLocation = 'Hof A' | 'Hof B' | 'Werkstatt' | 'Showroom'
+export type VehicleLocation =
+  | 'Hof A'
+  | 'Hof B'
+  | 'Werkstatt'
+  | 'Showroom'
+  | 'Aufbereitung'
+  | 'Fotozone'
+  | 'Externer Lackierer'
+export type VehicleBlocker =
+  | 'keiner'
+  | 'wartet_auf_teile'
+  | 'wartet_auf_freigabe'
+  | 'wartet_auf_lackierer'
+  | 'wartet_auf_aufbereitung'
+  | 'wartet_auf_fotos'
+  | 'wartet_auf_inserat'
+  | 'wartet_auf_rueckruf'
+export type VehicleOwnerRole =
+  | 'ankauf'
+  | 'vorpark'
+  | 'service'
+  | 'werkstatt'
+  | 'aufbereitung'
+  | 'foto_inserat'
+  | 'verkauf'
+export type VehicleOperationalLane = 'kritisch' | 'in_arbeit' | 'blockiert' | 'bereit'
 export type FuelType = 'Benzin' | 'Diesel' | 'Elektro' | 'Hybrid' | 'Plug-in-Hybrid'
 
 export interface Vehicle {
@@ -24,6 +49,13 @@ export interface Vehicle {
   purchasePrice: number
   status: VehicleStatus
   location: VehicleLocation
+  nextStep: string
+  ownerRole: VehicleOwnerRole
+  blocker: VehicleBlocker
+  currentStepStartedAt: string
+  lastUpdatedAt: string
+  slaDueAt: string
+  priorityNote?: string
   intakeDate: string // ISO date
   deadline: string // ISO date (10 days from intake)
   imageUrl: string
@@ -37,6 +69,7 @@ export interface VehicleHistoryEntry {
   action: string
   user: string
   note?: string
+  source?: 'voice' | 'manual' | 'system'
 }
 
 export type VehicleAuctionStatus = 'aktiv' | 'verkauft' | 'reserviert'

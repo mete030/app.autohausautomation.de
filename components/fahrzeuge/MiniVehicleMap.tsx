@@ -12,6 +12,9 @@ const LOCATION_COORDS: Record<VehicleLocation, [number, number]> = {
   'Hof A':   [48.77570, 9.18225],
   'Hof B':   [48.77570, 9.18360],
   Werkstatt: [48.77520, 9.18290],
+  Aufbereitung: [48.77595, 9.18305],
+  Fotozone: [48.77602, 9.18245],
+  'Externer Lackierer': [48.77510, 9.18420],
 }
 
 const LOCATION_COLORS: Record<VehicleLocation, string> = {
@@ -19,6 +22,9 @@ const LOCATION_COLORS: Record<VehicleLocation, string> = {
   'Hof A':   '#22c55e',
   'Hof B':   '#a855f7',
   Werkstatt: '#f97316',
+  Aufbereitung: '#14b8a6',
+  Fotozone: '#ec4899',
+  'Externer Lackierer': '#64748b',
 }
 
 function createMiniZoneIcon(loc: VehicleLocation, active: boolean) {

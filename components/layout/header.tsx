@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -11,6 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useHydrated } from '@/hooks/useHydrated'
+import { cn } from '@/lib/utils'
 import { Search, Bell, Moon, Sun, Menu } from 'lucide-react'
 
 interface HeaderProps {
@@ -19,11 +21,17 @@ interface HeaderProps {
 
 export function Header({ onMenuToggle }: HeaderProps) {
   const [darkMode, setDarkMode] = useState(false)
+  const mounted = useHydrated()
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode)
     document.documentElement.classList.toggle('dark')
   }
+
+  const userMenuTriggerClassName = cn(
+    buttonVariants({ variant: 'ghost' }),
+    'ml-1 h-8 gap-2 px-1.5 sm:px-2'
+  )
 
   return (
     <header className="flex h-14 items-center gap-2 border-b border-border/50 bg-card px-3 sm:px-4 lg:px-6">
@@ -63,24 +71,33 @@ export function Header({ onMenuToggle }: HeaderProps) {
         </Button>
 
         {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="ml-1 h-8 gap-2 px-1.5 sm:px-2">
+        {mounted ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger className={userMenuTriggerClassName}>
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-medium">
                   TM
                 </AvatarFallback>
               </Avatar>
               <span className="hidden md:inline text-sm">Thomas M.</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem className="text-sm">Profil</DropdownMenuItem>
-            <DropdownMenuItem className="text-sm">Einstellungen</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-sm">Abmelden</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem className="text-sm">Profil</DropdownMenuItem>
+              <DropdownMenuItem className="text-sm">Einstellungen</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-sm">Abmelden</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <button type="button" className={userMenuTriggerClassName}>
+            <Avatar className="h-6 w-6">
+              <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-medium">
+                TM
+              </AvatarFallback>
+            </Avatar>
+            <span className="hidden md:inline text-sm">Thomas M.</span>
+          </button>
+        )}
       </div>
     </header>
   )

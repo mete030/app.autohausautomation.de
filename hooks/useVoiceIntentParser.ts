@@ -14,7 +14,9 @@ import type {
   Listing,
   ListingStatus,
   Vehicle,
+  VehicleBlocker,
   VehicleLocation,
+  VehicleOwnerRole,
   VehicleStatus,
 } from '@/lib/types'
 
@@ -66,6 +68,7 @@ const inboxViewKeywords: Record<ConversationInboxView, string[]> = {
 const navigationTargets = [
   { route: '/dashboard', label: 'Dashboard', keywords: ['dashboard', 'startseite', 'uebersicht', 'übersicht'] },
   { route: '/fahrzeuge', label: 'Fahrzeuge', keywords: ['fahrzeuge', 'fahrzeugliste'] },
+  { route: '/fahrzeuge/hofsteuerung', label: 'Hofsteuerung', keywords: ['hofsteuerung', 'gw steuerung', 'gebrauchtwagen steuerung', 'hof', 'service handoff'] },
   { route: '/fahrzeuge/werkstatt', label: 'Werkstatt-Board', keywords: ['werkstatt board', 'werkstatt', 'kanban'] },
   { route: '/callcenter', label: 'Callcenter', keywords: ['callcenter', 'rueckruf', 'rückruf', 'callback'] },
   { route: '/inserate', label: 'Inserate', keywords: ['inserate', 'inserat', 'anzeigen'] },
@@ -179,6 +182,8 @@ export interface VehicleUpdateIntent extends VoiceIntentBase {
   status: VehicleStatus | null
   location: VehicleLocation | null
   nextStep: string | null
+  blocker: VehicleBlocker | null
+  ownerRole: VehicleOwnerRole | null
 }
 
 export interface CallbackUpdateIntent extends VoiceIntentBase {
@@ -417,6 +422,8 @@ export function useVoiceIntentParser() {
         status: vehicleCommand.status,
         location: vehicleCommand.location,
         nextStep: vehicleCommand.nextStep,
+        blocker: vehicleCommand.blocker,
+        ownerRole: vehicleCommand.ownerRole,
         summary: vehicleCommand.summary,
         canApply: vehicleCommand.canApply,
         issues: vehicleCommand.issues,

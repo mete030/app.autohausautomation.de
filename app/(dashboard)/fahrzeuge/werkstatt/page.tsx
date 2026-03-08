@@ -67,15 +67,20 @@ export default function WerkstattPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">Werkstatt-Board</h1>
-            <p className="text-muted-foreground">Drag & Drop zum Verschieben</p>
+            <p className="text-muted-foreground">Legacy-Kanban für Status-Drag-&-Drop</p>
           </div>
         </div>
-        {overdueCount > 0 && (
-          <Badge variant="destructive" className="gap-1 px-3 py-1.5">
-            <AlertTriangle className="h-4 w-4" />
-            {overdueCount} überfällig
-          </Badge>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/fahrzeuge/hofsteuerung">
+            <Button variant="outline">Zur Hofsteuerung</Button>
+          </Link>
+          {overdueCount > 0 && (
+            <Badge variant="destructive" className="gap-1 px-3 py-1.5">
+              <AlertTriangle className="h-4 w-4" />
+              {overdueCount} überfällig
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Kanban Board */}

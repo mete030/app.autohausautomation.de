@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { formatCurrency, formatMileage, formatDate, getEscalationLevel, getDaysRemaining } from '@/lib/utils'
 import { escalationColors } from '@/lib/constants'
+import { vehicleLocationLabels } from '@/lib/vehicle-operations'
 import { useVehicleStore } from '@/lib/stores/vehicle-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -279,10 +280,13 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                       'Hof A': '#22c55e',
                       'Hof B': '#a855f7',
                       Werkstatt: '#f97316',
+                      Aufbereitung: '#14b8a6',
+                      Fotozone: '#ec4899',
+                      'Externer Lackierer': '#64748b',
                     }[vehicle.location],
                   }}
                 />
-                <span className="text-sm font-medium">{vehicle.location}</span>
+                <span className="text-sm font-medium">{vehicleLocationLabels[vehicle.location]}</span>
               </div>
             </CardContent>
           </Card>

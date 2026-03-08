@@ -36,6 +36,9 @@ const LOCATION_COORDS: Record<VehicleLocation, [number, number]> = {
   'Hof A':   [48.77570, 9.18225],
   'Hof B':   [48.77570, 9.18360],
   Werkstatt: [48.77520, 9.18290],
+  Aufbereitung: [48.77595, 9.18305],
+  Fotozone: [48.77602, 9.18245],
+  'Externer Lackierer': [48.77510, 9.18420],
 }
 
 const LOCATION_CONFIG: Record<VehicleLocation, { color: string; label: string }> = {
@@ -43,6 +46,9 @@ const LOCATION_CONFIG: Record<VehicleLocation, { color: string; label: string }>
   'Hof A':   { color: '#22c55e', label: 'Hof A' },
   'Hof B':   { color: '#a855f7', label: 'Hof B' },
   Werkstatt: { color: '#f97316', label: 'Werkstatt' },
+  Aufbereitung: { color: '#14b8a6', label: 'Aufbereitung' },
+  Fotozone: { color: '#ec4899', label: 'Fotozone' },
+  'Externer Lackierer': { color: '#64748b', label: 'Externer Lackierer' },
 }
 
 const TILE_LAYERS = {

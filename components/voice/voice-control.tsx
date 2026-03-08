@@ -68,6 +68,8 @@ export function VoiceControl() {
         status: pendingIntent.status,
         location: pendingIntent.location,
         nextStep: pendingIntent.nextStep,
+        blocker: pendingIntent.blocker,
+        ownerRole: pendingIntent.ownerRole,
         transcript: pendingIntent.transcript,
       })
     }

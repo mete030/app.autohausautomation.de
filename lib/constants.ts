@@ -29,6 +29,7 @@ export const navigation: NavItem[] = [
     icon: Car,
     children: [
       { title: 'Inventar', href: '/fahrzeuge' },
+      { title: 'Hofsteuerung', href: '/fahrzeuge/hofsteuerung' },
       { title: 'Werkstatt', href: '/fahrzeuge/werkstatt' },
     ],
   },

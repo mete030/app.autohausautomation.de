@@ -2,110 +2,279 @@
 
 import { create } from 'zustand'
 import { mockVehicles } from '@/lib/mock-data'
-import type { Vehicle, VehicleLocation, VehicleStatus } from '@/lib/types'
+import { inferOwnerRoleFromText, vehicleBlockerLabels, vehicleOwnerRoleLabels, vehicleStatusLabels } from '@/lib/vehicle-operations'
+import type { Vehicle, VehicleBlocker, VehicleLocation, VehicleOwnerRole, VehicleStatus } from '@/lib/types'
 
 const initialVehicles = mockVehicles.map((vehicle) => ({
   ...vehicle,
   history: [...vehicle.history],
 }))
 
-const statusActionLabels: Record<VehicleStatus, string> = {
-  eingang: 'Eingang',
-  inspektion: 'Inspektion',
-  werkstatt: 'Werkstatt',
-  aufbereitung: 'Aufbereitung',
-  verkaufsbereit: 'Verkaufsbereit',
-  verkauft: 'Verkauft',
-}
-
 function createHistoryId() {
   return `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-interface VoiceVehicleUpdate {
+function buildHistoryNote(vehicle: Vehicle, update: VehicleOperationalUpdate) {
+  const parts: string[] = []
+
+  if (update.status && update.status !== vehicle.status) {
+    parts.push(`Status -> ${vehicleStatusLabels[update.status]}`)
+  }
+
+  if (update.location && update.location !== vehicle.location) {
+    parts.push(`Standort -> ${update.location}`)
+  }
+
+  if (update.blocker && update.blocker !== vehicle.blocker) {
+    parts.push(`Blocker -> ${vehicleBlockerLabels[update.blocker]}`)
+  }
+
+  if (update.ownerRole && update.ownerRole !== vehicle.ownerRole) {
+    parts.push(`Owner -> ${vehicleOwnerRoleLabels[update.ownerRole]}`)
+  }
+
+  if (typeof update.nextStep === 'string' && update.nextStep.trim() !== vehicle.nextStep.trim()) {
+    parts.push(`Nächster Schritt: ${update.nextStep.trim() || 'Offen'}`)
+  }
+
+  if (typeof update.priorityNote === 'string' && update.priorityNote.trim() !== (vehicle.priorityNote ?? '').trim()) {
+    parts.push(`Priorität: ${update.priorityNote.trim() || 'Entfernt'}`)
+  }
+
+  if (update.historyNote?.trim()) {
+    parts.push(update.historyNote.trim())
+  }
+
+  if (update.transcript?.trim()) {
+    parts.push(`Voice: "${update.transcript.trim()}"`)
+  }
+
+  return parts.join(' · ') || 'Fahrzeug aktualisiert'
+}
+
+function applyVehicleOperationalUpdate(vehicle: Vehicle, update: VehicleOperationalUpdate) {
+  const now = new Date().toISOString()
+  const nextStep =
+    typeof update.nextStep === 'string'
+      ? update.nextStep.trim()
+      : vehicle.nextStep
+
+  const inferredOwnerRole =
+    update.ownerRole
+    ?? (typeof update.nextStep === 'string'
+      ? inferOwnerRoleFromText(nextStep) ?? undefined
+      : undefined)
+
+  const nextVehicle: Vehicle = {
+    ...vehicle,
+    status: update.status ?? vehicle.status,
+    location: update.location ?? vehicle.location,
+    nextStep,
+    ownerRole: inferredOwnerRole ?? vehicle.ownerRole,
+    blocker: update.blocker ?? vehicle.blocker,
+    priorityNote:
+      typeof update.priorityNote === 'string'
+        ? update.priorityNote.trim() || undefined
+        : vehicle.priorityNote,
+    lastUpdatedAt: now,
+  }
+
+  if (update.status && update.status !== vehicle.status) {
+    nextVehicle.currentStepStartedAt = now
+  }
+
+  const changeDetected =
+    nextVehicle.status !== vehicle.status
+    || nextVehicle.location !== vehicle.location
+    || nextVehicle.nextStep !== vehicle.nextStep
+    || nextVehicle.ownerRole !== vehicle.ownerRole
+    || nextVehicle.blocker !== vehicle.blocker
+    || (nextVehicle.priorityNote ?? '') !== (vehicle.priorityNote ?? '')
+
+  if (!changeDetected) {
+    return vehicle
+  }
+
+  return {
+    ...nextVehicle,
+    history: [
+      ...vehicle.history,
+      {
+        id: createHistoryId(),
+        date: now,
+        action:
+          update.historyAction
+          ?? (update.status ? vehicleStatusLabels[update.status] : update.source === 'voice' ? 'Voice Update' : 'Manuelles Update'),
+        user: update.actor ?? (update.source === 'voice' ? 'Voice Assistant' : 'Hofsteuerung'),
+        note: buildHistoryNote(vehicle, update),
+        source: update.source,
+      },
+    ],
+  }
+}
+
+interface VehicleOperationalUpdate {
   vehicleId: string
   status?: VehicleStatus | null
   location?: VehicleLocation | null
   nextStep?: string | null
-  transcript: string
+  blocker?: VehicleBlocker | null
+  ownerRole?: VehicleOwnerRole | null
+  priorityNote?: string | null
+  transcript?: string
+  source: 'voice' | 'manual' | 'system'
+  actor?: string
+  historyAction?: string
+  historyNote?: string
+}
+
+interface UndoSnapshot {
+  vehicleId: string
+  previousVehicle: Vehicle
 }
 
 interface VehicleStoreState {
   vehicles: Vehicle[]
+  lastUndoSnapshot: UndoSnapshot | null
   updateVehicleStatus: (vehicleId: string, status: VehicleStatus) => void
-  applyVoiceUpdate: (update: VoiceVehicleUpdate) => void
+  updateVehicleOperationalState: (update: Omit<VehicleOperationalUpdate, 'source'> & { source?: VehicleOperationalUpdate['source'] }) => void
+  applyVoiceUpdate: (update: Omit<VehicleOperationalUpdate, 'source'>) => void
+  undoLastVehicleUpdate: () => void
 }
 
 export const useVehicleStore = create<VehicleStoreState>((set) => ({
   vehicles: initialVehicles,
+  lastUndoSnapshot: null,
 
   updateVehicleStatus: (vehicleId, status) => {
-    set((state) => ({
-      vehicles: state.vehicles.map((vehicle) => {
-        if (vehicle.id !== vehicleId || vehicle.status === status) return vehicle
-        return {
-          ...vehicle,
-          status,
-          history: [
-            ...vehicle.history,
-            {
-              id: createHistoryId(),
-              date: new Date().toISOString(),
-              action: statusActionLabels[status],
-              user: 'Werkstatt Board',
-            },
-          ],
-        }
-      }),
-    }))
+    set((state) => {
+      const previousVehicle = state.vehicles.find((vehicle) => vehicle.id === vehicleId)
+      if (!previousVehicle || previousVehicle.status === status) {
+        return state
+      }
+
+      return {
+        vehicles: state.vehicles.map((vehicle) => (
+          vehicle.id === vehicleId
+            ? applyVehicleOperationalUpdate(vehicle, {
+              vehicleId,
+              status,
+              source: 'manual',
+              actor: 'Werkstatt Board',
+            })
+            : vehicle
+        )),
+        lastUndoSnapshot: {
+          vehicleId,
+          previousVehicle: {
+            ...previousVehicle,
+            history: [...previousVehicle.history],
+          },
+        },
+      }
+    })
   },
 
-  applyVoiceUpdate: ({ vehicleId, status, location, nextStep, transcript }) => {
-    set((state) => ({
-      vehicles: state.vehicles.map((vehicle) => {
-        if (vehicle.id !== vehicleId) return vehicle
+  updateVehicleOperationalState: (update) => {
+    set((state) => {
+      const previousVehicle = state.vehicles.find((vehicle) => vehicle.id === update.vehicleId)
+      if (!previousVehicle) {
+        return state
+      }
 
-        const nextStatus = status ?? vehicle.status
-        const nextLocation = location ?? vehicle.location
+      const nextVehicles = state.vehicles.map((vehicle) => (
+        vehicle.id === update.vehicleId
+          ? applyVehicleOperationalUpdate(vehicle, {
+            ...update,
+            source: update.source ?? 'manual',
+          })
+          : vehicle
+      ))
 
-        const noteLines: string[] = []
-        if (nextStep?.trim()) {
-          noteLines.push(`Nächster Schritt: ${nextStep.trim()}`)
-        }
-        noteLines.push(`Voice: "${transcript.trim()}"`)
+      const nextVehicle = nextVehicles.find((vehicle) => vehicle.id === update.vehicleId)
+      if (!nextVehicle || nextVehicle === previousVehicle) {
+        return state
+      }
 
-        const nextNotes = vehicle.notes
-          ? `${vehicle.notes}\n${noteLines.join('\n')}`
-          : noteLines.join('\n')
+      return {
+        vehicles: nextVehicles,
+        lastUndoSnapshot: {
+          vehicleId: update.vehicleId,
+          previousVehicle: {
+            ...previousVehicle,
+            history: [...previousVehicle.history],
+          },
+        },
+      }
+    })
+  },
 
-        const historyNoteParts: string[] = []
-        if (status && status !== vehicle.status) {
-          historyNoteParts.push(`Status -> ${statusActionLabels[status]}`)
-        }
-        if (location && location !== vehicle.location) {
-          historyNoteParts.push(`Standort -> ${location}`)
-        }
-        if (nextStep?.trim()) {
-          historyNoteParts.push(`Nächster Schritt: ${nextStep.trim()}`)
-        }
+  applyVoiceUpdate: (update) => {
+    set((state) => {
+      const previousVehicle = state.vehicles.find((vehicle) => vehicle.id === update.vehicleId)
+      if (!previousVehicle) {
+        return state
+      }
 
-        return {
-          ...vehicle,
-          status: nextStatus,
-          location: nextLocation,
-          notes: nextNotes,
-          history: [
-            ...vehicle.history,
-            {
-              id: createHistoryId(),
-              date: new Date().toISOString(),
-              action: status ? statusActionLabels[status] : 'Voice Update',
-              user: 'Voice Assistant',
-              note: historyNoteParts.join(' · ') || 'Per Spracheingabe aktualisiert',
-            },
-          ],
-        }
-      }),
-    }))
+      const nextVehicles = state.vehicles.map((vehicle) => (
+        vehicle.id === update.vehicleId
+          ? applyVehicleOperationalUpdate(vehicle, {
+            ...update,
+            source: 'voice',
+          })
+          : vehicle
+      ))
+
+      const nextVehicle = nextVehicles.find((vehicle) => vehicle.id === update.vehicleId)
+      if (!nextVehicle || nextVehicle === previousVehicle) {
+        return state
+      }
+
+      return {
+        vehicles: nextVehicles,
+        lastUndoSnapshot: {
+          vehicleId: update.vehicleId,
+          previousVehicle: {
+            ...previousVehicle,
+            history: [...previousVehicle.history],
+          },
+        },
+      }
+    })
+  },
+
+  undoLastVehicleUpdate: () => {
+    set((state) => {
+      if (!state.lastUndoSnapshot) {
+        return state
+      }
+
+      const now = new Date().toISOString()
+      return {
+        vehicles: state.vehicles.map((vehicle) => {
+          if (vehicle.id !== state.lastUndoSnapshot?.vehicleId) {
+            return vehicle
+          }
+
+          const restored = state.lastUndoSnapshot.previousVehicle
+          return {
+            ...restored,
+            history: [
+              ...restored.history,
+              {
+                id: createHistoryId(),
+                date: now,
+                action: 'Update rückgängig',
+                user: 'Hofsteuerung',
+                note: 'Letzte lokale Änderung wurde zurückgesetzt.',
+                source: 'manual',
+              },
+            ],
+            lastUpdatedAt: now,
+          }
+        }),
+        lastUndoSnapshot: null,
+      }
+    })
   },
 }))

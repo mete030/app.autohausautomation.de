@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useHydrated } from '@/hooks/useHydrated'
 import { useConversationStore, type ConversationInboxView } from '@/lib/stores/conversation-store'
 import { cn } from '@/lib/utils'
 import type { Conversation, MessageChannel, ConversationStatus } from '@/lib/types'
@@ -136,6 +138,7 @@ function ViewDropdown({
   allConversations: Conversation[]
 }) {
   const [open, setOpen] = useState(false)
+  const mounted = useHydrated()
   const unread = allConversations.filter(c => c.unread).length
   const mktgCnt = allConversations.filter(c => c.inbox === 'Marketing').length
 
@@ -170,46 +173,51 @@ function ViewDropdown({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 font-semibold text-[15px] text-foreground hover:text-muted-foreground transition-colors">
-          {viewLabel[current]}
+    mounted ? (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger className="flex min-w-0 max-w-full items-center gap-1 font-semibold text-[15px] text-foreground transition-colors hover:text-muted-foreground">
+          <span className="truncate">{viewLabel[current]}</span>
           <ChevronDown className={cn('w-4 h-4 text-muted-foreground/70 transition-transform duration-150', open && 'rotate-180')} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={10} className="w-60 p-1.5">
-        {renderItem({ id: 'alle', icon: <Hash className="w-3.5 h-3.5"/>, label: 'Alle Unterhaltungen', count: allConversations.length })}
-        {renderItem({ id: 'ungelesen', icon: <Mail className="w-3.5 h-3.5"/>, label: 'Ungelesen', count: unread })}
-        {renderItem({ id: 'mir', icon: <Users className="w-3.5 h-3.5"/>, label: 'Mir zugewiesen' })}
-        {renderItem({ id: 'nicht', icon: <UserX className="w-3.5 h-3.5"/>, label: 'Nicht zugewiesen' })}
-        {renderItem({ id: 'markiert', icon: <Star className="w-3.5 h-3.5"/>, label: 'Markiert' })}
-        {renderItem({ id: 'papierkorb', icon: <Trash2 className="w-3.5 h-3.5"/>, label: 'Papierkorb' })}
-        {renderItem({ id: 'spam', icon: <AlertCircle className="w-3.5 h-3.5"/>, label: 'Spam' })}
+        </PopoverTrigger>
+        <PopoverContent align="start" sideOffset={10} className="w-60 p-1.5">
+          {renderItem({ id: 'alle', icon: <Hash className="w-3.5 h-3.5"/>, label: 'Alle Unterhaltungen', count: allConversations.length })}
+          {renderItem({ id: 'ungelesen', icon: <Mail className="w-3.5 h-3.5"/>, label: 'Ungelesen', count: unread })}
+          {renderItem({ id: 'mir', icon: <Users className="w-3.5 h-3.5"/>, label: 'Mir zugewiesen' })}
+          {renderItem({ id: 'nicht', icon: <UserX className="w-3.5 h-3.5"/>, label: 'Nicht zugewiesen' })}
+          {renderItem({ id: 'markiert', icon: <Star className="w-3.5 h-3.5"/>, label: 'Markiert' })}
+          {renderItem({ id: 'papierkorb', icon: <Trash2 className="w-3.5 h-3.5"/>, label: 'Papierkorb' })}
+          {renderItem({ id: 'spam', icon: <AlertCircle className="w-3.5 h-3.5"/>, label: 'Spam' })}
 
-        <Separator className="my-1.5" />
-        <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Postfächer</p>
-        {renderItem({ id: 'Zentrale', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Zentrale' })}
-        {renderItem({ id: 'Standort Berlin', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Standort Berlin' })}
-        {renderItem({ id: 'Standort München', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Standort München' })}
-        {renderItem({ id: 'Vertrieb', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Vertrieb' })}
-        {renderItem({ id: 'Marketing', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Marketing', count: mktgCnt })}
-        <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
-          <Plus className="w-3.5 h-3.5" /><span>Neues Postfach</span>
-        </button>
+          <Separator className="my-1.5" />
+          <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Postfächer</p>
+          {renderItem({ id: 'Zentrale', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Zentrale' })}
+          {renderItem({ id: 'Standort Berlin', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Standort Berlin' })}
+          {renderItem({ id: 'Standort München', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Standort München' })}
+          {renderItem({ id: 'Vertrieb', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Vertrieb' })}
+          {renderItem({ id: 'Marketing', icon: <FolderOpen className="w-3.5 h-3.5"/>, label: 'Marketing', count: mktgCnt })}
+          <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+            <Plus className="w-3.5 h-3.5" /><span>Neues Postfach</span>
+          </button>
 
-        <Separator className="my-1.5" />
-        <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Gespeicherte Filter</p>
-        {renderItem({ id: 'vip', icon: <Tag className="w-3.5 h-3.5"/>, label: 'VIP-Kunden' })}
-        {renderItem({ id: 'berlin-mktg', icon: <Tag className="w-3.5 h-3.5"/>, label: 'Berliner Marketing' })}
-        {renderItem({ id: 'london-mktg', icon: <Tag className="w-3.5 h-3.5"/>, label: 'Londoner Marketing' })}
-        <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
-          <Settings className="w-3.5 h-3.5" /><span>Filter verwalten</span>
-        </button>
-        <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
-          <Plus className="w-3.5 h-3.5" /><span>Filter erstellen</span>
-        </button>
-      </PopoverContent>
-    </Popover>
+          <Separator className="my-1.5" />
+          <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Gespeicherte Filter</p>
+          {renderItem({ id: 'vip', icon: <Tag className="w-3.5 h-3.5"/>, label: 'VIP-Kunden' })}
+          {renderItem({ id: 'berlin-mktg', icon: <Tag className="w-3.5 h-3.5"/>, label: 'Berliner Marketing' })}
+          {renderItem({ id: 'london-mktg', icon: <Tag className="w-3.5 h-3.5"/>, label: 'Londoner Marketing' })}
+          <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+            <Settings className="w-3.5 h-3.5" /><span>Filter verwalten</span>
+          </button>
+          <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+            <Plus className="w-3.5 h-3.5" /><span>Filter erstellen</span>
+          </button>
+        </PopoverContent>
+      </Popover>
+    ) : (
+      <button type="button" className="flex min-w-0 max-w-full items-center gap-1 font-semibold text-[15px] text-foreground transition-colors hover:text-muted-foreground">
+        <span className="truncate">{viewLabel[current]}</span>
+        <ChevronDown className="w-4 h-4 text-muted-foreground/70" />
+      </button>
+    )
   )
 }
 
@@ -229,13 +237,17 @@ function ConversationList({
   status: ConversationStatus
   onStatusChange: (s: ConversationStatus) => void
 }) {
-  const [search] = useState('')
+  const [search, setSearch] = useState('')
+  const normalizedSearch = search.trim().toLowerCase()
 
   const filtered = conversations.filter(c => {
     const mStatus = (c.status ?? 'offen') === status
-    const mSearch = !search
-      || c.customerName.toLowerCase().includes(search.toLowerCase())
-      || c.lastMessage.toLowerCase().includes(search.toLowerCase())
+    const mSearch = !normalizedSearch
+      || c.customerName.toLowerCase().includes(normalizedSearch)
+      || c.lastMessage.toLowerCase().includes(normalizedSearch)
+      || c.messages.some((message) => message.content.toLowerCase().includes(normalizedSearch))
+      || c.vehicleInterest?.toLowerCase().includes(normalizedSearch)
+      || c.inbox?.toLowerCase().includes(normalizedSearch)
     return mStatus && mSearch
   })
 
@@ -244,63 +256,98 @@ function ConversationList({
     { value: 'spaeter',  label: 'Später'   },
     { value: 'erledigt', label: 'Erledigt' },
   ]
+  const statusDescription: Record<ConversationStatus, string> = {
+    offen: 'Neue Nachrichten und aktive Rückfragen zuerst.',
+    spaeter: 'Wiedervorlagen mit bewusst verschobener Priorität.',
+    erledigt: 'Abgeschlossene Gespräche ohne offene Aktion.',
+  }
 
   return (
-    <div className="w-full border-r flex flex-col h-full bg-background lg:w-[280px] lg:shrink-0">
+    <div className="w-full border-r flex flex-col h-full bg-background lg:w-[288px] lg:shrink-0 xl:w-[336px]">
 
       {/* ── Top header ── */}
-      <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-        <ViewDropdown current={view} onChange={onViewChange} allConversations={allConversations} />
-        <div className="flex items-center gap-1">
-          <button className="p-1.5 rounded-full text-muted-foreground hover:bg-muted transition-colors" title="Suchen">
-            <Search className="w-[15px] h-[15px]" />
-          </button>
-          {/* Teal compose button — signature Superchat element */}
-          <button className="w-7 h-7 rounded-full bg-[#00BCD4] hover:bg-[#00ACC1] flex items-center justify-center transition-colors shadow-sm" title="Neue Unterhaltung">
-            <PenSquare className="w-3.5 h-3.5 text-white" />
+      <div className="border-b border-border/70 bg-white/95 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <ViewDropdown current={view} onChange={onViewChange} allConversations={allConversations} />
+              <span className="inline-flex h-6 shrink-0 items-center rounded-full border border-border/80 bg-muted/40 px-2.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+                {filtered.length}
+              </span>
+            </div>
+            <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+              {statusDescription[status]}
+            </p>
+          </div>
+          <button
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00BCD4] text-white shadow-sm transition-colors hover:bg-[#00ACC1]"
+            title="Neue Unterhaltung"
+          >
+            <PenSquare className="h-4 w-4" />
           </button>
         </div>
-      </div>
 
-      {/* ── Status tabs — pill style ── */}
-      <div className="px-4 pb-2 flex gap-1">
-        {tabs.map(t => (
-          <button
-            key={t.value}
-            onClick={() => onStatusChange(t.value)}
-            className={cn(
-              'flex-1 py-1 text-[12px] font-medium rounded-full transition-colors',
-              status === t.value
-                ? 'bg-[#1a73e8] text-white shadow-sm'
-                : 'text-muted-foreground hover:bg-muted'
+        <div className="mt-3 flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Unterhaltungen durchsuchen"
+              className="h-10 rounded-xl border-border/70 bg-[#F6F8FA] pl-9 pr-3 text-[13px] shadow-none focus-visible:bg-white"
+            />
+          </div>
+          <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-[#F6F8FA] text-muted-foreground transition-colors hover:bg-white hover:text-foreground">
+            <Filter className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-[#F3F6F9] p-1">
+          {tabs.map(t => (
+            <button
+              key={t.value}
+              onClick={() => onStatusChange(t.value)}
+              className={cn(
+                'rounded-xl px-3 py-2 text-[12px] font-medium transition-all',
+                status === t.value
+                  ? 'bg-white text-[#1a73e8] shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-3 flex items-center justify-between">
+          <button className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-white px-3 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+            Am neuesten <ChevronDown className="h-3 w-3" />
+          </button>
+          <div className="flex items-center gap-1">
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="rounded-full px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Suche löschen
+              </button>
             )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Sort + filter bar ── */}
-      <div className="px-4 py-1 flex items-center justify-between">
-        <button className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors">
-          Am neuesten <ChevronDown className="w-3 h-3" />
-        </button>
-        <div className="flex items-center gap-1">
-          <button className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-            <Filter className="w-3 h-3" />
-          </button>
-          <button className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-            <MoreHorizontal className="w-3 h-3" />
-          </button>
+            <button className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ── List ── */}
       <ScrollArea className="flex-1">
+        <div className="space-y-2 px-3 py-3">
         {filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-36 gap-2 text-muted-foreground/50">
+          <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/80 bg-muted/20 text-muted-foreground/70">
             <Mail className="w-7 h-7" />
-            <span className="text-xs">Keine Unterhaltungen</span>
+            <span className="text-xs">
+              {search ? 'Keine Treffer für diese Suche' : 'Keine Unterhaltungen in dieser Ansicht'}
+            </span>
           </div>
         )}
         {filtered.map(conv => {
@@ -311,8 +358,10 @@ function ConversationList({
               key={conv.id}
               onClick={() => onSelect(conv)}
               className={cn(
-                'w-full px-4 py-3 border-b text-left transition-colors group',
-                isSelected ? 'bg-[#EBF5FB]' : 'hover:bg-muted/30'
+                'w-full rounded-2xl border px-3 py-3 text-left transition-all group',
+                isSelected
+                  ? 'border-[#BBD6FF] bg-[#F5FAFF] shadow-[0_10px_28px_rgba(26,115,232,0.10)]'
+                  : 'border-transparent bg-transparent hover:border-border/80 hover:bg-white'
               )}
             >
               <div className="flex items-start gap-3">
@@ -321,37 +370,40 @@ function ConversationList({
 
                 <div className="flex-1 min-w-0">
                   {/* Row 1: name + time */}
-                  <div className="flex items-baseline justify-between gap-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn(
+                          'text-[13px] truncate',
+                          conv.unread ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'
+                        )}>
+                          {conv.customerName}
+                        </span>
+                        {conv.unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1a73e8]" />}
+                      </div>
+                      {conv.inbox && (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                          ▸ {conv.inbox}
+                        </p>
+                      )}
+                    </div>
                     <span className={cn(
-                      'text-[13px] truncate',
-                      conv.unread ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'
-                    )}>
-                      {conv.customerName}
-                    </span>
-                    <span className={cn(
-                      'text-[11px] shrink-0 tabular-nums',
+                      'pt-0.5 text-[11px] shrink-0 tabular-nums',
                       conv.unread ? 'text-[#1a73e8] font-medium' : 'text-muted-foreground'
                     )}>
                       {fmtTime(conv.lastMessageAt)}
                     </span>
                   </div>
 
-                  {/* Row 2: inbox folder */}
-                  {conv.inbox && (
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                      ▸ {conv.inbox}
-                    </p>
-                  )}
-
-                  {/* Row 3: unread badge + preview */}
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  {/* Row 2: unread badge + preview */}
+                  <div className="mt-2 flex min-w-0 items-start gap-2">
                     {conv.unreadCount > 0 && (
-                      <span className="shrink-0 min-w-[16px] h-4 px-1 rounded-full bg-[#1a73e8] text-white text-[9px] font-bold flex items-center justify-center">
+                      <span className="mt-0.5 flex h-4 min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#1a73e8] px-1 text-[9px] font-bold text-white">
                         {conv.unreadCount}
                       </span>
                     )}
                     <p className={cn(
-                      'text-[11px] truncate',
+                      'min-w-0 flex-1 overflow-hidden text-[12px] leading-[1.45] break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]',
                       conv.unread ? 'text-foreground/80' : 'text-muted-foreground'
                     )}>
                       {conv.lastMessage}
@@ -372,6 +424,7 @@ function ConversationList({
             </button>
           )
         })}
+        </div>
       </ScrollArea>
     </div>
   )
@@ -784,7 +837,7 @@ export default function NachrichtenPage() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <div className={cn('h-full w-full lg:w-[280px] lg:shrink-0', mobilePanel === 'list' ? 'flex' : 'hidden lg:flex')}>
+      <div className={cn('h-full w-full lg:w-[288px] lg:shrink-0 xl:w-[336px]', mobilePanel === 'list' ? 'flex' : 'hidden lg:flex')}>
         <ConversationList
           allConversations={conversations}
           conversations={visible}

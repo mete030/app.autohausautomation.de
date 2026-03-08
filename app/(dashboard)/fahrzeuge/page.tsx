@@ -64,9 +64,14 @@ export default function FahrzeugePage() {
           <h1 className="text-2xl font-semibold tracking-tight">Fahrzeuge</h1>
           <p className="text-sm text-muted-foreground mt-1">{filtered.length} Fahrzeuge im Bestand</p>
         </div>
-        <Link href="/fahrzeuge/werkstatt">
-          <Button className="w-full sm:w-auto">Werkstatt-Board</Button>
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/fahrzeuge/hofsteuerung">
+            <Button className="w-full sm:w-auto">Hofsteuerung öffnen</Button>
+          </Link>
+          <Link href="/fahrzeuge/werkstatt">
+            <Button variant="outline" className="w-full sm:w-auto">Legacy Werkstatt-Board</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -103,6 +108,9 @@ export default function FahrzeugePage() {
             <SelectItem value="Hof B">Hof B</SelectItem>
             <SelectItem value="Werkstatt">Werkstatt</SelectItem>
             <SelectItem value="Showroom">Showroom</SelectItem>
+            <SelectItem value="Aufbereitung">Aufbereitung</SelectItem>
+            <SelectItem value="Fotozone">Fotozone</SelectItem>
+            <SelectItem value="Externer Lackierer">Externer Lackierer</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex gap-0.5 self-start rounded-lg border p-0.5 sm:self-auto">
