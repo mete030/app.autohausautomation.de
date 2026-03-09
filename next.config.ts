@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.mercedes-benz.de',
+      },
+      {
+        protocol: 'https',
+        hostname: 'media.oneweb.mercedes-benz.com',
+      },
     ],
   },
 };

@@ -12,6 +12,13 @@ import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { priceCategoryConfig } from '@/lib/constants'
+import {
+  mercedesExtraOptions as EXTRA_OPTIONS,
+  mercedesListingCreationAiMock as MOCK_AI,
+  mercedesListingCreationImageSlots as IMAGE_SLOTS,
+  mercedesListingCreationVinMock as VIN_MOCK,
+  mercedesSeriesOptions as SERIES_OPTIONS,
+} from '@/lib/mercedes-inventory'
 import { formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Sparkles, RefreshCw, Check, Star, Upload, ImagePlus,
@@ -59,81 +66,6 @@ const TruckScout24Icon = ({ size = 40 }: { size?: number }) => (
   </div>
 )
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const VIN_MOCK = {
-  vin: 'WBA52AG0X0FH12345',
-  make: 'BMW',
-  model: '520d Touring',
-  year: '2021',
-  mileage: '62.400',
-  power: '190',
-  displacement: '1.995',
-  fuelType: 'diesel',
-  transmission: 'automatik',
-  color: 'Sophistograu Metallic',
-  doors: '5',
-  seats: '5',
-  firstRegistration: '03.2021',
-  hu: '03.2025',
-  price: '38.900',
-  serienausstattung: [
-    'LED-Scheinwerfer', 'Klimaautomatik 2-Zonen', 'Rückfahrkamera',
-    'Park Distance Control vorne/hinten', 'Sitzheizung vorne', 'DAB+ Radio',
-    'Bluetooth Freisprecheinrichtung', 'Tempomat', 'Lichtsensor', 'Regensensor',
-    'Isofix', 'Start-Stop-System', 'Bordcomputer', 'Elektr. Fensterheber',
-    'Elektr. Außenspiegel', 'Zentralverriegelung', 'ABS / ASR / DSC',
-    'Fahrassistenzsysteme', 'Multifunktionslenkrad', 'Spurhalteassistent',
-  ],
-  sonderausstattung: [
-    'Navigationssystem Professional', 'M Sportpaket', 'Panorama-Glasdach',
-    'Head-Up Display', 'Harman Kardon Soundsystem', 'Adaptives Fahrwerk M',
-    'Komfortzugang', 'Driving Assistant Professional', 'Standheizung',
-    'Anhängerkupplung schwenkbar',
-  ],
-}
-
-const SERIES_OPTIONS = [
-  'LED-Scheinwerfer', 'Xenon-Scheinwerfer', 'Tagfahrlicht', 'Klimaautomatik',
-  'Klimaanlage', 'Rückfahrkamera', 'Park Distance Control', 'Einparkhilfe',
-  'Sitzheizung vorne', 'DAB+ Radio', 'Bluetooth', 'Apple CarPlay',
-  'Android Auto', 'Tempomat', 'Lichtsensor', 'Regensensor', 'Isofix',
-  'Start-Stop-System', 'Bordcomputer', 'Elektr. Fensterheber',
-  'Elektr. Außenspiegel', 'Zentralverriegelung', 'ABS', 'ASR', 'ESP',
-  'Airbags vorne', 'Airbags seitlich', 'Spurhalteassistent',
-  'Notbremsassistent', 'Multifunktionslenkrad', 'Lenkradheizung',
-]
-
-const EXTRA_OPTIONS = [
-  'Navigationssystem', 'Navigationssystem Professional', 'M Sportpaket',
-  'AMG Paket', 'S-Line Paket', 'Panorama-Glasdach', 'Schiebedach elektrisch',
-  'Head-Up Display', 'Harman Kardon Soundsystem', 'Bang & Olufsen',
-  'Bose Soundsystem', 'Adaptives Fahrwerk', 'Luftfederung', 'Komfortzugang',
-  'Keyless Go', 'Driving Assistant Professional', 'Standheizung',
-  'Anhängerkupplung', 'Lederausstattung', '360° Kamera',
-  'Nachtsichtassistent', 'Massagesitze', 'Belüftete Sitze', 'Sportabgasanlage',
-]
-
-const MOCK_AI = {
-  title: 'BMW 520d Touring M Sport – Pano, HUD, Driving Assistant Pro',
-  description: 'Gepflegter BMW 520d Touring in eleganter M Sport Ausführung. Ausgestattet mit dem Navigationssystem Professional, Head-Up Display und Panorama-Glasdach. Der 190 PS Dieselmotor überzeugt durch kraftvolle Fahrleistungen bei moderatem Verbrauch.\n\n✓ M Sportpaket\n✓ Navigation Professional\n✓ LED-Scheinwerfer\n✓ Panorama-Glasdach\n✓ Head-Up Display\n✓ Harman Kardon Sound\n✓ Driving Assistant Professional\n✓ Scheckheftgepflegt',
-  improvedDescription: 'Erleben Sie Businessklasse auf höchstem Niveau: Dieser BMW 520d Touring im zeitlosen Sophistograu Metallic vereint sportliches Flair mit luxuriösem Komfort. Das M Sportpaket verleiht dem Fahrzeug eine athletische Präsenz, während das Driving Assistant Professional-Paket für maximale Sicherheit sorgt.\n\nDer 190 PS starke TwinPower Turbo Diesel, kombiniert mit der 8-Gang Steptronic, bietet ein souveränes Fahrerlebnis bei geringem Verbrauch.\n\n✓ M Sportpaket + 20" M Leichtmetallräder\n✓ Navigation Professional mit Echtzeit-Traffic\n✓ Head-Up Display mit erweiterter Realität\n✓ Panorama-Glasdach elektrisch\n✓ Harman Kardon 16-Lautsprecher\n✓ Driving Assistant Professional\n✓ Adaptives Fahrwerk M\n✓ 1 Vorbesitzer – Scheckheftgepflegt',
-  kycScore: 74,
-  improvedKycScore: 96,
-  confidence: 92,
-  priceAnalysis: {
-    marketPrice: 41200,
-    suggestion: 38900,
-    category: 'gut' as const,
-    thresholds: [
-      { label: 'Sehr gut', max: 36000 },
-      { label: 'Gut', max: 39500 },
-      { label: 'Zufriedenstellend', max: 42000 },
-      { label: 'Erhöht', max: 44500 },
-    ],
-  },
-}
-
 const EXPORT_PLATFORMS = [
   {
     id: 'mobile_de',
@@ -164,38 +96,6 @@ const EXPORT_PLATFORMS = [
     bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
     btnStyle: { background: '#009C3B' } as React.CSSProperties,
     btnHoverClass: 'hover:opacity-90',
-  },
-]
-
-// Each slot has an "ugly" original + 3 AI-enhanced versions
-// original = base photo with CSS degradation filter applied
-// cutout   = clean white/neutral studio background (Freigestellt)
-// background = dramatic cinematic backdrop (Hintergrund optimiert)
-// quality  = ultra sharp professional press photo (Qualität optimiert)
-const IMAGE_SLOTS = [
-  {
-    id: 0,
-    label: 'Frontansicht',
-    original: 'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=600&q=40&fit=crop&auto=format',
-    cutout:     'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=600&q=85&fit=crop&auto=format',
-    background: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&q=85&fit=crop&auto=format',
-    quality:    'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600&q=90&fit=crop&auto=format',
-  },
-  {
-    id: 1,
-    label: 'Seitenansicht',
-    original: 'https://images.unsplash.com/photo-1542362567-b07e54358753?w=600&q=40&fit=crop&auto=format',
-    cutout:     'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=600&q=85&fit=crop&auto=format',
-    background: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600&q=85&fit=crop&auto=format',
-    quality:    'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=600&q=90&fit=crop&auto=format',
-  },
-  {
-    id: 2,
-    label: 'Heckansicht',
-    original: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=600&q=40&fit=crop&auto=format',
-    cutout:     'https://images.unsplash.com/photo-1549317661-cf369843b03a?w=600&q=85&fit=crop&auto=format',
-    background: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=600&q=85&fit=crop&auto=format',
-    quality:    'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=600&q=90&fit=crop&auto=format',
   },
 ]
 
@@ -433,7 +333,7 @@ export default function NeuesInseratPage() {
                   <CardContent className="space-y-3">
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <Input
-                        placeholder="z.B. WBA52AG0X0FH12345"
+                        placeholder="z.B. W1N2546021F789012"
                         value={vin}
                         onChange={e => setVin(e.target.value.toUpperCase())}
                         className="font-mono text-sm tracking-wider"
@@ -495,7 +395,7 @@ export default function NeuesInseratPage() {
                             ['Marke', vinData.make], ['Modell', vinData.model],
                             ['Baujahr', vinData.year], ['Erstzulassung', vinData.firstRegistration],
                             ['Kilometerstand', `${vinData.mileage} km`], ['HU bis', vinData.hu],
-                            ['Kraftstoff', 'Diesel'], ['Getriebe', 'Automatik (8-Gang)'],
+                            ['Kraftstoff', 'Benzin'], ['Getriebe', 'Automatik (9G-TRONIC)'],
                             ['Leistung', `${vinData.power} PS`], ['Hubraum', `${vinData.displacement} ccm`],
                             ['Farbe', vinData.color], ['Türen / Sitze', `${vinData.doors} / ${vinData.seats}`],
                           ].map(([label, value]) => (
@@ -561,7 +461,7 @@ export default function NeuesInseratPage() {
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
                             <Input className="pl-7" defaultValue={vinData.price} />
                           </div>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">Marktpreis ~€ 41.200</span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">Marktpreis ~€ 54.800</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -583,11 +483,11 @@ export default function NeuesInseratPage() {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Marke</Label>
-                        <Input placeholder="z.B. BMW" value={formData.make} onChange={setField('make')} />
+                        <Input placeholder="z.B. Mercedes-Benz" value={formData.make} onChange={setField('make')} />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Modell</Label>
-                        <Input placeholder="z.B. 520d Touring" value={formData.model} onChange={setField('model')} />
+                        <Input placeholder="z.B. GLC 300 4MATIC AMG Line" value={formData.model} onChange={setField('model')} />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

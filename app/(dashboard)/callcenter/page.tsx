@@ -1,174 +1,71 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
+import { Shield } from 'lucide-react'
 import { useCallbackStore } from '@/lib/stores/callback-store'
-import { cn, formatTimeAgo } from '@/lib/utils'
-import { CheckCircle, AlertTriangle } from 'lucide-react'
-import type { Callback, CallbackStatus } from '@/lib/types'
+import { CallcenterKpiRow } from '@/components/callcenter/callcenter-kpi-row'
+import { CallcenterToolbar } from '@/components/callcenter/callcenter-toolbar'
+import { CallcenterTableView } from '@/components/callcenter/callcenter-table-view'
+import { CallcenterAdvisorView } from '@/components/callcenter/callcenter-advisor-view'
+import { NewCallbackDialog } from '@/components/callcenter/callcenter-new-callback-dialog'
+import { CompletionDialog } from '@/components/callcenter/callcenter-completion-dialog'
+import { ReassignDialog } from '@/components/callcenter/callcenter-reassign-dialog'
+import { TranscriptSheet } from '@/components/callcenter/callcenter-transcript-sheet'
+import type { CallbackPriority } from '@/lib/types'
 
 type FilterMode = 'aktiv' | 'alle' | 'erledigt'
+type ViewMode = 'tabelle' | 'berater'
 
-const STATUS_ORDER: Record<CallbackStatus, number> = {
-  ueberfaellig: 0,
-  in_bearbeitung: 1,
-  offen: 2,
-  erledigt: 3,
-}
-
-const PRIORITY_ORDER: Record<string, number> = { dringend: 0, hoch: 1, mittel: 2, niedrig: 3 }
-
-function getStatusDot(status: CallbackStatus): string {
-  switch (status) {
-    case 'ueberfaellig': return 'bg-red-500'
-    case 'in_bearbeitung': return 'bg-amber-400'
-    case 'offen': return 'bg-blue-400'
-    case 'erledigt': return 'bg-emerald-400'
-  }
-}
-
-function getTimeClass(cb: Callback): string {
-  if (cb.status === 'ueberfaellig') return 'text-red-600 font-semibold'
-  if (cb.status === 'erledigt') return 'text-muted-foreground'
-  const diffMs = new Date(cb.slaDeadline).getTime() - Date.now()
-  if (diffMs < 0) return 'text-red-600 font-semibold'
-  if (diffMs < 30 * 60 * 1000) return 'text-amber-600 font-medium'
-  return 'text-muted-foreground'
-}
-
-interface GroupData {
-  name: string
-  callbacks: Callback[]
-  openCount: number
-  overdueCount: number
-  completedTodayCount: number
-}
-
-function AdvisorSection({ group, onComplete }: { group: GroupData; onComplete: (id: string) => void }) {
-  const initials = group.name.split(' ').map(n => n[0]).join('')
-  return (
-    <Card className={cn('overflow-hidden', group.overdueCount > 0 && 'border-red-200 dark:border-red-900/40')}>
-      {/* Advisor header */}
-      <div className="flex flex-col gap-2 px-4 py-2.5 bg-muted/30 border-b sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2.5">
-          <Avatar className="h-7 w-7">
-            <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <span className="font-semibold text-sm">{group.name}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {group.overdueCount > 0 && (
-            <span className="flex items-center gap-1 font-semibold text-red-600">
-              <AlertTriangle className="h-3 w-3" />
-              {group.overdueCount} überfällig
-            </span>
-          )}
-          {group.openCount > 0 && (
-            <span className="text-muted-foreground">{group.openCount} offen</span>
-          )}
-          {group.completedTodayCount > 0 && (
-            <span className="text-emerald-600">{group.completedTodayCount} erledigt</span>
-          )}
-        </div>
-      </div>
-
-      {/* Callback rows */}
-      <div className="divide-y divide-border/50">
-        {group.callbacks.map(cb => (
-          <CallbackRow key={cb.id} cb={cb} onComplete={onComplete} />
-        ))}
-      </div>
-    </Card>
-  )
-}
-
-function CallbackRow({ cb, onComplete }: { cb: Callback; onComplete: (id: string) => void }) {
-  const isCompleted = cb.status === 'erledigt'
-  const isOverdue = cb.status === 'ueberfaellig'
-
-  return (
-    <div className={cn(
-      'flex items-start gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors group',
-      isOverdue && 'bg-red-50/40 dark:bg-red-950/10',
-      isCompleted && 'opacity-50',
-    )}>
-      {/* Status dot */}
-      <div className="flex-shrink-0 mt-[7px]">
-        <div className={cn('w-2 h-2 rounded-full', getStatusDot(cb.status))} />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-semibold">{cb.customerName}</span>
-          {(cb.priority === 'dringend' || cb.priority === 'hoch') && !isCompleted && (
-            <span className={cn(
-              'text-[10px] font-bold uppercase tracking-wide px-1 rounded',
-              cb.priority === 'dringend'
-                ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
-                : 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400',
-            )}>
-              {cb.priority}
-            </span>
-          )}
-          <span className="text-xs text-muted-foreground">{cb.customerPhone}</span>
-        </div>
-
-        {/* Anliegen — the most important line */}
-        <p className={cn('text-sm', isCompleted && 'line-through decoration-muted-foreground/30')}>
-          {cb.reason}
-        </p>
-
-        {cb.notes && !isCompleted && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{cb.notes}</p>
-        )}
-        {isCompleted && cb.completionNotes && (
-          <p className="text-xs text-emerald-700 dark:text-emerald-400 truncate mt-0.5">
-            ✓ {cb.completionNotes}
-          </p>
-        )}
-      </div>
-
-      {/* Time + action */}
-      <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
-        <span className={cn('text-xs tabular-nums whitespace-nowrap', getTimeClass(cb))}>
-          {formatTimeAgo(cb.createdAt)}
-        </span>
-        {!isCompleted && (
-          <Button
-            size="sm"
-            variant={isOverdue ? 'destructive' : 'ghost'}
-            className="h-6 w-6 p-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-            onClick={() => onComplete(cb.id)}
-            title="Als erledigt markieren"
-          >
-            <CheckCircle className="h-3.5 w-3.5" />
-          </Button>
-        )}
-      </div>
-    </div>
-  )
+const NEXT_PRIORITY: Record<string, CallbackPriority> = {
+  niedrig: 'mittel',
+  mittel: 'hoch',
+  hoch: 'dringend',
 }
 
 export default function CallcenterPage() {
   const callbacks = useCallbackStore(s => s.callbacks)
   const updateCallbackStatus = useCallbackStore(s => s.updateCallbackStatus)
-  const [filter, setFilter] = useState<FilterMode>('aktiv')
-  const [completeDialog, setCompleteDialog] = useState<string | null>(null)
-  const [completionNotes, setCompletionNotes] = useState('')
+  const createCallback = useCallbackStore(s => s.createCallback)
+  const reassignCallback = useCallbackStore(s => s.reassignCallback)
+  const escalateCallback = useCallbackStore(s => s.escalateCallback)
 
-  const handleComplete = (id: string) => {
-    updateCallbackStatus({ callbackId: id, status: 'erledigt', completionNotes })
-    setCompleteDialog(null)
-    setCompletionNotes('')
-  }
+  // UI state
+  const [viewMode, setViewMode] = useState<ViewMode>('tabelle')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<FilterMode>('aktiv')
+  const [advisorFilter, setAdvisorFilter] = useState('alle')
+  const [sourceFilter, setSourceFilter] = useState('alle')
 
+  // Dialog/sheet states
+  const [newCallbackOpen, setNewCallbackOpen] = useState(false)
+  const [completeDialogId, setCompleteDialogId] = useState<string | null>(null)
+  const [reassignDialogId, setReassignDialogId] = useState<string | null>(null)
+  const [transcriptSheetId, setTranscriptSheetId] = useState<string | null>(null)
+
+  // Filtered callbacks
+  const filteredCallbacks = useMemo(() => {
+    let result = callbacks
+
+    if (statusFilter === 'aktiv') result = result.filter(cb => cb.status !== 'erledigt')
+    else if (statusFilter === 'erledigt') result = result.filter(cb => cb.status === 'erledigt')
+
+    if (advisorFilter !== 'alle') result = result.filter(cb => cb.assignedAdvisor === advisorFilter)
+    if (sourceFilter !== 'alle') result = result.filter(cb => cb.source === sourceFilter)
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(cb =>
+        cb.customerName.toLowerCase().includes(q) ||
+        cb.customerPhone.includes(q) ||
+        cb.assignedAdvisor.toLowerCase().includes(q) ||
+        cb.reason.toLowerCase().includes(q)
+      )
+    }
+
+    return result
+  }, [callbacks, statusFilter, advisorFilter, sourceFilter, searchQuery])
+
+  // KPIs
   const todayStr = new Date().toDateString()
   const totalOverdue = callbacks.filter(cb => cb.status === 'ueberfaellig').length
   const totalActive = callbacks.filter(cb => cb.status !== 'erledigt').length
@@ -176,123 +73,129 @@ export default function CallcenterPage() {
     cb.status === 'erledigt' && cb.completedAt &&
     new Date(cb.completedAt).toDateString() === todayStr
   ).length
+  const aiHandled = callbacks.filter(cb => cb.takenBy.type === 'ki').length
+  const completedCbs = callbacks.filter(cb => cb.status === 'erledigt')
+  const withinSla = completedCbs.filter(cb =>
+    cb.completedAt && new Date(cb.completedAt) <= new Date(cb.slaDeadline)
+  ).length
+  const slaPercentage = completedCbs.length > 0
+    ? Math.round((withinSla / completedCbs.length) * 100)
+    : 100
 
   const advisorNames = useMemo(
     () => [...new Set(callbacks.map(cb => cb.assignedAdvisor))].sort(),
     [callbacks],
   )
 
-  const groups = useMemo<GroupData[]>(() => {
-    const base =
-      filter === 'aktiv' ? callbacks.filter(cb => cb.status !== 'erledigt') :
-      filter === 'erledigt' ? callbacks.filter(cb => cb.status === 'erledigt') :
-      callbacks
+  const findCallback = (id: string | null) =>
+    id ? callbacks.find(cb => cb.id === id) ?? null : null
 
-    return advisorNames
-      .map(name => {
-        const all = callbacks.filter(cb => cb.assignedAdvisor === name)
-        const shown = base
-          .filter(cb => cb.assignedAdvisor === name)
-          .sort((a, b) =>
-            STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
-            PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
-          )
-        return {
-          name,
-          callbacks: shown,
-          openCount: all.filter(cb => cb.status === 'offen' || cb.status === 'in_bearbeitung').length,
-          overdueCount: all.filter(cb => cb.status === 'ueberfaellig').length,
-          completedTodayCount: all.filter(cb =>
-            cb.status === 'erledigt' && cb.completedAt &&
-            new Date(cb.completedAt).toDateString() === todayStr
-          ).length,
-        }
+  const handleEscalate = (id: string) => {
+    const cb = findCallback(id)
+    if (cb && NEXT_PRIORITY[cb.priority]) {
+      escalateCallback({
+        callbackId: id,
+        newPriority: NEXT_PRIORITY[cb.priority],
+        escalatedBy: 'Admin',
       })
-      .filter(g => g.callbacks.length > 0)
-      // Advisors with overdue tasks float to the top
-      .sort((a, b) => b.overdueCount - a.overdueCount || b.openCount - a.openCount)
-  }, [callbacks, advisorNames, filter, todayStr])
+    }
+  }
 
   return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Callcenter</h1>
-          <p className="text-sm text-muted-foreground">Rückrufe nach Berater</p>
+    <div className="space-y-4">
+      {/* Admin Header */}
+      <div>
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-primary" />
+          <h1 className="text-2xl font-bold">
+            <span className="sm:hidden">Callcenter</span>
+            <span className="hidden sm:inline">Callcenter — Administration</span>
+          </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:justify-end">
-          {totalOverdue > 0 && (
-            <span className="flex items-center gap-1 text-red-600 font-semibold">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              {totalOverdue} überfällig
-            </span>
-          )}
-          <span className="text-muted-foreground">{totalActive} aktiv</span>
-          <span className="text-emerald-600">{todayCompleted} heute erledigt</span>
-        </div>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Rückruf-Management & Serviceberater-Tracking
+        </p>
       </div>
 
-      {/* Filter pills */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {([
-          { value: 'aktiv', label: 'Offen & Überfällig' },
-          { value: 'alle', label: 'Alle' },
-          { value: 'erledigt', label: 'Erledigt' },
-        ] as { value: FilterMode; label: string }[]).map(f => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={cn(
-              'px-3 py-1 text-xs rounded-full border font-medium transition-colors whitespace-nowrap',
-              filter === f.value
-                ? 'bg-foreground text-background border-foreground'
-                : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/50',
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      {/* KPI Row */}
+      <CallcenterKpiRow
+        overdue={totalOverdue}
+        active={totalActive}
+        completedToday={todayCompleted}
+        slaPercentage={slaPercentage}
+        aiHandled={aiHandled}
+      />
 
-      {/* Advisor groups */}
-      <div className="space-y-2.5">
-        {groups.map(group => (
-          <AdvisorSection key={group.name} group={group} onComplete={setCompleteDialog} />
-        ))}
-        {groups.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <CheckCircle className="h-10 w-10 mb-3 text-emerald-500 opacity-60" />
-            <p className="text-sm font-medium">Keine offenen Rückrufe</p>
-            <p className="text-xs opacity-70">Alle Aufgaben erledigt</p>
-          </div>
-        )}
-      </div>
+      {/* Toolbar */}
+      <CallcenterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        advisorFilter={advisorFilter}
+        onAdvisorFilterChange={setAdvisorFilter}
+        sourceFilter={sourceFilter}
+        onSourceFilterChange={setSourceFilter}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onNewCallback={() => setNewCallbackOpen(true)}
+        advisorNames={advisorNames}
+      />
 
-      {/* Completion dialog */}
-      <Dialog open={!!completeDialog} onOpenChange={() => setCompleteDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rückruf als erledigt markieren</DialogTitle>
-          </DialogHeader>
-          <Textarea
-            placeholder="Notiz zum Abschluss (Pflichtfeld)..."
-            value={completionNotes}
-            onChange={e => setCompletionNotes(e.target.value)}
-            rows={3}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCompleteDialog(null)}>Abbrechen</Button>
-            <Button
-              disabled={!completionNotes.trim()}
-              onClick={() => completeDialog && handleComplete(completeDialog)}
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Erledigt
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Main Content */}
+      {viewMode === 'tabelle' ? (
+        <CallcenterTableView
+          callbacks={filteredCallbacks}
+          onComplete={setCompleteDialogId}
+          onReassign={setReassignDialogId}
+          onEscalate={handleEscalate}
+          onViewTranscript={setTranscriptSheetId}
+        />
+      ) : (
+        <CallcenterAdvisorView
+          callbacks={filteredCallbacks}
+          allCallbacks={callbacks}
+          onComplete={setCompleteDialogId}
+          onReassign={setReassignDialogId}
+          onEscalate={handleEscalate}
+          onViewTranscript={setTranscriptSheetId}
+        />
+      )}
+
+      {/* Dialogs & Sheets */}
+      <NewCallbackDialog
+        open={newCallbackOpen}
+        onOpenChange={setNewCallbackOpen}
+        onCreate={createCallback}
+        advisorNames={advisorNames}
+      />
+      <CompletionDialog
+        open={!!completeDialogId}
+        callbackId={completeDialogId}
+        onOpenChange={() => setCompleteDialogId(null)}
+        onComplete={(id, notes) => {
+          updateCallbackStatus({ callbackId: id, status: 'erledigt', completionNotes: notes })
+          setCompleteDialogId(null)
+        }}
+      />
+      <ReassignDialog
+        open={!!reassignDialogId}
+        callback={findCallback(reassignDialogId)}
+        onOpenChange={() => setReassignDialogId(null)}
+        onReassign={(id, newAdvisor) => {
+          reassignCallback({ callbackId: id, newAdvisor, reassignedBy: 'Admin' })
+          setReassignDialogId(null)
+        }}
+        advisorNames={advisorNames}
+      />
+      <TranscriptSheet
+        open={!!transcriptSheetId}
+        callback={findCallback(transcriptSheetId)}
+        onOpenChange={() => setTranscriptSheetId(null)}
+        onReassign={(id) => { setTranscriptSheetId(null); setReassignDialogId(id) }}
+        onEscalate={(id) => { setTranscriptSheetId(null); handleEscalate(id) }}
+        onComplete={(id) => { setTranscriptSheetId(null); setCompleteDialogId(id) }}
+      />
     </div>
   )
 }

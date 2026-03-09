@@ -26,8 +26,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     )
   }
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, hasChildren?: boolean) => {
     if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/'
+    if (hasChildren) {
+      const basePath = '/' + href.split('/')[1]
+      return pathname.startsWith(basePath)
+    }
     return pathname.startsWith(href)
   }
 
@@ -68,9 +72,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <nav className="flex flex-col gap-0.5 px-2">
           {navigation.map((item) => {
             const Icon = item.icon
-            const active = isActive(item.href)
-            const expanded = expandedItems.includes(item.title)
             const hasChildren = item.children && item.children.length > 0
+            const active = isActive(item.href, hasChildren)
+            const expanded = expandedItems.includes(item.title)
 
             if (collapsed) {
               return (

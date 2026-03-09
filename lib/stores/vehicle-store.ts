@@ -1,11 +1,11 @@
 'use client'
 
 import { create } from 'zustand'
-import { mockVehicles } from '@/lib/mock-data'
+import { mercedesInventoryVehicles } from '@/lib/mercedes-inventory'
 import { inferOwnerRoleFromText, vehicleBlockerLabels, vehicleOwnerRoleLabels, vehicleStatusLabels } from '@/lib/vehicle-operations'
 import type { Vehicle, VehicleBlocker, VehicleLocation, VehicleOwnerRole, VehicleStatus } from '@/lib/types'
 
-const initialVehicles = mockVehicles.map((vehicle) => ({
+const initialVehicles = mercedesInventoryVehicles.map((vehicle) => ({
   ...vehicle,
   history: [...vehicle.history],
 }))

@@ -75,10 +75,21 @@ function ActivityItem({ entry }: { entry: ActivityEntry }) {
           <Icon className={cn('h-4 w-4', color)} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-medium truncate">
               {entry.subject}
             </span>
+            <div className="flex items-center gap-1.5 shrink-0 sm:hidden">
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                {formatTimeAgo(entry.timestamp)}
+              </span>
+              <ChevronRight
+                className={cn(
+                  'h-3.5 w-3.5 text-muted-foreground/40 transition-transform duration-200',
+                  expanded && 'rotate-90'
+                )}
+              />
+            </div>
           </div>
           <p className="text-[13px] text-muted-foreground mt-0.5">
             <span className="font-medium text-foreground/80">
@@ -88,7 +99,7 @@ function ActivityItem({ entry }: { entry: ActivityEntry }) {
             <span>{entry.description}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0 mt-1">
+        <div className="hidden items-center gap-2.5 shrink-0 mt-1 sm:flex">
           <div className="text-right">
             <p className="text-xs text-muted-foreground whitespace-nowrap">
               {entry.user} · {formatTimeAgo(entry.timestamp)}

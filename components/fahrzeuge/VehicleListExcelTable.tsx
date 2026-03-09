@@ -186,8 +186,8 @@ export default function VehicleListExcelTable({ vehicles }: { vehicles: Vehicle[
   return (
     <div className="rounded-xl border border-border/60 bg-card">
       <TooltipProvider delayDuration={150}>
-        <div className="max-h-[calc(100vh-260px)] overflow-y-auto">
-          <Table className="w-full table-fixed text-[12px]">
+        <div className="max-h-[calc(100vh-260px)] overflow-auto">
+          <Table className="w-full min-w-[1000px] table-fixed text-[12px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className={cn(headerClass, 'w-[25%]')}>Fahrzeug</TableHead>

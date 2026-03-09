@@ -2,11 +2,15 @@
 
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { featureVisibility } from '@/lib/constants'
 import { mockDashboardStats, mockActivity } from '@/lib/mock-data'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { Wrench, Phone, FileText, ReceiptText, MessageSquare, ShieldCheck, ArrowUpRight, AlertTriangle, Clock } from 'lucide-react'
 
 const stats = mockDashboardStats
+const visibleActivities = featureVisibility.buchhaltung
+  ? mockActivity
+  : mockActivity.filter((entry) => entry.module !== 'buchhaltung')
 
 export default function DashboardPage() {
   return (
@@ -18,7 +22,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${featureVisibility.buchhaltung ? 'xl:grid-cols-6' : 'xl:grid-cols-5'}`}>
 
         {/* 1. Werkstatt – wartende Fahrzeuge */}
         <Link href="/fahrzeuge/werkstatt">
@@ -110,34 +114,35 @@ export default function DashboardPage() {
           </Card>
         </Link>
 
-        {/* 4. Nachrichten */}
-        <Link href="/buchhaltung">
-          <Card className="group hover:shadow-md transition-all duration-200 cursor-pointer border-border/60 h-full">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-md bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center shrink-0">
-                    <ReceiptText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+        {featureVisibility.buchhaltung && (
+          <Link href="/buchhaltung">
+            <Card className="group hover:shadow-md transition-all duration-200 cursor-pointer border-border/60 h-full">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-md bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center shrink-0">
+                      <ReceiptText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <span className="text-sm font-semibold">Buchhaltung</span>
                   </div>
-                  <span className="text-sm font-semibold">Buchhaltung</span>
+                  <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
                 </div>
-                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
-              </div>
-              <div className="text-3xl font-bold tracking-tight tabular-nums">{stats.buchhaltung.offen}</div>
-              <p className="text-xs text-muted-foreground mt-0.5">offene Belege</p>
-              <div className="mt-3 pt-2.5 border-t border-border/40">
-                {stats.buchhaltung.kritisch > 0 ? (
-                  <span className="text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3 shrink-0" />
-                    {stats.buchhaltung.kritisch} kritisch
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Alles im Plan</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+                <div className="text-3xl font-bold tracking-tight tabular-nums">{stats.buchhaltung.offen}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">offene Belege</p>
+                <div className="mt-3 pt-2.5 border-t border-border/40">
+                  {stats.buchhaltung.kritisch > 0 ? (
+                    <span className="text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      {stats.buchhaltung.kritisch} kritisch
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Alles im Plan</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         {/* 5. Nachrichten */}
         <Link href="/nachrichten">
@@ -203,7 +208,7 @@ export default function DashboardPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ActivityFeed activities={mockActivity} />
+          <ActivityFeed activities={visibleActivities} />
         </CardContent>
       </Card>
     </div>

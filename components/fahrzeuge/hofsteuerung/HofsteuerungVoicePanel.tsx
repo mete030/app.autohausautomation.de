@@ -17,29 +17,29 @@ import {
 import { cn } from '@/lib/utils'
 
 const sampleCommands = [
-  'BMW 320d wartet auf Teile in der Werkstatt, nächster Schritt Freigabe Serviceleiter.',
-  'Audi A4 ist fertig für Fotos und geht an Foto Team.',
-  'GLC steht jetzt auf Hof B, bitte an Verkauf für Probefahrt.',
-  'BMW 118i hat noch keinen nächsten Schritt, bitte an Service.',
-  'X3 ist beim Lackierer, wartet auf Lackierer und danach zurück in Werkstatt.',
+  'C 220 d T-Modell wartet auf Teile in der Werkstatt, nächster Schritt Freigabe Serviceleiter.',
+  'CLA 250 e ist fertig für Fotos und geht an Foto Team.',
+  'GLC 300 steht jetzt auf Hof B, bitte an Verkauf für Probefahrt.',
+  'A 200 hat noch keinen nächsten Schritt, bitte an Service.',
+  'GLE 450 d ist beim Lackierer, wartet auf Lackierer und danach zurück in Werkstatt.',
 ] as const
 
 function CommandSummary({ command }: { command: ParsedVoiceCommand }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-2xl border border-border/70 bg-background/80 p-3 sm:p-4">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Erkannt</p>
-          <p className="mt-1 text-sm font-semibold">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:text-xs">Erkannt</p>
+          <p className="mt-0.5 text-sm font-semibold sm:mt-1">
             {command.vehicle ? `${command.vehicle.make} ${command.vehicle.model}` : 'Kein Fahrzeug erkannt'}
           </p>
         </div>
-        <Badge variant={command.canApply ? 'default' : 'secondary'}>
-          {command.canApply ? 'Bereit zum Übernehmen' : 'Prüfung nötig'}
+        <Badge variant={command.canApply ? 'default' : 'secondary'} className="shrink-0 text-[10px] sm:text-xs">
+          {command.canApply ? 'Bereit' : 'Prüfung nötig'}
         </Badge>
       </div>
 
-      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+      <div className="mt-3 grid gap-2 text-sm sm:mt-4 sm:grid-cols-2">
         <div className="rounded-xl bg-muted/60 px-3 py-2">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Status</p>
           <p className="mt-1 font-medium">{command.status ? vehicleStatusLabels[command.status] : 'Unverändert'}</p>
@@ -83,7 +83,7 @@ export function HofsteuerungVoicePanel() {
   const lastUndoSnapshot = useVehicleStore((state) => state.lastUndoSnapshot)
   const { parseTranscript } = useVoiceParser()
 
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const [draftTranscript, setDraftTranscript] = useState('')
   const [pendingCommand, setPendingCommand] = useState<ParsedVoiceCommand | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -147,7 +147,7 @@ export function HofsteuerungVoicePanel() {
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="group flex w-full items-center gap-4 rounded-2xl border border-border/70 bg-card/80 px-5 py-3.5 text-left transition-all hover:border-primary/30 hover:shadow-sm"
+        className="group flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card/80 px-3.5 py-3 text-left transition-all hover:border-primary/30 hover:shadow-sm sm:gap-4 sm:px-5 sm:py-3.5"
       >
         <div
           role="button"
@@ -162,15 +162,16 @@ export function HofsteuerungVoicePanel() {
               handleMicClick()
             }
           }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary transition-transform hover:scale-105"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary transition-transform hover:scale-105 sm:h-10 sm:w-10"
         >
           <Mic className="h-4.5 w-4.5" />
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">1. Update sprechen oder tippen</p>
+          <p className="text-sm font-medium">Update sprechen oder tippen</p>
           <p className="truncate text-xs text-muted-foreground">
-            Sag z.B. &quot;BMW 320d wartet auf Teile in der Werkstatt&quot;
+            <span className="sm:hidden">z.B. &quot;C 220 d wartet auf Teile&quot;</span>
+            <span className="hidden sm:inline">Sag z.B. &quot;C 220 d wartet auf Teile in der Werkstatt&quot;</span>
           </p>
         </div>
 
@@ -183,13 +184,14 @@ export function HofsteuerungVoicePanel() {
   return (
     <div className="rounded-2xl border border-border/70 bg-card/80 shadow-sm">
       {/* Header bar */}
-      <div className="flex items-center justify-between border-b border-border/50 px-5 py-3">
-        <div className="flex items-center gap-3">
-          <Mic className="h-4 w-4 text-primary" />
-          <div>
-            <p className="text-sm font-medium">1. Update sprechen oder tippen</p>
+      <div className="flex items-center justify-between border-b border-border/50 px-3.5 py-2.5 sm:px-5 sm:py-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <Mic className="h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Update sprechen oder tippen</p>
             <p className="text-xs text-muted-foreground">
-              Sag einfach, was mit dem Auto los ist. Status, Standort, Blocker und nächster Schritt werden automatisch erkannt.
+              <span className="sm:hidden">Status, Standort & Blocker werden erkannt.</span>
+              <span className="hidden sm:inline">Sag einfach, was mit dem Auto los ist. Status, Standort, Blocker und nächster Schritt werden automatisch erkannt.</span>
             </p>
           </div>
         </div>
@@ -205,22 +207,23 @@ export function HofsteuerungVoicePanel() {
         )}
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-3 p-3.5 sm:space-y-4 sm:p-5">
         {/* Mic + Transcript row */}
-        <div className="flex gap-4">
+        <div className="flex gap-3 sm:gap-4">
           <button
             type="button"
             onClick={handleMicClick}
             className={cn(
-              'flex h-16 w-16 shrink-0 items-center justify-center rounded-full border shadow-sm transition-all duration-200',
+              'flex shrink-0 items-center justify-center rounded-full border shadow-sm transition-all duration-200',
+              'h-12 w-12 sm:h-16 sm:w-16',
               state === 'idle' && 'border-primary/20 bg-primary/10 text-primary hover:scale-[1.04]',
               state === 'listening' && 'border-red-300 bg-red-500 text-white shadow-lg shadow-red-500/20 scale-[1.04]',
               state === 'processing' && 'border-primary/20 bg-primary/10 text-primary'
             )}
           >
-            {state === 'idle' && <Mic className="h-6 w-6" />}
-            {state === 'listening' && <MicOff className="h-6 w-6" />}
-            {state === 'processing' && <Loader2 className="h-6 w-6 animate-spin" />}
+            {state === 'idle' && <Mic className="h-5 w-5 sm:h-6 sm:w-6" />}
+            {state === 'listening' && <MicOff className="h-5 w-5 sm:h-6 sm:w-6" />}
+            {state === 'processing' && <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />}
           </button>
 
           <div className="min-w-0 flex-1 space-y-2">
@@ -240,8 +243,8 @@ export function HofsteuerungVoicePanel() {
             <Textarea
               value={activeTranscript}
               onChange={(event) => setDraftTranscript(event.target.value)}
-              placeholder='z.B. "BMW 320d wartet auf Teile in der Werkstatt, nächster Schritt Freigabe Serviceleiter."'
-              className="min-h-[80px] resize-none border-0 bg-muted/40 shadow-none focus-visible:ring-0"
+              placeholder='z.B. "C 220 d wartet auf Teile in der Werkstatt"'
+              className="min-h-[64px] resize-none border-0 bg-muted/40 shadow-none focus-visible:ring-0 sm:min-h-[80px]"
             />
 
             <div className="flex flex-wrap items-center gap-2">
@@ -270,17 +273,17 @@ export function HofsteuerungVoicePanel() {
           </div>
         </div>
 
-        {/* Sample commands — compact pills */}
-        <div className="flex flex-wrap gap-1.5">
+        {/* Sample commands — horizontally scrollable on mobile, wrapping on desktop */}
+        <div className="-mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 pb-1 scrollbar-none sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {sampleCommands.map((sample) => (
             <button
               key={sample}
               type="button"
               onClick={() => runTranscript(sample)}
-              className="flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:shrink"
             >
-              <Wand2 className="h-3 w-3" />
-              <span className="max-w-[200px] truncate">{sample}</span>
+              <Wand2 className="h-3 w-3 shrink-0" />
+              <span className="max-w-[180px] truncate sm:max-w-[200px]">{sample}</span>
             </button>
           ))}
         </div>

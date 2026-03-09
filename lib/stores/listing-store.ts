@@ -1,10 +1,10 @@
 'use client'
 
 import { create } from 'zustand'
-import { mockListings } from '@/lib/mock-data'
+import { mercedesInventoryListings } from '@/lib/mercedes-inventory'
 import type { Listing, ListingStatus } from '@/lib/types'
 
-const initialListings = mockListings.map((listing) => ({ ...listing }))
+const initialListings = mercedesInventoryListings.map((listing) => ({ ...listing, images: [...listing.images] }))
 
 interface ListingStoreState {
   listings: Listing[]

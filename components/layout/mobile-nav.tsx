@@ -16,8 +16,12 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, hasChildren?: boolean) => {
     if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/'
+    if (hasChildren) {
+      const basePath = '/' + href.split('/')[1]
+      return pathname.startsWith(basePath)
+    }
     return pathname.startsWith(href)
   }
 
@@ -45,7 +49,8 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           <nav className="flex flex-col gap-1 px-2">
             {navigation.map((item) => {
               const Icon = item.icon
-              const active = isActive(item.href)
+              const hasChildren = Boolean(item.children?.length)
+              const active = isActive(item.href, hasChildren)
 
               return (
                 <div key={item.title}>

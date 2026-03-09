@@ -4,6 +4,7 @@ import { use, useState } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { useListingStore } from '@/lib/stores/listing-store'
+import { mercedesMedia } from '@/lib/mercedes-inventory'
 import { formatCurrency } from '@/lib/utils'
 import { priceCategoryConfig } from '@/lib/constants'
 import { Card, CardContent } from '@/components/ui/card'
@@ -91,43 +92,7 @@ const statusColors: Record<ListingStatus, string> = {
   archiviert: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
 }
 
-// Dummy car photos per listing
-const DETAIL_PHOTOS: Record<string, string[]> = {
-  l1: [
-    'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=1200&q=85&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1542362567-b07e54358753?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=400&q=80&fit=crop&auto=format',
-  ],
-  l2: [
-    'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=1200&q=85&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1571607388263-1044f9ea01fb?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1526726538690-5cbf956ae2fd?w=400&q=80&fit=crop&auto=format',
-  ],
-  l3: [
-    'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=1200&q=85&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1549317661-cf369843b03a?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400&q=80&fit=crop&auto=format',
-  ],
-  l4: [
-    'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1200&q=85&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1542362567-b07e54358753?w=400&q=80&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=400&q=80&fit=crop&auto=format',
-  ],
-}
-
-const FALLBACK_PHOTOS = [
-  'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1200&q=85&fit=crop&auto=format',
-  'https://images.unsplash.com/photo-1590362891991-f776e747a588?w=400&q=80&fit=crop&auto=format',
-  'https://images.unsplash.com/photo-1583121274602-3e2422c46f28?w=400&q=80&fit=crop&auto=format',
-]
+const FALLBACK_PHOTOS = [mercedesMedia.glcExterior]
 
 type ExportStatus = 'idle' | 'exporting' | 'done'
 
@@ -146,7 +111,7 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
 
   if (!listing) return notFound()
 
-  const photos = DETAIL_PHOTOS[listing.id] ?? FALLBACK_PHOTOS
+  const photos = listing.images.length > 0 ? listing.images : FALLBACK_PHOTOS
   const priceConfig = priceCategoryConfig[listing.priceCategory]
   const exportedCount = Object.values(exportStatus).filter(s => s === 'done').length
   const alreadyExported = exportedCount > 0

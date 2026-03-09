@@ -101,6 +101,14 @@ export interface VehicleListRowLegacy {
 
 export type CallbackStatus = 'offen' | 'in_bearbeitung' | 'erledigt' | 'ueberfaellig'
 export type CallbackPriority = 'niedrig' | 'mittel' | 'hoch' | 'dringend'
+export type CallSource = 'telefon' | 'website' | 'whatsapp' | 'ki_agent' | 'manuell'
+export type AgentType = 'mensch' | 'ki'
+
+export interface CallAgent {
+  id: string
+  name: string
+  type: AgentType
+}
 
 export interface Callback {
   id: string
@@ -116,6 +124,14 @@ export interface Callback {
   completedAt?: string
   completionNotes?: string
   slaDeadline: string // ISO datetime (2h after creation)
+  takenBy: CallAgent
+  callTranscript?: string
+  callDuration?: number // seconds
+  source: CallSource
+  reassignedFrom?: string
+  reassignedAt?: string
+  escalatedAt?: string
+  escalatedBy?: string
 }
 
 export interface Advisor {
@@ -190,12 +206,95 @@ export interface Message {
 // ---- KYC & Verifizierung (Problem 5) ----
 
 export type KYCStatus = 'eingereicht' | 'in_pruefung' | 'verifiziert' | 'abgelehnt' | 'manuell_pruefen'
-export type CustomerType = 'privat' | 'gewerbe'
+
+export type CustomerSegment =
+  | 'privat'
+  | 'gewerbe'
+  | 'flotte'
+  | 'haendler'
+  | 'export'
+  | 'diplomat'
+
+// Backward-compatible alias
+export type CustomerType = CustomerSegment
+
+// ---- KYC Document Verification System ----
+
+export type KYCDocumentCategory =
+  | 'identitaetsnachweis'
+  | 'unternehmensnachweis'
+  | 'steuernachweis'
+  | 'handelsnachweis'
+  | 'transportnachweis'
+  | 'sondernachweis'
+
+export type KYCVerificationMethod = 'automated' | 'manual' | 'hybrid'
+
+export type AutomationSource =
+  | 'ocr_security'
+  | 'vies'
+  | 'bundesanzeiger'
+  | 'transparenzregister'
+  | 'email_link'
+  | 'none'
+
+export type KYCDocumentVerificationStatus =
+  | 'nicht_eingereicht'
+  | 'hochgeladen'
+  | 'wird_geprueft'
+  | 'verifiziert'
+  | 'abgelehnt'
+  | 'manuell_pruefen'
+
+export interface KYCDocumentField {
+  key: string
+  label: string
+  placeholder: string
+  type: 'text' | 'date' | 'select'
+  options?: { value: string; label: string }[]
+  validation?: string
+}
+
+export interface KYCDocumentConfig {
+  id: string
+  name: string
+  description: string
+  category: KYCDocumentCategory
+  verificationMethod: KYCVerificationMethod
+  automationSource: AutomationSource
+  required: boolean
+  requiredFields?: KYCDocumentField[]
+  acceptedFileTypes?: string[]
+  maxFileSizeMB?: number
+}
+
+export interface KYCDocumentSubmission {
+  documentConfigId: string
+  status: KYCDocumentVerificationStatus
+  uploadedAt?: string
+  verifiedAt?: string
+  fileUrl?: string
+  fileName?: string
+  fieldValues?: Record<string, string>
+  checkResult?: KYCCheckResult
+  notes?: string
+}
+
+export interface KYCSegmentConfig {
+  segment: CustomerSegment
+  label: string
+  shortDescription: string
+  icon: string
+  color: string
+  accentBg: string
+  requiredDocuments: string[]
+  optionalDocuments?: string[]
+}
 
 export interface KYCSubmission {
   id: string
   customerName: string
-  customerType: CustomerType
+  customerType: CustomerSegment
   email: string
   phone: string
   status: KYCStatus
@@ -203,13 +302,13 @@ export interface KYCSubmission {
   reviewedAt?: string
   reviewedBy?: string
   vehicleIds?: string[]
-  // Privatkunde
+  // Privatkunde (legacy)
   documentType?: 'personalausweis' | 'reisepass'
   documentNumber?: string
   dateOfBirth?: string
   address?: string
   privacyMethod?: 'upload' | 'link'
-  // Gewerbekunde
+  // Gewerbekunde (legacy)
   companyName?: string
   handelsregisterNr?: string
   ustIdNr?: string
@@ -217,6 +316,9 @@ export interface KYCSubmission {
   checkResults?: KYCCheckResult[]
   notes?: string
   documentBundle?: DocumentBundleState
+  // Segment-based document tracking (new)
+  documentSubmissions?: KYCDocumentSubmission[]
+  verificationProgress?: number
 }
 
 export interface KYCCheckResult {
@@ -230,8 +332,8 @@ export type KYCDocumentType = 'kaufbestaetigung' | 'abholschein' | 'rechnung' | 
 
 export interface DocumentBundleState {
   status: DocumentBundleStatus
-  generatedAt?: string  // ISO datetime
-  sentAt?: string       // ISO datetime
+  generatedAt?: string
+  sentAt?: string
 }
 
 // ---- Buchhaltung (Problem 6) ----

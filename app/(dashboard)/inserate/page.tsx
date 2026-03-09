@@ -11,14 +11,6 @@ import { Plus, Eye, MessageSquare, Star } from 'lucide-react'
 import Link from 'next/link'
 import type { ListingStatus } from '@/lib/types'
 
-// Dummy car photos per listing id (Unsplash)
-const LISTING_PHOTOS: Record<string, string> = {
-  l1: 'https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=320&q=80&fit=crop&auto=format',
-  l2: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=320&q=80&fit=crop&auto=format',
-  l3: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=320&q=80&fit=crop&auto=format',
-  l4: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=320&q=80&fit=crop&auto=format',
-}
-
 const statusLabels: Record<ListingStatus, string> = {
   entwurf: 'Entwurf',
   live: 'Live',
@@ -92,15 +84,16 @@ export default function InseratePage() {
           >
             {filterListings(tab).map(listing => {
               const priceConfig = priceCategoryConfig[listing.priceCategory]
+              const previewImage = listing.images[0]
               return (
                 <Link key={listing.id} href={`/inserate/${listing.id}`}>
                   <Card className="hover:shadow-md transition-shadow cursor-pointer mb-3">
                     <CardContent className="p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
                         <div className="h-44 w-full rounded-lg overflow-hidden bg-muted shrink-0 sm:h-20 sm:w-32">
-                          {LISTING_PHOTOS[listing.id] ? (
+                          {previewImage ? (
                             <img
-                              src={LISTING_PHOTOS[listing.id]}
+                              src={previewImage}
                               alt={listing.title}
                               className="w-full h-full object-cover"
                             />

@@ -10,8 +10,8 @@ import { useKYCStore } from '@/lib/stores/kyc-store'
 import { mockAdvisors } from '@/lib/mock-data'
 import { useConversationStore } from '@/lib/stores/conversation-store'
 import { useVoiceIntentParser, type ParsedVoiceIntent } from '@/hooks/useVoiceIntentParser'
-import { VoiceButton } from '@/components/voice/VoiceButton'
-import { TranscriptFeedback } from '@/components/voice/TranscriptFeedback'
+import { VoiceButton } from './VoiceButton'
+import { TranscriptFeedback } from './TranscriptFeedback'
 
 export function VoiceControl() {
   const router = useRouter()

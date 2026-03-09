@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,19 +8,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { mockKYCSubmissions, mockVehicles } from '@/lib/mock-data'
+import { mockVehicles } from '@/lib/mock-data'
 import { kycStatusConfig } from '@/lib/constants'
-import { formatDateTime, formatCurrency, formatMileage } from '@/lib/utils'
+import { cn, formatDateTime, formatCurrency, formatMileage } from '@/lib/utils'
+import { useKYCStore } from '@/lib/stores/kyc-store'
+import { getSegmentConfig, getDocumentsForSegment, kycSegments } from '@/lib/kyc-config'
+import { SegmentSelector } from '@/components/verifizierung/SegmentSelector'
+import { DocumentRequirementsList } from '@/components/verifizierung/DocumentRequirementsList'
+import { VerificationProgressBar } from '@/components/verifizierung/VerificationProgressBar'
 import {
   ShieldCheck, Upload, CheckCircle, XCircle, AlertCircle, User, Building,
   FileText, Plus, Car, Loader2, Link2, Mail, Copy, ExternalLink,
   ChevronRight, Fuel, Gauge, Calendar, MapPin, Hash, ChevronDown, X,
   Package, Send, Eye, Download, FileCheck, Clock, Printer,
+  Truck, Handshake, Globe, Crown,
 } from 'lucide-react'
-import type { KYCSubmission, CustomerType, Vehicle, DocumentBundleState } from '@/lib/types'
+import type { LucideIcon } from 'lucide-react'
+import type { KYCSubmission, KYCDocumentSubmission, CustomerSegment, Vehicle, DocumentBundleState } from '@/lib/types'
 
 type DialogStep = 'form' | 'processing' | 'success' | 'link_sent'
 type PrivatMethod = 'upload' | 'link'
@@ -28,6 +34,10 @@ type StepStatus = 'pending' | 'loading' | 'done' | 'error'
 interface ProcessingStep { id: string; label: string; detail: string; status: StepStatus }
 type PreviewDocType = 'kaufbestaetigung' | 'abholschein' | 'rechnung' | 'gelangensbestaetigung'
 interface DocGenStepItem { id: string; label: string; detail: string; status: 'pending' | 'loading' | 'done' }
+
+const segmentIconMap: Record<string, LucideIcon> = {
+  User, Building, Truck, Handshake, Globe, Crown,
+}
 
 function vehicleInternalNr(id: string) {
   const idx = mockVehicles.findIndex(v => v.id === id)
@@ -264,13 +274,9 @@ function DocumentSection({
         <h4 className="font-semibold text-sm">Dokument-Paket</h4>
       </div>
 
-      {/* Document rows */}
       <div className="space-y-1.5">
         {DOC_ROWS.map(row => (
-          <div
-            key={row.type}
-            className="flex items-center gap-3 rounded-lg border bg-muted/20 px-3 py-2.5"
-          >
+          <div key={row.type} className="flex items-center gap-3 rounded-lg border bg-muted/20 px-3 py-2.5">
             <div className={'h-2 w-2 rounded-full shrink-0 ' + (isReady ? 'bg-emerald-500' : 'bg-muted-foreground/30')} />
             <FileCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
@@ -278,12 +284,7 @@ function DocumentSection({
               <p className="text-xs text-muted-foreground truncate">{row.desc}</p>
             </div>
             {isReady && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => onPreview(submission, row.type)}
-              >
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => onPreview(submission, row.type)}>
                 <Eye className="h-3.5 w-3.5 mr-1" />Vorschau
               </Button>
             )}
@@ -291,7 +292,6 @@ function DocumentSection({
         ))}
       </div>
 
-      {/* Generation animation */}
       {status === 'generating' && (
         <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -300,10 +300,7 @@ function DocumentSection({
           </div>
           <div className="space-y-2.5">
             {docGenSteps.map(step => (
-              <div
-                key={step.id}
-                className={'flex items-start gap-2.5 transition-all duration-300 ' + (step.status === 'pending' ? 'opacity-30' : 'opacity-100')}
-              >
+              <div key={step.id} className={'flex items-start gap-2.5 transition-all duration-300 ' + (step.status === 'pending' ? 'opacity-30' : 'opacity-100')}>
                 <div className="mt-0.5 shrink-0">
                   {step.status === 'loading' && <Loader2 className="h-3.5 w-3.5 text-amber-600 animate-spin" />}
                   {step.status === 'done' && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
@@ -319,7 +316,6 @@ function DocumentSection({
         </div>
       )}
 
-      {/* Sending animation */}
       {status === 'sending' && (
         <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 flex items-center gap-3">
           <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin shrink-0" />
@@ -330,20 +326,16 @@ function DocumentSection({
         </div>
       )}
 
-      {/* Sent success banner */}
       {status === 'sent' && bundleState?.sentAt && (
         <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3 flex items-start gap-3">
           <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">Dokumente gesendet</p>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">
-              An {submission.email} gesendet · {formatDateTime(bundleState.sentAt)}
-            </p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">An {submission.email} gesendet · {formatDateTime(bundleState.sentAt)}</p>
           </div>
         </div>
       )}
 
-      {/* Meta info when ready */}
       {(status === 'ready' || status === 'sending' || status === 'sent') && bundleState?.generatedAt && (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="h-3 w-3" />
@@ -351,7 +343,6 @@ function DocumentSection({
         </div>
       )}
 
-      {/* Action buttons */}
       <div className="flex flex-col gap-2 sm:flex-row">
         {status === 'idle' && (
           <Button variant="outline" className="flex-1" onClick={() => onGenerate(submission)}>
@@ -378,407 +369,143 @@ function DocumentSection({
 // ─── Document Preview Modal ────────────────────────────────────────────────────
 
 function DocumentPreviewModal({
-  open,
-  onClose,
-  docType: initialDocType,
-  submission,
+  open, onClose, docType: initialDocType, submission,
 }: {
-  open: boolean
-  onClose: () => void
-  docType: PreviewDocType
-  submission: KYCSubmission | null
+  open: boolean; onClose: () => void; docType: PreviewDocType; submission: KYCSubmission | null
 }) {
   const [activeTab, setActiveTab] = useState<PreviewDocType>(initialDocType)
-
   useEffect(() => { setActiveTab(initialDocType) }, [initialDocType])
-
   if (!submission) return null
 
   const primaryVehicleId = submission.vehicleIds?.[0]
   const vehicle = primaryVehicleId ? mockVehicles.find(v => v.id === primaryVehicleId) : null
   const multiVehicle = (submission.vehicleIds?.length ?? 0) > 1
-  const nr = vehicle ? vehicleInternalNr(vehicle.id) : null
-
   const today = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
   const invoiceNr = 'RE-2026-' + submission.id.toUpperCase().replace('KYC', '')
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[calc(100vw-1rem)] max-h-[90vh] p-0 overflow-hidden flex flex-col sm:max-w-2xl">
-        {/* Chrome bar */}
         <div className="flex flex-col gap-2 border-b bg-muted/30 px-4 py-3 shrink-0 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">Dokument-Vorschau</p>
             <p className="text-xs text-muted-foreground">{submission.customerName}</p>
           </div>
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <Button variant="outline" size="sm" className="h-7 flex-1 px-2 text-xs sm:flex-none">
-              <Printer className="h-3.5 w-3.5 mr-1" />Drucken
-            </Button>
-            <Button variant="outline" size="sm" className="h-7 flex-1 px-2 text-xs sm:flex-none">
-              <Download className="h-3.5 w-3.5 mr-1" />PDF
-            </Button>
+            <Button variant="outline" size="sm" className="h-7 flex-1 px-2 text-xs sm:flex-none"><Printer className="h-3.5 w-3.5 mr-1" />Drucken</Button>
+            <Button variant="outline" size="sm" className="h-7 flex-1 px-2 text-xs sm:flex-none"><Download className="h-3.5 w-3.5 mr-1" />PDF</Button>
           </div>
         </div>
-
-        {/* Tab bar */}
         <div className="flex overflow-x-auto border-b shrink-0 px-4">
           {DOC_ROWS.map(row => (
-            <button
-              key={row.type}
-              onClick={() => setActiveTab(row.type)}
+            <button key={row.type} onClick={() => setActiveTab(row.type)}
               className={'px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px ' +
-                (activeTab === row.type
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground')}
-            >
+                (activeTab === row.type ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>
               {row.label}
             </button>
           ))}
         </div>
-
-        {/* Document area */}
         <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-3 sm:p-6">
           <div className="bg-white dark:bg-slate-950 rounded-lg shadow-sm max-w-xl mx-auto p-4 text-sm sm:p-8">
-
-            {/* ── KAUFBESTÄTIGUNG ── */}
+            {/* Kaufbestätigung */}
             {activeTab === 'kaufbestaetigung' && (
               <div className="space-y-6">
-                {/* Letterhead */}
                 <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-bold text-base">Wackenhut Autohaus GmbH</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p>
-                    <p className="text-xs text-muted-foreground">Tel: +49 711 123456 · info@wackenhut.de</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-base">Kaufbestätigung</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Datum: {today}</p>
-                    <p className="text-xs text-muted-foreground">Nr.: KB-2026-{submission.id.toUpperCase().replace('KYC', '')}</p>
-                  </div>
+                  <div><p className="font-bold text-base">Wackenhut Autohaus GmbH</p><p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p><p className="text-xs text-muted-foreground">Tel: +49 711 123456 · info@wackenhut.de</p></div>
+                  <div className="text-right"><p className="font-bold text-base">Kaufbestätigung</p><p className="text-xs text-muted-foreground mt-0.5">Datum: {today}</p><p className="text-xs text-muted-foreground">Nr.: KB-2026-{submission.id.toUpperCase().replace('KYC', '')}</p></div>
                 </div>
-
                 <Separator />
-
-                {/* Parties */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Verkäufer</p>
-                    <p className="font-medium">Wackenhut Autohaus GmbH</p>
-                    <p className="text-xs text-muted-foreground">Königstraße 1</p>
-                    <p className="text-xs text-muted-foreground">70173 Stuttgart</p>
-                    <p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Käufer</p>
-                    <p className="font-medium">{submission.customerName}</p>
-                    {submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}
-                    <p className="text-xs text-muted-foreground">{submission.email}</p>
-                    <p className="text-xs text-muted-foreground">{submission.phone}</p>
-                  </div>
+                  <div className="space-y-1"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Verkäufer</p><p className="font-medium">Wackenhut Autohaus GmbH</p><p className="text-xs text-muted-foreground">Königstraße 1</p><p className="text-xs text-muted-foreground">70173 Stuttgart</p></div>
+                  <div className="space-y-1"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Käufer</p><p className="font-medium">{submission.customerName}</p>{submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}<p className="text-xs text-muted-foreground">{submission.email}</p></div>
                 </div>
-
-                {/* Vehicle */}
-                <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kaufgegenstand</p>
-                  {vehicle ? (
-                    <>
-                      <p className="font-semibold">{vehicle.make} {vehicle.model} · {vehicle.year}</p>
-                      <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 text-xs text-muted-foreground">
-                        <span>FIN: <span className="font-mono">{vehicle.vin}</span></span>
-                        <span>Kennzeichen: {vehicle.licensePlate}</span>
-                        <span>Farbe: {vehicle.color}</span>
-                        <span>Laufleistung: {formatMileage(vehicle.mileage)}</span>
-                        <span>Kraftstoff: {vehicle.fuelType}</span>
-                        <span>Getriebe: {vehicle.transmission}</span>
-                      </div>
-                      {multiVehicle && <p className="text-xs text-amber-600 dark:text-amber-400">+ {(submission.vehicleIds!.length - 1)} weiteres Fahrzeug — separate Dokumente empfohlen</p>}
-                    </>
-                  ) : (
-                    <p className="text-muted-foreground text-xs">Kein Fahrzeug zugeordnet</p>
-                  )}
-                </div>
-
-                {/* Price */}
                 {vehicle && (
-                  <div className="flex items-center justify-between py-2 border-t border-b">
-                    <p className="font-semibold">Kaufpreis (inkl. MwSt.)</p>
-                    <p className="font-bold text-lg">{formatCurrency(vehicle.price)}</p>
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kaufgegenstand</p>
+                    <p className="font-semibold">{vehicle.make} {vehicle.model} · {vehicle.year}</p>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 text-xs text-muted-foreground">
+                      <span>FIN: <span className="font-mono">{vehicle.vin}</span></span>
+                      <span>Kennzeichen: {vehicle.licensePlate}</span>
+                      <span>Farbe: {vehicle.color}</span>
+                      <span>Laufleistung: {formatMileage(vehicle.mileage)}</span>
+                    </div>
+                    {multiVehicle && <p className="text-xs text-amber-600 dark:text-amber-400">+ {(submission.vehicleIds!.length - 1)} weiteres Fahrzeug</p>}
                   </div>
                 )}
-
-                {/* Signature */}
-                <div className="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2 sm:gap-8">
-                  {['Verkäufer', 'Käufer'].map(party => (
-                    <div key={party}>
-                      <div className="border-t-2 border-dashed pt-2">
-                        <p className="text-xs text-muted-foreground">{party}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Ort, Datum · Unterschrift</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kaufpreis</p>
+                  {vehicle && (<>
+                    <div className="flex justify-between"><span>Netto</span><span className="font-medium">{formatCurrency(vehicle.price / 1.19)}</span></div>
+                    <div className="flex justify-between text-muted-foreground"><span>zzgl. 19% MwSt.</span><span>{formatCurrency(vehicle.price - vehicle.price / 1.19)}</span></div>
+                    <Separator />
+                    <div className="flex justify-between font-bold"><span>Gesamtbetrag</span><span>{formatCurrency(vehicle.price)}</span></div>
+                  </>)}
+                </div>
+                <div className="grid grid-cols-2 gap-8 pt-8 border-t">
+                  <div className="text-center"><div className="border-t border-foreground pt-2 mt-10"><p className="text-xs text-muted-foreground">Unterschrift Verkäufer</p></div></div>
+                  <div className="text-center"><div className="border-t border-foreground pt-2 mt-10"><p className="text-xs text-muted-foreground">Unterschrift Käufer</p></div></div>
                 </div>
               </div>
             )}
-
-            {/* ── ABHOLSCHEIN ── */}
+            {/* Abholschein */}
             {activeTab === 'abholschein' && (
               <div className="space-y-6">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-bold text-base">Wackenhut Autohaus GmbH</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-base">Abholschein / Übergabeprotokoll</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Datum: {today}</p>
-                  </div>
+                  <div><p className="font-bold text-base">Wackenhut Autohaus GmbH</p><p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p></div>
+                  <div className="text-right"><p className="font-bold text-base">Abholschein</p><p className="text-xs text-muted-foreground mt-0.5">Datum: {today}</p></div>
                 </div>
-
                 <Separator />
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fahrzeug</p>
-                    {vehicle ? (
-                      <>
-                        <p className="font-medium text-xs">{nr} · {vehicle.make} {vehicle.model}</p>
-                        <p className="text-xs text-muted-foreground">FIN: <span className="font-mono">{vehicle.vin}</span></p>
-                        <p className="text-xs text-muted-foreground">{vehicle.licensePlate} · {vehicle.color}</p>
-                        <p className="text-xs text-muted-foreground">{formatMileage(vehicle.mileage)} km</p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Kein Fahrzeug zugeordnet</p>
-                    )}
-                  </div>
-                  <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Käufer</p>
-                    <p className="font-medium text-xs">{submission.customerName}</p>
-                    {submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}
-                    <p className="text-xs text-muted-foreground">{submission.phone}</p>
-                  </div>
-                </div>
-
-                {/* Checklist */}
-                <div className="space-y-2">
+                <div className="space-y-1"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Käufer / Abholer</p><p className="font-medium">{submission.customerName}</p></div>
+                {vehicle && (<div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 space-y-2"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fahrzeug</p><p className="font-semibold">{vehicle.make} {vehicle.model} · {vehicle.year}</p><p className="text-xs text-muted-foreground">FIN: {vehicle.vin} · Kennzeichen: {vehicle.licensePlate}</p></div>)}
+                <div className="space-y-3">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Übergabe-Checkliste</p>
-                  <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-                    {[
-                      'Fahrzeugschlüssel übergeben', 'Zulassungsbescheinigung Teil I',
-                      'Zulassungsbescheinigung Teil II', 'Servicehefte übergeben',
-                      'Reserverad / Notrad vorhanden', 'Warndreieck & Verbandskasten',
-                      'Fahrzeuganleitung vorhanden', 'Tankanzeige geprüft',
-                    ].map(item => (
-                      <div key={item} className="flex items-center gap-2">
-                        <div className="h-4 w-4 rounded border-2 border-muted-foreground/40 shrink-0" />
-                        <span className="text-xs">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Remarks */}
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Anmerkungen</p>
-                  <div className="border rounded-lg h-16 bg-slate-50 dark:bg-slate-900" />
-                </div>
-
-                {/* Signatures */}
-                <div className="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2 sm:gap-8">
-                  {['Übergabe durch (Verkäufer)', 'Empfang bestätigt (Käufer)'].map(party => (
-                    <div key={party}>
-                      <div className="border-t-2 border-dashed pt-2">
-                        <p className="text-xs text-muted-foreground">{party}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Ort, Datum · Unterschrift</p>
-                      </div>
-                    </div>
+                  {['Fahrzeugschlüssel (2 Stk.)', 'Bordbuch / Betriebsanleitung', 'Serviceheft', 'Zulassungsbescheinigung Teil I + II', 'TÜV-Bericht', 'Fahrzeugzustand dokumentiert'].map(item => (
+                    <label key={item} className="flex items-center gap-2 text-sm"><div className="h-4 w-4 rounded border-2 border-muted-foreground/40 shrink-0" /><span>{item}</span></label>
                   ))}
                 </div>
+                <div className="grid grid-cols-2 gap-8 pt-8 border-t"><div className="text-center"><div className="border-t border-foreground pt-2 mt-10"><p className="text-xs text-muted-foreground">Übergeber</p></div></div><div className="text-center"><div className="border-t border-foreground pt-2 mt-10"><p className="text-xs text-muted-foreground">Empfänger</p></div></div></div>
               </div>
             )}
-
-            {/* ── RECHNUNG ── */}
+            {/* Rechnung */}
             {activeTab === 'rechnung' && (
               <div className="space-y-6">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-bold text-base">Wackenhut Autohaus GmbH</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p>
-                    <p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p>
-                    <p className="text-xs text-muted-foreground">Steuernr: 99/815/08150</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-base">Rechnung</p>
-                    <p className="text-xs font-mono text-muted-foreground mt-0.5">{invoiceNr}</p>
-                    <p className="text-xs text-muted-foreground">Datum: {today}</p>
-                  </div>
+                  <div><p className="font-bold text-base">Wackenhut Autohaus GmbH</p><p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p><p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p></div>
+                  <div className="text-right"><p className="font-bold text-base">Rechnung</p><p className="text-xs text-muted-foreground mt-0.5">Nr.: {invoiceNr}</p><p className="text-xs text-muted-foreground">Datum: {today}</p></div>
                 </div>
-
-                {/* Bill to */}
-                <div className="rounded-lg border p-3 space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rechnungsempfänger</p>
-                  <p className="font-medium">{submission.customerName}</p>
-                  {submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}
-                  {submission.ustIdNr && <p className="text-xs text-muted-foreground">USt-IdNr: {submission.ustIdNr}</p>}
-                </div>
-
-                {/* Line items */}
-                {vehicle ? (
-                  <div className="space-y-2">
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[420px] text-xs">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-1.5 font-semibold text-muted-foreground">Pos.</th>
-                            <th className="text-left py-1.5 font-semibold text-muted-foreground">Beschreibung</th>
-                            <th className="text-right py-1.5 font-semibold text-muted-foreground">Betrag</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="border-b">
-                            <td className="py-2 align-top">1</td>
-                            <td className="py-2 align-top">
-                              <p className="font-medium">{vehicle.make} {vehicle.model} {vehicle.year}</p>
-                              <p className="text-muted-foreground">FIN: {vehicle.vin} · {vehicle.licensePlate}</p>
-                            </td>
-                            <td className="py-2 align-top text-right">{formatCurrency(Math.round(vehicle.price / 1.19))}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="space-y-1 pt-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Nettobetrag</span>
-                        <span>{formatCurrency(Math.round(vehicle.price / 1.19))}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Umsatzsteuer 19 %</span>
-                        <span>{formatCurrency(vehicle.price - Math.round(vehicle.price / 1.19))}</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-bold border-t pt-1.5 mt-1">
-                        <span>Gesamtbetrag</span>
-                        <span>{formatCurrency(vehicle.price)}</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Kein Fahrzeug zugeordnet — keine Positionen</p>
-                )}
-
-                {/* Payment info */}
-                <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Zahlungsinformationen</p>
-                  <p className="text-xs">Bankverbindung: Wackenhut Autohaus GmbH</p>
-                  <p className="text-xs text-muted-foreground">IBAN: DE89 3704 0044 0532 0130 00 · BIC: COBADEFFXXX</p>
-                  <p className="text-xs text-muted-foreground">Verwendungszweck: <span className="font-mono">{invoiceNr}</span></p>
-                  <p className="text-xs text-muted-foreground">Zahlungsziel: 14 Tage netto</p>
-                </div>
+                <Separator />
+                <div className="space-y-1"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rechnungsempfänger</p><p className="font-medium">{submission.customerName}</p>{submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}{submission.ustIdNr && <p className="text-xs text-muted-foreground">USt-IdNr: {submission.ustIdNr}</p>}</div>
+                {vehicle && (<>
+                  <div className="border rounded-lg overflow-hidden"><div className="bg-muted/50 px-3 py-2 text-xs font-semibold grid grid-cols-12 gap-2"><span className="col-span-1">Pos.</span><span className="col-span-7">Bezeichnung</span><span className="col-span-4 text-right">Betrag</span></div><div className="px-3 py-2.5 text-sm grid grid-cols-12 gap-2 border-t"><span className="col-span-1 text-muted-foreground">1</span><div className="col-span-7"><p className="font-medium">{vehicle.make} {vehicle.model} ({vehicle.year})</p><p className="text-xs text-muted-foreground">FIN: {vehicle.vin}</p></div><span className="col-span-4 text-right font-medium">{formatCurrency(vehicle.price / 1.19)}</span></div></div>
+                  <div className="space-y-1 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Nettobetrag</span><span>{formatCurrency(vehicle.price / 1.19)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">zzgl. 19% USt.</span><span>{formatCurrency(vehicle.price - vehicle.price / 1.19)}</span></div><Separator /><div className="flex justify-between font-bold text-base"><span>Rechnungsbetrag</span><span>{formatCurrency(vehicle.price)}</span></div></div>
+                </>)}
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 space-y-1 text-xs text-muted-foreground"><p className="font-semibold text-foreground">Zahlungsinformationen</p><p>IBAN: DE89 3704 0044 0532 0130 00</p><p>BIC: COBADEFFXXX · Commerzbank AG</p><p>Zahlungsziel: 14 Tage netto</p></div>
               </div>
             )}
-
-            {/* ── GELANGENSBESTÄTIGUNG ── */}
+            {/* Gelangensbestätigung */}
             {activeTab === 'gelangensbestaetigung' && (
               <div className="space-y-6">
-                {/* Letterhead */}
                 <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-bold text-base">Wackenhut Autohaus GmbH</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Königstraße 1 · 70173 Stuttgart</p>
-                    <p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-base">Gelangensbestätigung</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">gem. § 17a UStDV</p>
-                    <p className="text-xs text-muted-foreground">Datum: {today}</p>
-                  </div>
+                  <div><p className="font-bold text-base">Gelangensbestätigung</p><p className="text-xs text-muted-foreground mt-0.5">gem. § 17a Abs. 2 Nr. 2 UStDV</p></div>
+                  <div className="text-right"><p className="text-xs text-muted-foreground">Datum: {today}</p></div>
                 </div>
-
                 <Separator />
-
-                {/* Legal intro */}
-                <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Hiermit bestätigt der Empfänger, dass der nachstehend bezeichnete Liefergegenstand
-                    im Rahmen einer innergemeinschaftlichen Lieferung gemäß § 6a UStG in das übrige
-                    Gemeinschaftsgebiet gelangt ist.
-                  </p>
-                </div>
-
-                {/* Parties */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lieferer (Verkäufer)</p>
-                    <p className="font-medium text-xs">Wackenhut Autohaus GmbH</p>
-                    <p className="text-xs text-muted-foreground">Königstraße 1, 70173 Stuttgart</p>
-                    <p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Empfänger (Käufer)</p>
-                    <p className="font-medium text-xs">{submission.customerName}</p>
-                    {submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}
-                    {submission.ustIdNr && <p className="text-xs text-muted-foreground">USt-IdNr: {submission.ustIdNr}</p>}
-                    {submission.companyName && <p className="text-xs text-muted-foreground">{submission.companyName}</p>}
-                  </div>
+                  <div className="space-y-1"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lieferant</p><p className="font-medium">Wackenhut Autohaus GmbH</p><p className="text-xs text-muted-foreground">Königstraße 1, 70173 Stuttgart</p><p className="text-xs text-muted-foreground">USt-IdNr: DE987654321</p></div>
+                  <div className="space-y-1"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Empfänger</p><p className="font-medium">{submission.customerName}</p>{submission.address && <p className="text-xs text-muted-foreground">{submission.address}</p>}{submission.ustIdNr && <p className="text-xs text-muted-foreground">USt-IdNr: {submission.ustIdNr}</p>}</div>
                 </div>
-
-                {/* Vehicle */}
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Liefergegenstand</p>
-                  {vehicle ? (
-                    <div className="rounded-lg border p-3 space-y-1">
-                      <p className="font-medium text-xs">{vehicle.make} {vehicle.model} {vehicle.year} · {vehicle.color}</p>
-                      <p className="text-xs text-muted-foreground">FIN: <span className="font-mono">{vehicle.vin}</span></p>
-                      <p className="text-xs text-muted-foreground">Amtl. Kennzeichen: {vehicle.licensePlate}</p>
-                      <p className="text-xs text-muted-foreground">Rechnungsnummer: <span className="font-mono">{invoiceNr}</span> · Rechnungsdatum: {today}</p>
-                      {multiVehicle && <p className="text-xs text-amber-600 dark:text-amber-400">Hinweis: Weitere Fahrzeuge erfordern separate Gelangensbestätigungen.</p>}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Kein Fahrzeug zugeordnet</p>
-                  )}
-                </div>
-
-                {/* Transport details */}
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Angaben zum Transport</p>
+                {vehicle && (<div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 space-y-2"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Liefergegenstand</p><p className="font-semibold">{vehicle.make} {vehicle.model} ({vehicle.year})</p><p className="text-xs text-muted-foreground">FIN: {vehicle.vin}</p><p className="text-xs text-muted-foreground">Menge: 1 Fahrzeug</p></div>)}
+                <div className="border-2 border-dashed rounded-lg p-4 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Bestätigung</p>
+                  <p className="text-sm">Hiermit bestätige ich, dass der oben genannte Liefergegenstand im Bestimmungsmitgliedstaat der Europäischen Union eingetroffen ist.</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Bestimmungsort (Ort, Land)</p>
-                      <div className="border rounded-md h-8 bg-slate-50 dark:bg-slate-900" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Monat des Erhalts</p>
-                      <div className="border rounded-md h-8 bg-slate-50 dark:bg-slate-900" />
-                    </div>
+                    <div><p className="text-xs text-muted-foreground">Bestimmungsort</p><div className="border-b border-dashed mt-4" /></div>
+                    <div><p className="text-xs text-muted-foreground">Monat des Erhalts</p><div className="border-b border-dashed mt-4" /></div>
                   </div>
                 </div>
-
-                {/* Declaration */}
-                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3">
-                  <p className="text-xs text-blue-700 dark:text-blue-400">
-                    Ich / Wir bestätigen, dass obiger Liefergegenstand in das übrige Gemeinschaftsgebiet
-                    gelangt ist und versichere/n die Richtigkeit dieser Angaben.
-                    Eine falsche Bestätigung kann steuerrechtliche und strafrechtliche Konsequenzen haben.
-                  </p>
-                </div>
-
-                {/* Signature */}
-                <div className="grid grid-cols-1 gap-6 pt-2 sm:grid-cols-2 sm:gap-8">
-                  <div>
-                    <div className="border-t-2 border-dashed pt-2">
-                      <p className="text-xs text-muted-foreground">Empfänger (Käufer)</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Ort, Datum · Unterschrift</p>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="border-t-2 border-dashed pt-2">
-                      <p className="text-xs text-muted-foreground">Firmenstempel (falls vorhanden)</p>
-                    </div>
-                  </div>
-                </div>
+                <div className="text-center"><div className="border-t border-foreground pt-2 mt-10 max-w-xs mx-auto"><p className="text-xs text-muted-foreground">Unterschrift / Firmenstempel Empfänger</p></div></div>
               </div>
             )}
-
           </div>
         </div>
       </DialogContent>
@@ -786,21 +513,38 @@ function DocumentPreviewModal({
   )
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
+// ─── Segment Label Helper ──────────────────────────────────────────────────────
+
+function getSegmentLabel(segment: CustomerSegment): string {
+  const config = getSegmentConfig(segment)
+  return config?.label ?? segment
+}
+
+function getSegmentIcon(segment: CustomerSegment): LucideIcon {
+  const config = getSegmentConfig(segment)
+  return segmentIconMap[config?.icon ?? 'User'] ?? User
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Main Page
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export default function VerifizierungPage() {
-  const [submissions] = useState(mockKYCSubmissions)
+  const { submissions, addSubmission, updateDocumentStatus, setDocumentFieldValues, uploadDocument } = useKYCStore()
   const [selectedSubmission, setSelectedSubmission] = useState<KYCSubmission | null>(null)
   const [vehicleModal, setVehicleModal] = useState<Vehicle | null>(null)
   const [newDialog, setNewDialog] = useState(false)
   const [dialogStep, setDialogStep] = useState<DialogStep>('form')
-  const [customerType, setCustomerType] = useState<CustomerType>('privat')
+  const [customerSegment, setCustomerSegment] = useState<CustomerSegment | null>(null)
   const [privatMethod, setPrivatMethod] = useState<PrivatMethod>('upload')
   const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([])
+  const [formName, setFormName] = useState('')
   const [formEmail, setFormEmail] = useState('anna.mustermann@email.de')
+  const [formPhone, setFormPhone] = useState('')
   const [formVehicleIds, setFormVehicleIds] = useState<string[]>([])
-  const [formUstId, setFormUstId] = useState('DE123456789')
-  const [formHRB, setFormHRB] = useState('HRB 123456')
+  const [formCompanyName, setFormCompanyName] = useState('')
+  const [formDocFieldValues, setFormDocFieldValues] = useState<Record<string, Record<string, string>>>({})
+  const [formDocSubmissions, setFormDocSubmissions] = useState<KYCDocumentSubmission[]>([])
   const [linkCopied, setLinkCopied] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
@@ -808,7 +552,7 @@ export default function VerifizierungPage() {
   const [documentBundles, setDocumentBundles] = useState<Map<string, DocumentBundleState>>(
     () => {
       const m = new Map<string, DocumentBundleState>()
-      mockKYCSubmissions.forEach(s => { if (s.documentBundle) m.set(s.id, { ...s.documentBundle }) })
+      submissions.forEach(s => { if (s.documentBundle) m.set(s.id, { ...s.documentBundle }) })
       return m
     }
   )
@@ -830,30 +574,128 @@ export default function VerifizierungPage() {
   const clearDocGenTimers = () => { docGenTimerRef.current.forEach(clearTimeout); docGenTimerRef.current = [] }
 
   const handleOpenDialog = () => {
-    setDialogStep('form'); setCustomerType('privat'); setPrivatMethod('upload')
-    setFormVehicleIds([]); setLinkCopied(false); setProcessingSteps([]); setNewDialog(true)
+    setDialogStep('form'); setCustomerSegment(null); setPrivatMethod('upload')
+    setFormName(''); setFormEmail('anna.mustermann@email.de'); setFormPhone('')
+    setFormCompanyName(''); setFormVehicleIds([]); setLinkCopied(false)
+    setProcessingSteps([]); setFormDocFieldValues({}); setFormDocSubmissions([]); setNewDialog(true)
   }
   const handleCloseDialog = () => { clearTimers(); setNewDialog(false) }
 
-  const buildSteps = (type: CustomerType, method: PrivatMethod): ProcessingStep[] => {
-    if (type === 'gewerbe') return [
-      { id: 's1', label: 'Einreichung wird verarbeitet', detail: 'Daten werden übermittelt…', status: 'pending' },
-      { id: 's2', label: 'USt-IdNr. ' + formUstId + ' wird geprüft', detail: 'VIES-Datenbankabfrage läuft…', status: 'pending' },
-      { id: 's3', label: 'Handelsregister ' + formHRB + ' wird geprüft', detail: 'Bundesanzeiger-Abfrage läuft…', status: 'pending' },
-      { id: 's4', label: 'Firmendaten werden abgeglichen', detail: 'Name, Sitz & Rechtsform werden validiert…', status: 'pending' },
-    ]
-    if (method === 'link') return [
-      { id: 's1', label: 'Verifizierungslink wird erstellt', detail: 'Sicherer Token wird generiert…', status: 'pending' },
-      { id: 's2', label: 'E-Mail wird gesendet an ' + formEmail, detail: 'Link läuft in 24 Stunden ab…', status: 'pending' },
-    ]
-    return [
-      { id: 's1', label: 'Dokument wird hochgeladen', detail: 'Sichere Ende-zu-Ende-Verschlüsselung…', status: 'pending' },
-      { id: 's2', label: 'Dokument wird analysiert', detail: 'OCR & Sicherheitsmerkmale werden geprüft…', status: 'pending' },
-      { id: 's3', label: 'Identität wird verifiziert', detail: 'Biometrischer Abgleich läuft…', status: 'pending' },
-    ]
+  const handleSegmentChange = (segment: CustomerSegment) => {
+    setCustomerSegment(segment)
+    setFormDocSubmissions([])
+    // Auto-fill demo data based on segment
+    const demoData: Record<CustomerSegment, { name: string; email: string; phone: string; company: string; fields: Record<string, Record<string, string>> }> = {
+      privat: { name: 'Anna Mustermann', email: 'anna.mustermann@email.de', phone: '+49 711 9876543', company: '', fields: { personalausweis: { documentType: 'personalausweis', documentNumber: 'L01X00T47', dateOfBirth: '1985-06-15' } } },
+      gewerbe: { name: 'Thomas Müller', email: 't.mueller@autoservice-mueller.de', phone: '+49 711 4567890', company: 'Autoservice Müller GmbH', fields: { handelsregister: { handelsregisterNr: 'HRB 750123', registergericht: 'Stuttgart' }, transparenzregister: { companyName: 'Autoservice Müller GmbH' }, ust_id: { ustIdNr: 'DE298765432' } } },
+      flotte: { name: 'Sabine Weber', email: 's.weber@fleetcar.de', phone: '+49 711 3334455', company: 'FleetCar GmbH', fields: { handelsregister: { handelsregisterNr: 'HRB 891234', registergericht: 'Stuttgart' }, transparenzregister: { companyName: 'FleetCar GmbH' }, ust_id: { ustIdNr: 'DE312345678' } } },
+      haendler: { name: 'Michael Braun', email: 'm.braun@autohaus-sued.de', phone: '+49 711 5556677', company: 'Autohaus Süd e.K.', fields: { handelsregister: { handelsregisterNr: 'HRA 445566', registergericht: 'Stuttgart' }, transparenzregister: { companyName: 'Autohaus Süd e.K.' }, ust_id: { ustIdNr: 'DE287654321' } } },
+      export: { name: 'Pierre Dubois', email: 'p.dubois@automobile-paris.fr', phone: '+33 1 42 68 53 00', company: '', fields: { personalausweis: { documentType: 'reisepass', documentNumber: '16AF04521', dateOfBirth: '1978-03-22' } } },
+      diplomat: { name: 'H.E. James Thompson', email: 'j.thompson@embassy.gov', phone: '+49 30 8305 0', company: '', fields: {} },
+    }
+    const data = demoData[segment]
+    setFormName(data.name)
+    setFormEmail(data.email)
+    setFormPhone(data.phone)
+    setFormCompanyName(data.company)
+    setFormDocFieldValues(data.fields)
   }
 
-  const runProcessing = (steps: ProcessingStep[], type: CustomerType, method: PrivatMethod) => {
+  const handleDocFieldChange = (docId: string, fieldValues: Record<string, string>) => {
+    setFormDocFieldValues(prev => ({
+      ...prev,
+      [docId]: { ...(prev[docId] ?? {}), ...fieldValues },
+    }))
+  }
+
+  const handleMockFileUpload = (docId: string, file: File) => {
+    // Set status to 'hochgeladen' with fileName
+    setFormDocSubmissions(prev => {
+      const existing = prev.filter(d => d.documentConfigId !== docId)
+      return [...existing, {
+        documentConfigId: docId,
+        status: 'hochgeladen' as const,
+        fileName: file.name,
+        uploadedAt: new Date().toISOString(),
+        fieldValues: formDocFieldValues[docId],
+      }]
+    })
+  }
+
+  const handleMockRunCheck = (docId: string) => {
+    // Set status to 'wird_geprueft'
+    setFormDocSubmissions(prev => {
+      const existing = prev.filter(d => d.documentConfigId !== docId)
+      const current = prev.find(d => d.documentConfigId === docId)
+      return [...existing, {
+        documentConfigId: docId,
+        status: 'wird_geprueft' as const,
+        fieldValues: current?.fieldValues ?? formDocFieldValues[docId],
+      }]
+    })
+
+    // After delay: set to 'verifiziert' with mock check result
+    const doc = customerSegment ? getDocumentsForSegment(customerSegment).find(d => d.id === docId) : null
+    const mockResults: Record<string, { check: string; detail: string }> = {
+      personalausweis: { check: 'ID-Dokument gültig', detail: 'OCR-Erkennung & Sicherheitsmerkmale bestätigt' },
+      handelsregister: { check: 'Handelsregister bestätigt', detail: 'Bundesanzeiger: Eintragung aktiv, Vertretungsberechtigung bestätigt' },
+      transparenzregister: { check: 'Wirtschaftlich Berechtigter identifiziert', detail: 'Transparenzregister: Angaben plausibel' },
+      ust_id: { check: 'USt-IdNr. gültig', detail: 'VIES-Datenbank: Nummer aktiv und zugeordnet' },
+    }
+    const result = mockResults[docId] ?? { check: `${doc?.name ?? 'Dokument'} geprüft`, detail: 'Automatische Prüfung erfolgreich' }
+
+    const t = setTimeout(() => {
+      setFormDocSubmissions(prev => {
+        const existing = prev.filter(d => d.documentConfigId !== docId)
+        const current = prev.find(d => d.documentConfigId === docId)
+        return [...existing, {
+          documentConfigId: docId,
+          status: 'verifiziert' as const,
+          fieldValues: current?.fieldValues ?? formDocFieldValues[docId],
+          verifiedAt: new Date().toISOString(),
+          checkResult: { ...result, passed: true },
+        }]
+      })
+    }, 1800)
+    timerRef.current.push(t)
+  }
+
+  const buildStepsForSegment = (): ProcessingStep[] => {
+    if (!customerSegment) return []
+    const docs = getDocumentsForSegment(customerSegment)
+    const automatedDocs = docs.filter(d => d.verificationMethod === 'automated' || d.verificationMethod === 'hybrid')
+
+    if (customerSegment === 'privat' && privatMethod === 'link') {
+      return [
+        { id: 's1', label: 'Verifizierungslink wird erstellt', detail: 'Sicherer Token wird generiert…', status: 'pending' },
+        { id: 's2', label: 'E-Mail wird gesendet an ' + formEmail, detail: 'Link läuft in 24 Stunden ab…', status: 'pending' },
+      ]
+    }
+
+    const steps: ProcessingStep[] = [
+      { id: 's0', label: 'Einreichung wird verarbeitet', detail: 'Daten werden übermittelt…', status: 'pending' },
+    ]
+
+    automatedDocs.forEach((doc, i) => {
+      const fieldVals = formDocFieldValues[doc.id] ?? {}
+      let detail = ''
+      if (doc.automationSource === 'vies') detail = `VIES-Datenbankabfrage für ${fieldVals['ustIdNr'] || 'USt-IdNr.'}…`
+      else if (doc.automationSource === 'bundesanzeiger') detail = `Bundesanzeiger-Abfrage für ${fieldVals['handelsregisterNr'] || 'HR-Nr.'}…`
+      else if (doc.automationSource === 'transparenzregister') detail = `Wirtschaftlich Berechtigter wird geprüft…`
+      else if (doc.automationSource === 'ocr_security') detail = 'OCR & Sicherheitsmerkmale werden geprüft…'
+
+      steps.push({
+        id: `s${i + 1}`,
+        label: `${doc.name} wird geprüft`,
+        detail,
+        status: 'pending',
+      })
+    })
+
+    return steps
+  }
+
+  const runProcessing = (steps: ProcessingStep[]) => {
     clearTimers()
     const timers: ReturnType<typeof setTimeout>[] = []
     let delay = 300
@@ -863,14 +705,15 @@ export default function VerifizierungPage() {
       const t2 = setTimeout(() => setProcessingSteps(prev => prev.map((s, i) => i === index ? { ...s, status: 'done' } : s)), delay)
       timers.push(t2); delay += 400
     })
-    const tFinal = setTimeout(() => setDialogStep(type === 'privat' && method === 'link' ? 'link_sent' : 'success'), delay + 300)
+    const tFinal = setTimeout(() => setDialogStep(customerSegment === 'privat' && privatMethod === 'link' ? 'link_sent' : 'success'), delay + 300)
     timers.push(tFinal); timerRef.current = timers
   }
 
   const handleSubmit = () => {
-    const steps = buildSteps(customerType, privatMethod)
+    if (!customerSegment) return
+    const steps = buildStepsForSegment()
     setProcessingSteps(steps); setDialogStep('processing')
-    runProcessing(steps, customerType, privatMethod)
+    runProcessing(steps)
   }
 
   const handleGenerateDocs = (sub: KYCSubmission) => {
@@ -883,7 +726,6 @@ export default function VerifizierungPage() {
     ]
     setDocGenSteps(steps)
     setDocumentBundles(prev => new Map(prev).set(sub.id, { status: 'generating' }))
-
     const timers: ReturnType<typeof setTimeout>[] = []
     let delay = 300
     steps.forEach((_, index) => {
@@ -893,38 +735,32 @@ export default function VerifizierungPage() {
       timers.push(t2); delay += 300
     })
     const tFinal = setTimeout(() => {
-      setDocumentBundles(prev => new Map(prev).set(sub.id, {
-        status: 'ready',
-        generatedAt: new Date().toISOString(),
-      }))
+      setDocumentBundles(prev => new Map(prev).set(sub.id, { status: 'ready', generatedAt: new Date().toISOString() }))
     }, delay + 400)
     timers.push(tFinal)
     docGenTimerRef.current = timers
   }
 
   const handleSendDocs = (sub: KYCSubmission) => {
-    setDocumentBundles(prev => new Map(prev).set(sub.id, {
-      ...prev.get(sub.id),
-      status: 'sending',
-    }))
+    setDocumentBundles(prev => new Map(prev).set(sub.id, { ...prev.get(sub.id), status: 'sending' }))
     const t = setTimeout(() => {
-      setDocumentBundles(prev => new Map(prev).set(sub.id, {
-        ...prev.get(sub.id),
-        status: 'sent',
-        sentAt: new Date().toISOString(),
-      }))
+      setDocumentBundles(prev => new Map(prev).set(sub.id, { ...prev.get(sub.id), status: 'sent', sentAt: new Date().toISOString() }))
     }, 2200)
     docGenTimerRef.current.push(t)
   }
 
   const handleOpenPreview = (sub: KYCSubmission, docType: PreviewDocType) => {
-    setPreviewSubmission(sub)
-    setPreviewDoc(docType)
-    setPreviewOpen(true)
+    setPreviewSubmission(sub); setPreviewDoc(docType); setPreviewOpen(true)
   }
 
   useEffect(() => { if (!newDialog) clearTimers() }, [newDialog])
   useEffect(() => { return () => { clearDocGenTimers() } }, [])
+
+  // Keep selectedSubmission in sync with store
+  const currentSelected = useMemo(() => {
+    if (!selectedSubmission) return null
+    return submissions.find(s => s.id === selectedSubmission.id) ?? null
+  }, [selectedSubmission, submissions])
 
   return (
     <div className="space-y-3">
@@ -933,6 +769,7 @@ export default function VerifizierungPage() {
         <Button className="w-full sm:w-auto" onClick={handleOpenDialog}><Plus className="h-4 w-4 mr-2" />Neue Verifizierung</Button>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {[
           { icon: FileText, bg: 'bg-blue-50 dark:bg-blue-950/30', color: 'text-blue-500', count: statCounts.eingereicht, label: 'Eingereicht' },
@@ -941,17 +778,13 @@ export default function VerifizierungPage() {
           { icon: XCircle, bg: 'bg-red-50 dark:bg-red-950/30', color: 'text-red-500', count: statCounts.abgelehnt, label: 'Abgelehnt' },
         ].map(({ icon: Icon, bg, color, count, label }) => (
           <Card key={label}><CardContent className="p-3 flex items-center gap-3">
-            <div className={'h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ' + bg}>
-              <Icon className={'h-4 w-4 ' + color} />
-            </div>
-            <div>
-              <div className="text-xl font-bold leading-none">{count}</div>
-              <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-            </div>
+            <div className={'h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ' + bg}><Icon className={'h-4 w-4 ' + color} /></div>
+            <div><div className="text-xl font-bold leading-none">{count}</div><p className="text-xs text-muted-foreground mt-0.5">{label}</p></div>
           </CardContent></Card>
         ))}
       </div>
 
+      {/* Tabs + List */}
       <Tabs defaultValue="alle">
         <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap">
           <TabsTrigger value="alle">Alle ({submissions.length})</TabsTrigger>
@@ -965,21 +798,30 @@ export default function VerifizierungPage() {
           <TabsContent key={tab} value={tab} className="space-y-2.5 mt-2.5">
             {filterByStatus(tab).map(sub => {
               const config = kycStatusConfig[sub.status]
+              const SegIcon = getSegmentIcon(sub.customerType)
+              const segConfig = getSegmentConfig(sub.customerType)
+              const docSubs = sub.documentSubmissions ?? []
+              const verifiedCount = docSubs.filter(d => d.status === 'verifiziert').length
+              const totalDocs = docSubs.length
+
               return (
                 <Card key={sub.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedSubmission(sub)}>
                   <CardContent className="p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div className="flex items-start gap-3 min-w-0">
-                        <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          {sub.customerType === 'privat' ? <User className="h-4 w-4 text-muted-foreground" /> : <Building className="h-4 w-4 text-muted-foreground" />}
+                        <div className={'h-9 w-9 rounded-full flex items-center justify-center shrink-0 ' + (segConfig?.accentBg ?? 'bg-muted')}>
+                          <SegIcon className={'h-4 w-4 ' + (segConfig?.color ?? 'text-muted-foreground')} />
                         </div>
                         <div className="min-w-0">
                           <h3 className="font-semibold text-sm truncate">{sub.customerName}</h3>
-                          <p className="text-xs text-muted-foreground">{sub.customerType === 'privat' ? 'Privatkunde' : 'Gewerbekunde'}{' · '}{sub.email}</p>
+                          <p className="text-xs text-muted-foreground">{getSegmentLabel(sub.customerType)}{' · '}{sub.email}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">Eingereicht: {formatDateTime(sub.submittedAt)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 sm:self-start">
+                        {totalDocs > 0 && (
+                          <span className="text-xs text-muted-foreground font-medium tabular-nums">{verifiedCount}/{totalDocs} Dok.</span>
+                        )}
                         {sub.vehicleIds && sub.vehicleIds.length > 1 && (
                           <span className="text-xs text-muted-foreground font-medium">{sub.vehicleIds.length} Fzg.</span>
                         )}
@@ -993,12 +835,24 @@ export default function VerifizierungPage() {
                         ))}
                       </div>
                     )}
-                    {sub.checkResults && sub.checkResults.length > 0 && (
+                    {/* Legacy check results badges */}
+                    {sub.checkResults && sub.checkResults.length > 0 && !sub.documentSubmissions && (
                       <div className="mt-3 flex gap-2 flex-wrap">
                         {sub.checkResults.map((check, i) => (
                           <Badge key={i} variant="outline"
                             className={check.passed ? 'border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400' : 'border-red-200 text-red-700 dark:border-red-800 dark:text-red-400'}>
                             {check.passed ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}{check.check}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {/* New document submission badges */}
+                    {sub.documentSubmissions && sub.documentSubmissions.length > 0 && (
+                      <div className="mt-3 flex gap-2 flex-wrap">
+                        {sub.documentSubmissions.filter(d => d.checkResult).map((doc, i) => (
+                          <Badge key={i} variant="outline"
+                            className={doc.checkResult!.passed ? 'border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400' : 'border-red-200 text-red-700 dark:border-red-800 dark:text-red-400'}>
+                            {doc.checkResult!.passed ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}{doc.checkResult!.check}
                           </Badge>
                         ))}
                       </div>
@@ -1012,210 +866,270 @@ export default function VerifizierungPage() {
       </Tabs>
 
       <VehicleDetailModal vehicle={vehicleModal} open={!!vehicleModal} onClose={() => setVehicleModal(null)} />
+      <DocumentPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} docType={previewDoc} submission={previewSubmission} />
 
-      <DocumentPreviewModal
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        docType={previewDoc}
-        submission={previewSubmission}
-      />
-
-      {/* Detail Dialog */}
-      <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
+      {/* ─── Detail Dialog ──────────────────────────────────────────────────── */}
+      <Dialog open={!!currentSelected} onOpenChange={() => setSelectedSubmission(null)}>
         <DialogContent className="max-w-[calc(100vw-1rem)] max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Verifizierung: {selectedSubmission?.customerName}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Verifizierung: {currentSelected?.customerName}</DialogTitle>
           </DialogHeader>
-          {selectedSubmission && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Badge className={kycStatusConfig[selectedSubmission.status].color} variant="secondary">{kycStatusConfig[selectedSubmission.status].label}</Badge>
-                <span className="text-sm text-muted-foreground">{selectedSubmission.customerType === 'privat' ? 'Privatkunde' : 'Gewerbekunde'}</span>
-                {selectedSubmission.vehicleIds && selectedSubmission.vehicleIds.length > 0 && (
-                  <span className="text-xs text-muted-foreground ml-auto">{selectedSubmission.vehicleIds.length} Fahrzeug{selectedSubmission.vehicleIds.length > 1 ? 'e' : ''}</span>
+          {currentSelected && (() => {
+            const sub = currentSelected
+            const segConfig = getSegmentConfig(sub.customerType)
+            const SegIcon = getSegmentIcon(sub.customerType)
+            const hasDocSubmissions = sub.documentSubmissions && sub.documentSubmissions.length > 0
+            const docSubs = sub.documentSubmissions ?? []
+            const verifiedCount = docSubs.filter(d => d.status === 'verifiziert').length
+            const failedCount = docSubs.filter(d => d.status === 'abgelehnt').length
+
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Badge className={kycStatusConfig[sub.status].color} variant="secondary">{kycStatusConfig[sub.status].label}</Badge>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    <SegIcon className={'h-3.5 w-3.5 ' + (segConfig?.color ?? '')} />
+                    {getSegmentLabel(sub.customerType)}
+                  </span>
+                  {sub.vehicleIds && sub.vehicleIds.length > 0 && (
+                    <span className="text-xs text-muted-foreground ml-auto">{sub.vehicleIds.length} Fahrzeug{sub.vehicleIds.length > 1 ? 'e' : ''}</span>
+                  )}
+                </div>
+
+                {/* Document progress for new-style submissions */}
+                {hasDocSubmissions && (
+                  <VerificationProgressBar total={docSubs.length} verified={verifiedCount} failed={failedCount} />
                 )}
-              </div>
-              {selectedSubmission.vehicleIds && selectedSubmission.vehicleIds.length > 0 && (
-                <div className="space-y-0">
-                  {selectedSubmission.vehicleIds.map(vid => (
-                    <VehicleMiniCard key={vid} vehicleId={vid} onClick={v => { setSelectedSubmission(null); setVehicleModal(v) }} />
-                  ))}
-                </div>
-              )}
-              <Separator />
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
-                <div><span className="text-muted-foreground">E-Mail</span><p className="font-medium">{selectedSubmission.email}</p></div>
-                <div><span className="text-muted-foreground">Telefon</span><p className="font-medium">{selectedSubmission.phone}</p></div>
-                {selectedSubmission.customerType === 'privat' && (<>
-                  {selectedSubmission.documentType && <div><span className="text-muted-foreground">Dokumenttyp</span><p className="font-medium capitalize">{selectedSubmission.documentType}</p></div>}
-                  {selectedSubmission.documentNumber && <div><span className="text-muted-foreground">Dokumentnr.</span><p className="font-medium">{selectedSubmission.documentNumber}</p></div>}
-                  {selectedSubmission.dateOfBirth && <div><span className="text-muted-foreground">Geburtsdatum</span><p className="font-medium">{selectedSubmission.dateOfBirth}</p></div>}
-                  {selectedSubmission.address && <div className="col-span-2"><span className="text-muted-foreground">Adresse</span><p className="font-medium">{selectedSubmission.address}</p></div>}
-                  {selectedSubmission.privacyMethod && <div><span className="text-muted-foreground">Prüfmethode</span><p className="font-medium">{selectedSubmission.privacyMethod === 'upload' ? 'Dokument hochgeladen' : 'Link gesendet'}</p></div>}
-                </>)}
-                {selectedSubmission.customerType === 'gewerbe' && (<>
-                  {selectedSubmission.companyName && <div className="col-span-2"><span className="text-muted-foreground">Firma</span><p className="font-medium">{selectedSubmission.companyName}</p></div>}
-                  {selectedSubmission.handelsregisterNr && <div><span className="text-muted-foreground">Handelsregister</span><p className="font-medium">{selectedSubmission.handelsregisterNr}</p></div>}
-                  {selectedSubmission.ustIdNr && <div><span className="text-muted-foreground">USt-IdNr.</span><p className="font-medium">{selectedSubmission.ustIdNr}</p></div>}
-                </>)}
-              </div>
-              {selectedSubmission.checkResults && selectedSubmission.checkResults.length > 0 && (<>
-                <Separator />
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Prüfergebnisse</h4>
-                  {selectedSubmission.checkResults.map((check, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm">
-                      {check.passed ? <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> : <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />}
-                      <div><p className="font-medium">{check.check}</p><p className="text-xs text-muted-foreground">{check.detail}</p></div>
-                    </div>
-                  ))}
-                </div>
-              </>)}
-              {selectedSubmission.notes && (<><Separator /><div><h4 className="font-semibold text-sm mb-1">Notizen</h4><p className="text-sm text-muted-foreground">{selectedSubmission.notes}</p></div></>)}
 
-              {selectedSubmission.status === 'verifiziert' && (<>
+                {sub.vehicleIds && sub.vehicleIds.length > 0 && (
+                  <div className="space-y-0">
+                    {sub.vehicleIds.map(vid => (
+                      <VehicleMiniCard key={vid} vehicleId={vid} onClick={v => { setSelectedSubmission(null); setVehicleModal(v) }} />
+                    ))}
+                  </div>
+                )}
                 <Separator />
-                <DocumentSection
-                  submission={selectedSubmission}
-                  bundleState={documentBundles.get(selectedSubmission.id)}
-                  docGenSteps={docGenSteps}
-                  onGenerate={handleGenerateDocs}
-                  onSend={handleSendDocs}
-                  onPreview={handleOpenPreview}
-                />
-              </>)}
 
-              {(selectedSubmission.status === 'eingereicht' || selectedSubmission.status === 'manuell_pruefen') && (<>
-                <Separator />
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button className="flex-1" variant="default"><CheckCircle className="h-4 w-4 mr-2" />Verifizieren</Button>
-                  <Button className="flex-1" variant="destructive"><XCircle className="h-4 w-4 mr-2" />Ablehnen</Button>
+                {/* Contact info */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
+                  <div><span className="text-muted-foreground">E-Mail</span><p className="font-medium">{sub.email}</p></div>
+                  <div><span className="text-muted-foreground">Telefon</span><p className="font-medium">{sub.phone}</p></div>
                 </div>
-              </>)}
-            </div>
-          )}
+
+                {/* New: Document requirements list for new-style submissions */}
+                {hasDocSubmissions && (
+                  <>
+                    <Separator />
+                    <DocumentRequirementsList
+                      segment={sub.customerType}
+                      documentSubmissions={sub.documentSubmissions}
+                      mode="review"
+                    />
+                  </>
+                )}
+
+                {/* Legacy: field-by-field display for old submissions */}
+                {!hasDocSubmissions && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
+                    {sub.customerType === 'privat' && (<>
+                      {sub.documentType && <div><span className="text-muted-foreground">Dokumenttyp</span><p className="font-medium capitalize">{sub.documentType}</p></div>}
+                      {sub.documentNumber && <div><span className="text-muted-foreground">Dokumentnr.</span><p className="font-medium">{sub.documentNumber}</p></div>}
+                      {sub.dateOfBirth && <div><span className="text-muted-foreground">Geburtsdatum</span><p className="font-medium">{sub.dateOfBirth}</p></div>}
+                      {sub.address && <div className="col-span-2"><span className="text-muted-foreground">Adresse</span><p className="font-medium">{sub.address}</p></div>}
+                      {sub.privacyMethod && <div><span className="text-muted-foreground">Prüfmethode</span><p className="font-medium">{sub.privacyMethod === 'upload' ? 'Dokument hochgeladen' : 'Link gesendet'}</p></div>}
+                    </>)}
+                    {sub.customerType === 'gewerbe' && (<>
+                      {sub.companyName && <div className="col-span-2"><span className="text-muted-foreground">Firma</span><p className="font-medium">{sub.companyName}</p></div>}
+                      {sub.handelsregisterNr && <div><span className="text-muted-foreground">Handelsregister</span><p className="font-medium">{sub.handelsregisterNr}</p></div>}
+                      {sub.ustIdNr && <div><span className="text-muted-foreground">USt-IdNr.</span><p className="font-medium">{sub.ustIdNr}</p></div>}
+                    </>)}
+                  </div>
+                )}
+
+                {/* Legacy check results */}
+                {sub.checkResults && sub.checkResults.length > 0 && !hasDocSubmissions && (<>
+                  <Separator />
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">Prüfergebnisse</h4>
+                    {sub.checkResults.map((check, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm">
+                        {check.passed ? <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> : <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />}
+                        <div><p className="font-medium">{check.check}</p><p className="text-xs text-muted-foreground">{check.detail}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                </>)}
+
+                {sub.notes && (<><Separator /><div><h4 className="font-semibold text-sm mb-1">Notizen</h4><p className="text-sm text-muted-foreground">{sub.notes}</p></div></>)}
+
+                {sub.status === 'verifiziert' && (<>
+                  <Separator />
+                  <DocumentSection
+                    submission={sub}
+                    bundleState={documentBundles.get(sub.id)}
+                    docGenSteps={docGenSteps}
+                    onGenerate={handleGenerateDocs}
+                    onSend={handleSendDocs}
+                    onPreview={handleOpenPreview}
+                  />
+                </>)}
+
+                {(sub.status === 'eingereicht' || sub.status === 'manuell_pruefen') && (<>
+                  <Separator />
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button className="flex-1" variant="default"><CheckCircle className="h-4 w-4 mr-2" />Verifizieren</Button>
+                    <Button className="flex-1" variant="destructive"><XCircle className="h-4 w-4 mr-2" />Ablehnen</Button>
+                  </div>
+                </>)}
+              </div>
+            )
+          })()}
         </DialogContent>
       </Dialog>
 
-      {/* New Verification Dialog */}
+      {/* ─── New Verification Dialog ────────────────────────────────────────── */}
       <Dialog open={newDialog} onOpenChange={handleCloseDialog}>
-        <DialogContent className="max-w-[calc(100vw-1rem)] max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className={cn(
+          'max-w-[calc(100vw-1rem)] max-h-[90vh] p-0 overflow-hidden flex flex-col',
+          dialogStep === 'form' && customerSegment ? 'sm:max-w-4xl' : 'sm:max-w-lg',
+        )}>
 
           {dialogStep === 'form' && (<>
-            <DialogHeader><DialogTitle>Neue Verifizierung</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Kundentyp</Label>
-                <Tabs value={customerType} onValueChange={v => setCustomerType(v as CustomerType)}>
-                  <TabsList className="w-full overflow-x-auto whitespace-nowrap">
-                    <TabsTrigger value="privat" className="flex-1"><User className="h-4 w-4 mr-2" />Privatkunde</TabsTrigger>
-                    <TabsTrigger value="gewerbe" className="flex-1"><Building className="h-4 w-4 mr-2" />Gewerbekunde</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2"><Label>Name</Label><Input placeholder="Max Mustermann" /></div>
-                <div className="space-y-2"><Label>E-Mail</Label><Input placeholder="email@beispiel.de" type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} /></div>
-              </div>
-              <div className="space-y-2"><Label>Telefon</Label><Input placeholder="+49 711 1234567" /></div>
+            <div className="px-6 pt-5 pb-0 shrink-0">
+              <DialogHeader><DialogTitle>Neue Verifizierung</DialogTitle></DialogHeader>
+            </div>
 
-              <div className="space-y-2">
-                <Label>
-                  Fahrzeuge
-                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">(optional · Mehrfachauswahl)</span>
-                </Label>
-                <VehicleMultiSelect selected={formVehicleIds} onChange={setFormVehicleIds} />
+            {!customerSegment ? (
+              /* ── Step 1: Just segment selection ── */
+              <div className="px-6 pb-6 pt-4">
+                <SegmentSelector value={customerSegment} onChange={handleSegmentChange} />
               </div>
+            ) : (
+              /* ── Step 2: Two-column layout ── */
+              <div className="flex flex-col sm:flex-row flex-1 min-h-0">
+                {/* Left column: Segment + Customer Info */}
+                <div className="sm:w-[45%] px-6 pb-5 pt-4 space-y-4 sm:border-r sm:overflow-y-auto">
+                  <SegmentSelector value={customerSegment} onChange={handleSegmentChange} compact />
 
-              {customerType === 'privat' && (<>
-                <div className="space-y-2">
-                  <Label>Dokumenttyp</Label>
-                  <Select><SelectTrigger><SelectValue placeholder="Auswählen" /></SelectTrigger>
-                    <SelectContent><SelectItem value="personalausweis">Personalausweis</SelectItem><SelectItem value="reisepass">Reisepass</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>ID-Prüfung Methode</Label>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {([
-                      { method: 'upload' as PrivatMethod, Icon: Upload, label: 'Dokument hochladen', sub: 'Jetzt direkt' },
-                      { method: 'link' as PrivatMethod, Icon: Link2, label: 'Link senden', sub: 'Per E-Mail' },
-                    ]).map(({ method, Icon, label, sub }) => (
-                      <button key={method} onClick={() => setPrivatMethod(method)}
-                        className={'flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-sm transition-all ' +
-                          (privatMethod === method ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-muted-foreground')}>
-                        <Icon className="h-5 w-5" />
-                        <span className="font-medium">{label}</span>
-                        <span className="text-xs opacity-70">{sub}</span>
-                      </button>
-                    ))}
+                  <Separator />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label className="text-xs">Name</Label><Input className="h-8 text-sm" placeholder="Max Mustermann" value={formName} onChange={e => setFormName(e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">E-Mail</Label><Input className="h-8 text-sm" placeholder="email@beispiel.de" type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} /></div>
                   </div>
-                </div>
-                {privatMethod === 'upload' && (
-                  <div className="border-2 border-dashed rounded-xl p-5 text-center">
-                    <Upload className="h-7 w-7 mx-auto text-muted-foreground/50 mb-2" />
-                    <p className="text-sm text-muted-foreground mb-2">Ausweis oder Reisepass hochladen</p>
-                    <Button variant="outline" size="sm"><Upload className="h-4 w-4 mr-2" />Datei auswählen</Button>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label className="text-xs">Telefon</Label><Input className="h-8 text-sm" placeholder="+49 711 1234567" value={formPhone} onChange={e => setFormPhone(e.target.value)} /></div>
+                    {customerSegment !== 'privat' && customerSegment !== 'export' && customerSegment !== 'diplomat' ? (
+                      <div className="space-y-1.5"><Label className="text-xs">Firmenname</Label><Input className="h-8 text-sm" placeholder="Musterfirma GmbH" value={formCompanyName} onChange={e => setFormCompanyName(e.target.value)} /></div>
+                    ) : <div />}
                   </div>
-                )}
-                {privatMethod === 'link' && (
-                  <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-4">
-                    <div className="flex items-start gap-3">
-                      <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-                      <div className="text-sm">
-                        <p className="font-medium text-blue-800 dark:text-blue-200">Link per E-Mail senden</p>
-                        <p className="text-blue-600 dark:text-blue-400 text-xs mt-0.5">Der Kunde erhält einen sicheren Link an <strong>{formEmail || 'die angegebene E-Mail'}</strong>. Gültig für 24 Stunden.</p>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Fahrzeuge <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span></Label>
+                    <VehicleMultiSelect selected={formVehicleIds} onChange={setFormVehicleIds} />
+                  </div>
+
+                  {/* Privat: ID method selection */}
+                  {customerSegment === 'privat' && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">ID-Prüfung Methode</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { method: 'upload' as PrivatMethod, Icon: Upload, label: 'Hochladen', sub: 'Jetzt direkt' },
+                          { method: 'link' as PrivatMethod, Icon: Link2, label: 'Link senden', sub: 'Per E-Mail' },
+                        ]).map(({ method, Icon, label, sub }) => (
+                          <button key={method} onClick={() => setPrivatMethod(method)}
+                            className={'flex items-center gap-2 rounded-lg border-2 px-3 py-2 text-sm transition-all ' +
+                              (privatMethod === method ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-muted-foreground')}>
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <div className="text-left">
+                              <span className="font-medium text-xs block">{label}</span>
+                              <span className="text-xs opacity-70 block">{sub}</span>
+                            </div>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                )}
-              </>)}
+                  )}
 
-              {customerType === 'gewerbe' && (<>
-                <div className="space-y-2"><Label>Firmenname</Label><Input placeholder="Musterfirma GmbH" /></div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2"><Label>Handelsregisternr.</Label><Input placeholder="HRB 123456" value={formHRB} onChange={e => setFormHRB(e.target.value)} /></div>
-                  <div className="space-y-2"><Label>USt-IdNr.</Label><Input placeholder="DE123456789" value={formUstId} onChange={e => setFormUstId(e.target.value)} /></div>
-                </div>
-                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                  <p className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
-                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    USt-IdNr. und Handelsregisternummer werden automatisch über externe Datenbanken geprüft.
-                  </p>
-                </div>
-              </>)}
+                  {customerSegment === 'privat' && privatMethod === 'link' && (
+                    <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3">
+                      <div className="flex items-start gap-2">
+                        <Mail className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                        <div className="text-xs">
+                          <p className="font-medium text-blue-800 dark:text-blue-200">Link per E-Mail senden</p>
+                          <p className="text-blue-600 dark:text-blue-400 mt-0.5">Sicherer Link an <strong>{formEmail || 'E-Mail'}</strong>. 24h gültig.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-              <Button className="w-full" onClick={handleSubmit}><ShieldCheck className="h-4 w-4 mr-2" />Verifizierung einreichen</Button>
-            </div>
+                  <Button className="w-full" size="sm" onClick={handleSubmit}>
+                    <ShieldCheck className="h-4 w-4 mr-2" />Verifizierung einreichen
+                  </Button>
+                </div>
+
+                {/* Right column: Document Requirements */}
+                <div className="sm:w-[55%] px-6 pb-5 pt-4 sm:overflow-y-auto bg-muted/20">
+                  {customerSegment === 'privat' && privatMethod === 'link' ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                      <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-3">
+                        <Link2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <p className="text-sm font-medium">Verifizierung per Link</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-xs">Der Kunde wird gebeten, seine Identität über den sicheren Link selbst zu verifizieren.</p>
+                    </div>
+                  ) : (
+                    <DocumentRequirementsList
+                      segment={customerSegment}
+                      documentSubmissions={(() => {
+                        // Merge field values into submissions, keeping existing submission status
+                        const docs = getDocumentsForSegment(customerSegment)
+                        return docs.map(doc => {
+                          const existing = formDocSubmissions.find(s => s.documentConfigId === doc.id)
+                          if (existing) return { ...existing, fieldValues: { ...(existing.fieldValues ?? {}), ...(formDocFieldValues[doc.id] ?? {}) } }
+                          const fv = formDocFieldValues[doc.id]
+                          if (fv) return { documentConfigId: doc.id, status: 'nicht_eingereicht' as const, fieldValues: fv }
+                          return { documentConfigId: doc.id, status: 'nicht_eingereicht' as const }
+                        })
+                      })()}
+                      onFieldChange={handleDocFieldChange}
+                      onFileUpload={(docId, file) => handleMockFileUpload(docId, file)}
+                      onRunCheck={(docId) => handleMockRunCheck(docId)}
+                      mode="create"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </>)}
 
           {dialogStep === 'processing' && (
-            <div className="py-4">
+            <div className="px-6 py-8">
               <div className="text-center mb-6">
                 <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
                   <Loader2 className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-spin" />
                 </div>
-                <h3 className="font-semibold">{customerType === 'gewerbe' ? 'Gewerbliche Prüfung läuft' : 'Identitätsprüfung läuft'}</h3>
-                <p className="text-sm text-muted-foreground mt-1">Bitte warten Sie einen Moment…</p>
+                <h3 className="font-semibold">{getSegmentLabel(customerSegment ?? 'privat')} – Prüfung läuft</h3>
+                <p className="text-sm text-muted-foreground mt-1">Automatische Verifizierung über externe Schnittstellen…</p>
               </div>
-              <div className="space-y-4 bg-muted/30 rounded-xl p-4">
+              <div className="space-y-4 bg-muted/30 rounded-xl p-4 max-w-md mx-auto">
                 {processingSteps.map(step => <ProcessingStepItem key={step.id} step={step} />)}
               </div>
             </div>
           )}
 
           {dialogStep === 'success' && (
-            <div className="py-4 text-center space-y-4">
+            <div className="px-6 py-8 text-center space-y-4">
               <div className="h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto">
                 <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h3 className="font-bold text-lg">{customerType === 'gewerbe' ? 'Gewerbe verifiziert' : 'Identität bestätigt'}</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {customerType === 'gewerbe' ? 'USt-IdNr. und Handelsregister wurden erfolgreich geprüft.' : 'Ausweis wurde erfolgreich analysiert und Identität bestätigt.'}
-                </p>
+                <h3 className="font-bold text-lg">{getSegmentLabel(customerSegment ?? 'privat')} verifiziert</h3>
+                <p className="text-sm text-muted-foreground mt-1">Alle automatischen Prüfungen wurden erfolgreich abgeschlossen.</p>
               </div>
-              <div className="bg-muted/40 rounded-xl p-4 text-left space-y-2">
+              <div className="bg-muted/40 rounded-xl p-4 text-left space-y-2 max-w-md mx-auto">
                 {processingSteps.map(step => (
                   <div key={step.id} className="flex items-center gap-2 text-sm">
                     <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -1223,12 +1137,12 @@ export default function VerifizierungPage() {
                   </div>
                 ))}
               </div>
-              <Button className="w-full" onClick={handleCloseDialog}>Fertig</Button>
+              <Button className="w-full max-w-md mx-auto" onClick={handleCloseDialog}>Fertig</Button>
             </div>
           )}
 
           {dialogStep === 'link_sent' && (
-            <div className="py-4 text-center space-y-4">
+            <div className="px-6 py-8 text-center space-y-4">
               <div className="h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto">
                 <Mail className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
@@ -1236,7 +1150,7 @@ export default function VerifizierungPage() {
                 <h3 className="font-bold text-lg">Link gesendet</h3>
                 <p className="text-sm text-muted-foreground mt-1">Ein sicherer Verifizierungslink wurde an <strong>{formEmail}</strong> gesendet.</p>
               </div>
-              <div className="rounded-xl border bg-muted/30 p-3 text-left space-y-2">
+              <div className="rounded-xl border bg-muted/30 p-3 text-left space-y-2 max-w-md mx-auto">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Verifizierungslink</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs bg-background rounded px-2 py-1 border truncate">verify.wackenhut.de/id-check?token=wh-demo-abc123</code>
@@ -1246,10 +1160,12 @@ export default function VerifizierungPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">Gültig für 24 Stunden · Ende-zu-Ende verschlüsselt</p>
               </div>
-              <Button variant="outline" className="w-full" onClick={() => window.open('/id-check', '_blank')}>
-                <ExternalLink className="h-4 w-4 mr-2" />ID-Prüfung Demo öffnen
-              </Button>
-              <Button className="w-full" onClick={handleCloseDialog}>Fertig</Button>
+              <div className="max-w-md mx-auto space-y-2">
+                <Button variant="outline" className="w-full" onClick={() => window.open('/id-check', '_blank')}>
+                  <ExternalLink className="h-4 w-4 mr-2" />ID-Prüfung Demo öffnen
+                </Button>
+                <Button className="w-full" onClick={handleCloseDialog}>Fertig</Button>
+              </div>
             </div>
           )}
 
