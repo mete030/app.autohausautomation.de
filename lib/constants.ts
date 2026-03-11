@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Car,
+  ShoppingCart,
   Phone,
   FileText,
   ReceiptText,
@@ -8,7 +9,7 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
-import type { CallAgent } from '@/lib/types'
+import type { CallAgent, Employee, EscalationRule, SlaConfig } from '@/lib/types'
 
 export interface NavItem {
   title: string
@@ -20,14 +21,18 @@ export interface NavItem {
 
 export const featureVisibility = {
   buchhaltung: false,
+  verifizierung: false,
+  dashboard: false,
 } as const
 
 export const navigation: NavItem[] = [
-  {
-    title: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
+  ...(featureVisibility.dashboard
+    ? [{
+        title: 'Dashboard' as const,
+        href: '/dashboard',
+        icon: LayoutDashboard,
+      }]
+    : []),
   {
     title: 'Fahrzeuge',
     href: '/fahrzeuge/hofsteuerung',
@@ -37,6 +42,11 @@ export const navigation: NavItem[] = [
       { title: 'Inventar', href: '/fahrzeuge' },
       { title: 'Werkstatt', href: '/fahrzeuge/werkstatt' },
     ],
+  },
+  {
+    title: 'Einkauf',
+    href: '/einkauf',
+    icon: ShoppingCart,
   },
   {
     title: 'Callcenter',
@@ -70,11 +80,13 @@ export const navigation: NavItem[] = [
     href: '/nachrichten',
     icon: MessageSquare,
   },
-  {
-    title: 'Verifizierung',
-    href: '/verifizierung',
-    icon: ShieldCheck,
-  },
+  ...(featureVisibility.verifizierung
+    ? [{
+        title: 'Verifizierung' as const,
+        href: '/verifizierung',
+        icon: ShieldCheck,
+      }]
+    : []),
 ]
 
 export const escalationColors = {
@@ -85,13 +97,15 @@ export const escalationColors = {
 } as const
 
 export const channelConfig = {
-  whatsapp:  { label: 'WhatsApp',  color: 'bg-[#25D366]',  textColor: 'text-white' },
-  email:     { label: 'E-Mail',    color: 'bg-blue-500',   textColor: 'text-white' },
-  sms:       { label: 'SMS',       color: 'bg-purple-500', textColor: 'text-white' },
-  mobile_de: { label: 'mobile.de', color: 'bg-orange-500', textColor: 'text-white' },
-  messenger: { label: 'Messenger', color: 'bg-[#0084FF]',  textColor: 'text-white' },
-  instagram: { label: 'Instagram', color: 'bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]', textColor: 'text-white' },
-  telegram:  { label: 'Telegram',  color: 'bg-[#26A5E4]',  textColor: 'text-white' },
+  whatsapp:        { label: 'WhatsApp',         color: 'bg-[#25D366]',  textColor: 'text-white' },
+  email:           { label: 'E-Mail',           color: 'bg-blue-500',   textColor: 'text-white' },
+  sms:             { label: 'SMS',              color: 'bg-purple-500', textColor: 'text-white' },
+  mobile_de:       { label: 'mobile.de',        color: 'bg-orange-500', textColor: 'text-white' },
+  messenger:       { label: 'Messenger',        color: 'bg-[#0084FF]',  textColor: 'text-white' },
+  instagram:       { label: 'Instagram',        color: 'bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]', textColor: 'text-white' },
+  telegram:        { label: 'Telegram',         color: 'bg-[#26A5E4]',  textColor: 'text-white' },
+  website:         { label: 'Website',          color: 'bg-indigo-500', textColor: 'text-white' },
+  website_chatbot: { label: 'Website Chatbot',  color: 'bg-teal-500',   textColor: 'text-white' },
 } as const
 
 export const priceCategoryConfig = {
@@ -181,4 +195,69 @@ export const mockCallAgents: CallAgent[] = [
   { id: 'agent-lk', name: 'Lisa Kramer', type: 'mensch' },
   { id: 'agent-ki-luna', name: 'KI-Agent Luna', type: 'ki' },
   { id: 'agent-ki-max', name: 'KI-Agent Max', type: 'ki' },
+]
+
+// ---- Nachrichten Perspektive ----
+
+export interface NachrichtenPerspective {
+  type: 'admin' | 'serviceberater' | 'callcenter'
+  userName?: string
+  label: string
+}
+
+// ---- Employee / Mitarbeiter ----
+
+export const employeeRoleConfig = {
+  verkaufer:          { label: 'Verkäufer',          color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' },
+  serviceberater:     { label: 'Serviceberater',     color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' },
+  werkstattleiter:    { label: 'Werkstattleiter',    color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' },
+  backoffice:         { label: 'Backoffice',         color: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-400' },
+  geschaeftsfuehrung: { label: 'Geschäftsführung',   color: 'bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400' },
+} as const
+
+export const employeeStatusConfig = {
+  aktiv:    { label: 'Aktiv',    dot: 'bg-emerald-500' },
+  abwesend: { label: 'Abwesend', dot: 'bg-gray-400' },
+  pause:    { label: 'Pause',    dot: 'bg-amber-500' },
+} as const
+
+export const escalationLevelConfig = {
+  1: { label: 'Stufe 1 — Berater',      color: 'text-blue-600 dark:text-blue-400',  bg: 'bg-blue-100 dark:bg-blue-950/30' },
+  2: { label: 'Stufe 2 — Teamleitung',  color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-950/30' },
+  3: { label: 'Stufe 3 — Management',   color: 'text-red-600 dark:text-red-400',    bg: 'bg-red-100 dark:bg-red-950/30' },
+} as const
+
+export const slaDurationOptions: { value: number; label: string }[] = [
+  { value: 5,   label: '5 Minuten' },
+  { value: 10,  label: '10 Minuten' },
+  { value: 15,  label: '15 Minuten' },
+  { value: 30,  label: '30 Minuten' },
+  { value: 60,  label: '1 Stunde' },
+  { value: 120, label: '2 Stunden' },
+]
+
+export const defaultSlaConfig: SlaConfig = {
+  defaultMinutes: 30,
+  perPriority: {
+    dringend: 5,
+    hoch: 15,
+    mittel: 30,
+    niedrig: 60,
+  },
+}
+
+export const mockEmployees: Employee[] = [
+  { id: 'emp-tm', name: 'Thomas Müller',    role: 'serviceberater',     email: 't.mueller@wackenhut.de',  phone: '+49 711 100001', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-sw', name: 'Sarah Weber',      role: 'serviceberater',     email: 's.weber@wackenhut.de',    phone: '+49 711 100002', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-ms', name: 'Michael Schmidt',  role: 'serviceberater',     email: 'm.schmidt@wackenhut.de',  phone: '+49 711 100003', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-lk', name: 'Lisa Kramer',      role: 'serviceberater',     email: 'l.kramer@wackenhut.de',   phone: '+49 711 100004', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-fs', name: 'Frau Schwab',      role: 'geschaeftsfuehrung', email: 'schwab@wackenhut.de',     phone: '+49 711 100005', status: 'aktiv', isCallAgent: false, isSupervisor: true,  createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-hb', name: 'Harald Braun',     role: 'werkstattleiter',    email: 'h.braun@wackenhut.de',    phone: '+49 711 100006', status: 'aktiv', isCallAgent: false, isSupervisor: true,  createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-mr', name: 'Marco Rossi',      role: 'verkaufer',          email: 'm.rossi@wackenhut.de',    phone: '+49 711 100007', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
+  { id: 'emp-jl', name: 'Julia Lang',       role: 'verkaufer',          email: 'j.lang@wackenhut.de',     phone: '+49 711 100008', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
+]
+
+export const mockEscalationRules: EscalationRule[] = [
+  { id: 'rule-1', name: 'Erinnerung per E-Mail (L1)', triggerAfterMinutes: 30, fromLevel: 1, toLevel: 2, notifyChannels: ['email'], isActive: true },
+  { id: 'rule-2', name: 'Eskalation an Teamleitung (L2)', triggerAfterMinutes: 90, fromLevel: 2, toLevel: 3, notifyChannels: ['app', 'email'], isActive: true },
 ]

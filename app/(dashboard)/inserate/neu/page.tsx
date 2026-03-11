@@ -99,6 +99,8 @@ const EXPORT_PLATFORMS = [
   },
 ]
 
+const EXTRA_OPTIONS_LIST: readonly string[] = EXTRA_OPTIONS
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type InputMode = 'choose' | 'vin' | 'manual'
@@ -134,7 +136,7 @@ export default function NeuesInseratPage() {
   const [activeDescription, setActiveDescription] = useState('')
   const [improvingDesc, setImprovingDesc] = useState(false)
   const [descImproved, setDescImproved] = useState(false)
-  const [kycScore, setKycScore] = useState(MOCK_AI.kycScore)
+  const [kycScore, setKycScore] = useState<number>(MOCK_AI.kycScore)
   const [improvingKyc, setImprovingKyc] = useState(false)
   const [kycImproved, setKycImproved] = useState(false)
 
@@ -671,9 +673,9 @@ export default function NeuesInseratPage() {
                         <Plus className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                    {selectedExtras.filter(e => !EXTRA_OPTIONS.includes(e)).length > 0 && (
+                    {selectedExtras.filter(e => !EXTRA_OPTIONS_LIST.includes(e)).length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
-                        {selectedExtras.filter(e => !EXTRA_OPTIONS.includes(e)).map(item => (
+                        {selectedExtras.filter(e => !EXTRA_OPTIONS_LIST.includes(e)).map(item => (
                           <span key={item} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
                             {item}
                             <button onClick={() => toggleExtra(item)} className="hover:text-destructive transition-colors">

@@ -1,155 +1,313 @@
 import { create } from 'zustand'
+import {
+  type LatLng,
+  type AxisAlignedBounds,
+  type SpotParams,
+  type SpotSpec,
+  DEFAULT_SPOT_PARAMS,
+  computePolygon,
+  autoGenerateRows,
+  generateRowSpots,
+  boundsCenter,
+} from '@/lib/yard-geometry'
+
+// Re-export for consumers
+export { DEFAULT_SPOT_PARAMS }
+export type { SpotParams, LatLng, AxisAlignedBounds }
+
+// ─── Area colors ─────────────────────────────────────────────────────────────
+
+const AREA_COLORS = [
+  '#3b82f6', '#22c55e', '#a855f7', '#f97316',
+  '#14b8a6', '#ec4899', '#eab308', '#64748b',
+]
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface SpotParams {
-  spotW: number   // spot width  in meters (default 2.5)
-  spotD: number   // spot depth  in meters (default 5.0)
-  lane:  number   // lane width  in meters (default 6.0)
-}
-
-export const DEFAULT_SPOT_PARAMS: SpotParams = { spotW: 2.5, spotD: 5.0, lane: 6.0 }
-
 export interface ParkingSpot {
   id: string
-  index: number                                   // human-readable "Platz X"
-  bounds: [[number, number], [number, number]]    // [SW, NE] in [lat, lng]
+  index: number
+  corners: [LatLng, LatLng, LatLng, LatLng]
   vehicleId: string | null
-  disabled: boolean                               // user-toggled off
+  disabled: boolean
+}
+
+export interface YardRow {
+  id: string
+  name: string
+  offsetY: number
+  spots: ParkingSpot[]
+}
+
+export interface YardArea {
+  id: string
+  name: string
+  baseBounds: AxisAlignedBounds
+  rotationDeg: number
+  polygon: [LatLng, LatLng, LatLng, LatLng]
+  spotParams: SpotParams
+  rows: YardRow[]
+  color: string
 }
 
 export interface DealershipConfig {
   isConfigured: boolean
   address: string
-  center: [number, number]
-  lotBounds: [[number, number], [number, number]]
-  areaM2: number
-  spots: ParkingSpot[]
-  spotParams: SpotParams
+  center: LatLng
+  areas: YardArea[]
 }
 
 interface DealershipStore extends DealershipConfig {
-  configure: (
-    address: string,
-    center: [number, number],
-    bounds: [[number, number], [number, number]],
-    maxSpots?: number,
-    params?: SpotParams,
-  ) => void
-  updateLot: (
-    bounds: [[number, number], [number, number]],
-    params?: SpotParams,
-    maxSpots?: number,
-  ) => void
-  assignVehicle: (spotId: string, vehicleId: string | null) => void
-  toggleSpot:   (spotId: string) => void
+  // Setup
+  configure: (address: string, center: LatLng) => void
   reset: () => void
+
+  // Area CRUD
+  addArea: (baseBounds: AxisAlignedBounds, name?: string) => string
+  removeArea: (areaId: string) => void
+  updateAreaBounds: (areaId: string, baseBounds: AxisAlignedBounds) => void
+  updateAreaRotation: (areaId: string, rotationDeg: number) => void
+  renameArea: (areaId: string, name: string) => void
+  updateAreaSpotParams: (areaId: string, params: Partial<SpotParams>) => void
+
+  // Row CRUD
+  addRow: (areaId: string, name?: string) => void
+  removeRow: (areaId: string, rowId: string) => void
+  renameRow: (areaId: string, rowId: string, name: string) => void
+
+  // Spot operations
+  assignVehicle: (spotId: string, vehicleId: string | null) => void
+  toggleSpot: (spotId: string) => void
+
+  // Derived
+  getAllSpots: () => ParkingSpot[]
 }
 
-// ─── Spot generation ──────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-export function generateSpots(
-  sw: [number, number],
-  ne: [number, number],
-  params: SpotParams = DEFAULT_SPOT_PARAMS,
-): { spots: Omit<ParkingSpot, 'vehicleId' | 'disabled'>[]; areaM2: number } {
-  const [swLat, swLng] = sw
-  const [neLat, neLng] = ne
-  const avgLat = (swLat + neLat) / 2
+let areaCounter = 0
 
-  const LAT_PER_M = 1 / 111_139
-  const LNG_PER_M = 1 / (111_139 * Math.cos(avgLat * (Math.PI / 180)))
+function nextAreaId(): string {
+  return `area-${Date.now()}-${(areaCounter++).toString(36)}`
+}
 
-  const widthM  = (neLng - swLng) / LNG_PER_M
-  const heightM = (neLat - swLat) / LAT_PER_M
-  const areaM2  = Math.round(widthM * heightM)
+function areaLetter(index: number): string {
+  return String.fromCharCode(65 + (index % 26))
+}
 
-  const BORDER  = 2.0
-  const BLOCK_H = params.spotD * 2 + params.lane
-
-  const availW = widthM  - 2 * BORDER
-  const availH = heightM - 2 * BORDER
-
-  if (availW < params.spotW || availH < params.spotD) return { spots: [], areaM2 }
-
-  const cols   = Math.floor(availW / params.spotW)
-  const blocks = Math.floor(availH / BLOCK_H)
-  const spots: Omit<ParkingSpot, 'vehicleId' | 'disabled'>[] = []
-  let idx = 0
-
-  for (let b = 0; b < blocks; b++) {
-    for (let rowInBlock = 0; rowInBlock < 2; rowInBlock++) {
-      const rowLatOffsetM = BORDER + b * BLOCK_H + (rowInBlock === 0 ? 0 : params.spotD + params.lane)
-      for (let c = 0; c < cols; c++) {
-        const spotSwLat = swLat + rowLatOffsetM              * LAT_PER_M
-        const spotNeLat = swLat + (rowLatOffsetM + params.spotD) * LAT_PER_M
-        const spotSwLng = swLng + (BORDER + c * params.spotW)            * LNG_PER_M
-        const spotNeLng = swLng + (BORDER + c * params.spotW + params.spotW) * LNG_PER_M
-        spots.push({ id: `spot-${idx}`, index: idx + 1, bounds: [[spotSwLat, spotSwLng], [spotNeLat, spotNeLng]] })
-        idx++
-      }
+/** Rebuild spots for all rows in an area, preserving vehicle assignments. */
+function rebuildAreaSpots(area: YardArea): YardArea {
+  const oldSpotMap = new Map<string, { vehicleId: string | null; disabled: boolean }>()
+  for (const row of area.rows) {
+    for (const spot of row.spots) {
+      oldSpotMap.set(spot.id, { vehicleId: spot.vehicleId, disabled: spot.disabled })
     }
   }
 
-  return { spots, areaM2 }
+  const polygon = computePolygon(area.baseBounds, area.rotationDeg)
+  const rows: YardRow[] = area.rows.map(row => {
+    const specs: SpotSpec[] = generateRowSpots(area.baseBounds, area.rotationDeg, area.spotParams, row)
+    const spots: ParkingSpot[] = specs.map(s => {
+      const old = oldSpotMap.get(s.id)
+      return {
+        ...s,
+        vehicleId: old?.vehicleId ?? null,
+        disabled: old?.disabled ?? false,
+      }
+    })
+    return { ...row, spots }
+  })
+
+  return { ...area, polygon, rows }
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 const INITIAL: DealershipConfig = {
   isConfigured: false,
-  address:    '',
-  center:     [48.7758, 9.1829],
-  lotBounds:  [[48.7750, 9.1820], [48.7766, 9.1838]],
-  areaM2:     0,
-  spots:      [],
-  spotParams: DEFAULT_SPOT_PARAMS,
+  address: '',
+  center: [48.7758, 9.1829],
+  areas: [],
 }
 
 export const useDealershipStore = create<DealershipStore>((set, get) => ({
   ...INITIAL,
 
-  configure(address, center, bounds, maxSpots, params = DEFAULT_SPOT_PARAMS) {
-    const { spots: raw, areaM2 } = generateSpots(bounds[0], bounds[1], params)
-    const limited = maxSpots ? raw.slice(0, maxSpots) : raw
-    const spots: ParkingSpot[] = limited.map(s => ({ ...s, vehicleId: null, disabled: false }))
-    set({ isConfigured: true, address, center, lotBounds: bounds, spots, areaM2, spotParams: params })
+  configure(address, center) {
+    set({ isConfigured: true, address, center })
   },
 
-  updateLot(bounds, params, maxSpots) {
-    const p = params ?? get().spotParams
-    const { spots: raw, areaM2 } = generateSpots(bounds[0], bounds[1], p)
-    const limited = maxSpots ? raw.slice(0, maxSpots) : raw
-    const oldSpots = get().spots
+  reset() {
+    set({ ...INITIAL })
+  },
 
-    // Preserve vehicleId + disabled state for matching index
-    const spots: ParkingSpot[] = limited.map((s, i) => ({
-      ...s,
-      vehicleId: oldSpots[i]?.vehicleId ?? null,
-      disabled:  oldSpots[i]?.disabled  ?? false,
+  // ── Area CRUD ──────────────────────────────────────────────────────────
+
+  addArea(baseBounds, name) {
+    const state = get()
+    const id = nextAreaId()
+    const colorIdx = state.areas.length
+    const areaName = name ?? `Bereich ${areaLetter(colorIdx)}`
+    const params = DEFAULT_SPOT_PARAMS
+
+    const rowSpecs = autoGenerateRows(id, baseBounds, params)
+    const skeleton: YardArea = {
+      id,
+      name: areaName,
+      baseBounds,
+      rotationDeg: 0,
+      polygon: computePolygon(baseBounds, 0),
+      spotParams: params,
+      rows: rowSpecs.map(r => ({ ...r, spots: [] })),
+      color: AREA_COLORS[colorIdx % AREA_COLORS.length],
+    }
+    const area = rebuildAreaSpots(skeleton)
+
+    set({
+      isConfigured: true,
+      areas: [...state.areas, area],
+    })
+    return id
+  },
+
+  removeArea(areaId) {
+    set(state => ({
+      areas: state.areas.filter(a => a.id !== areaId),
     }))
-    set({ lotBounds: bounds, areaM2, spots, spotParams: p, isConfigured: true })
   },
+
+  updateAreaBounds(areaId, baseBounds) {
+    set(state => ({
+      areas: state.areas.map(a => {
+        if (a.id !== areaId) return a
+        // Regenerate rows for new dimensions
+        const rowSpecs = autoGenerateRows(areaId, baseBounds, a.spotParams)
+        const rows: YardRow[] = rowSpecs.map((rs, i) => {
+          const existingRow = a.rows[i]
+          return existingRow
+            ? { ...existingRow, offsetY: rs.offsetY, id: rs.id }
+            : { ...rs, spots: [] }
+        })
+        return rebuildAreaSpots({ ...a, baseBounds, rows })
+      }),
+    }))
+  },
+
+  updateAreaRotation(areaId, rotationDeg) {
+    set(state => ({
+      areas: state.areas.map(a => {
+        if (a.id !== areaId) return a
+        return rebuildAreaSpots({ ...a, rotationDeg })
+      }),
+    }))
+  },
+
+  renameArea(areaId, name) {
+    set(state => ({
+      areas: state.areas.map(a => a.id === areaId ? { ...a, name } : a),
+    }))
+  },
+
+  updateAreaSpotParams(areaId, params) {
+    set(state => ({
+      areas: state.areas.map(a => {
+        if (a.id !== areaId) return a
+        const merged = { ...a.spotParams, ...params }
+        const rowSpecs = autoGenerateRows(areaId, a.baseBounds, merged)
+        const rows: YardRow[] = rowSpecs.map((rs, i) => {
+          const existingRow = a.rows[i]
+          return existingRow
+            ? { ...existingRow, offsetY: rs.offsetY, id: rs.id, name: existingRow.name }
+            : { ...rs, spots: [] }
+        })
+        return rebuildAreaSpots({ ...a, spotParams: merged, rows })
+      }),
+    }))
+  },
+
+  // ── Row CRUD ───────────────────────────────────────────────────────────
+
+  addRow(areaId, name) {
+    set(state => ({
+      areas: state.areas.map(a => {
+        if (a.id !== areaId) return a
+        const lastRow = a.rows[a.rows.length - 1]
+        const offsetY = lastRow
+          ? lastRow.offsetY + a.spotParams.spotD + a.spotParams.lane
+          : 2.0
+        const rowId = `${areaId}_row-${a.rows.length}`
+        const newRow: YardRow = {
+          id: rowId,
+          name: name ?? `Reihe ${a.rows.length + 1}`,
+          offsetY,
+          spots: [],
+        }
+        return rebuildAreaSpots({ ...a, rows: [...a.rows, newRow] })
+      }),
+    }))
+  },
+
+  removeRow(areaId, rowId) {
+    set(state => ({
+      areas: state.areas.map(a => {
+        if (a.id !== areaId) return a
+        return rebuildAreaSpots({ ...a, rows: a.rows.filter(r => r.id !== rowId) })
+      }),
+    }))
+  },
+
+  renameRow(areaId, rowId, name) {
+    set(state => ({
+      areas: state.areas.map(a => {
+        if (a.id !== areaId) return a
+        return {
+          ...a,
+          rows: a.rows.map(r => r.id === rowId ? { ...r, name } : r),
+        }
+      }),
+    }))
+  },
+
+  // ── Spot operations ────────────────────────────────────────────────────
 
   assignVehicle(spotId, vehicleId) {
     set(state => ({
-      spots: state.spots.map(s => {
-        if (vehicleId && s.vehicleId === vehicleId && s.id !== spotId) return { ...s, vehicleId: null }
-        if (s.id === spotId) return { ...s, vehicleId }
-        return s
-      }),
+      areas: state.areas.map(a => ({
+        ...a,
+        rows: a.rows.map(r => ({
+          ...r,
+          spots: r.spots.map(s => {
+            // Unassign from other spots first
+            if (vehicleId && s.vehicleId === vehicleId && s.id !== spotId) {
+              return { ...s, vehicleId: null }
+            }
+            if (s.id === spotId) return { ...s, vehicleId }
+            return s
+          }),
+        })),
+      })),
     }))
   },
 
   toggleSpot(spotId) {
     set(state => ({
-      spots: state.spots.map(s =>
-        s.id === spotId ? { ...s, disabled: !s.disabled, vehicleId: s.disabled ? s.vehicleId : null } : s
-      ),
+      areas: state.areas.map(a => ({
+        ...a,
+        rows: a.rows.map(r => ({
+          ...r,
+          spots: r.spots.map(s =>
+            s.id === spotId
+              ? { ...s, disabled: !s.disabled, vehicleId: s.disabled ? s.vehicleId : null }
+              : s,
+          ),
+        })),
+      })),
     }))
   },
 
-  reset() {
-    set({ ...INITIAL })
+  // ── Derived ────────────────────────────────────────────────────────────
+
+  getAllSpots() {
+    return get().areas.flatMap(a => a.rows.flatMap(r => r.spots))
   },
 }))

@@ -10,6 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useHydrated } from '@/hooks/useHydrated'
 import { useConversationStore, type ConversationInboxView } from '@/lib/stores/conversation-store'
 import { cn } from '@/lib/utils'
+import { mockCallAgents, type NachrichtenPerspective } from '@/lib/constants'
+import { mockAdvisors } from '@/lib/mock-data'
 import type { Conversation, MessageChannel, ConversationStatus } from '@/lib/types'
 import {
   Search, Send, ChevronDown,
@@ -17,6 +19,7 @@ import {
   ArrowLeftRight, UserPlus, X, Tag, Clock, CheckCircle2, MoreHorizontal,
   Phone, AtSign, FolderOpen, Plus, Settings, Paperclip,
   Smile, Image as ImageIcon, Hash, PenSquare, Check, Zap, Filter, ChevronLeft,
+  Sparkles, Shield,
 } from 'lucide-react'
 
 // ─── Brand SVG Icons ──────────────────────────────────────────────────────────
@@ -56,17 +59,29 @@ const MobileDeSVG = ({ cls }: { cls?: string }) => (
     <path d="M18.92 6.01L15 2H9L5.08 6.01C4.4 6.73 4 7.7 4 8.75V19c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8.75c0-1.05-.4-2.02-1.08-2.74zM12 17.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 12.5 12 12.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM9.5 7l1.5-3h2l1.5 3h-5z" />
   </svg>
 )
+const WebsiteSVG = ({ cls }: { cls?: string }) => (
+  <svg viewBox="0 0 24 24" className={cls} fill="white">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+  </svg>
+)
+const WebsiteChatbotSVG = ({ cls }: { cls?: string }) => (
+  <svg viewBox="0 0 24 24" className={cls} fill="white">
+    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.07A7.001 7.001 0 0 1 7.07 19H6a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h-1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM9.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm5 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" />
+  </svg>
+)
 
 // ─── Channel Icon ─────────────────────────────────────────────────────────────
 
 const chBg: Record<MessageChannel, string> = {
-  whatsapp:  'bg-[#25D366]',
-  messenger: 'bg-[#0084FF]',
-  instagram: 'bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]',
-  telegram:  'bg-[#26A5E4]',
-  email:     'bg-[#EA4335]',
-  sms:       'bg-[#8B5CF6]',
-  mobile_de: 'bg-[#FF6600]',
+  whatsapp:        'bg-[#25D366]',
+  messenger:       'bg-[#0084FF]',
+  instagram:       'bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]',
+  telegram:        'bg-[#26A5E4]',
+  email:           'bg-[#EA4335]',
+  sms:             'bg-[#8B5CF6]',
+  mobile_de:       'bg-[#FF6600]',
+  website:         'bg-indigo-500',
+  website_chatbot: 'bg-teal-500',
 }
 
 type IconSize = 'xs' | 'sm' | 'md' | 'lg'
@@ -75,13 +90,15 @@ function ChannelIcon({ ch, size = 'md' }: { ch: MessageChannel; size?: IconSize 
   const outer = { xs: 'w-4 h-4', sm: 'w-5 h-5', md: 'w-7 h-7', lg: 'w-9 h-9' }[size]
   const inner = { xs: 'w-2.5 h-2.5', sm: 'w-3 h-3', md: 'w-4 h-4', lg: 'w-5 h-5' }[size]
   const map: Record<MessageChannel, React.ReactNode> = {
-    whatsapp:  <WhatsAppSVG  cls={inner} />,
-    messenger: <MessengerSVG cls={inner} />,
-    instagram: <InstagramSVG cls={inner} />,
-    telegram:  <TelegramSVG  cls={inner} />,
-    email:     <EmailSVG     cls={inner} />,
-    sms:       <SmsSVG       cls={inner} />,
-    mobile_de: <MobileDeSVG  cls={inner} />,
+    whatsapp:        <WhatsAppSVG        cls={inner} />,
+    messenger:       <MessengerSVG       cls={inner} />,
+    instagram:       <InstagramSVG       cls={inner} />,
+    telegram:        <TelegramSVG        cls={inner} />,
+    email:           <EmailSVG           cls={inner} />,
+    sms:             <SmsSVG             cls={inner} />,
+    mobile_de:       <MobileDeSVG        cls={inner} />,
+    website:         <WebsiteSVG         cls={inner} />,
+    website_chatbot: <WebsiteChatbotSVG  cls={inner} />,
   }
   return (
     <div className={cn('rounded-full flex items-center justify-center shrink-0', outer, chBg[ch])}>
@@ -596,18 +613,26 @@ function ChatView({
         </div>
       </ScrollArea>
 
-      {/* ── AI suggested replies — Superchat full-width button style ── */}
-      <div className="px-5 pt-3 pb-1 bg-white border-t space-y-1.5">
-        {suggestedReplies.map((r, i) => (
-          <button
-            key={i}
-            onClick={() => setInput(r)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-[#1a73e8]/30 bg-[#EBF5FB]/60 hover:bg-[#EBF5FB] text-[#1a73e8] text-[12px] font-medium transition-colors"
-          >
-            <Zap className="w-3 h-3 shrink-0" />
-            {r}
-          </button>
-        ))}
+      {/* ── AI suggested replies ── */}
+      <div className="px-5 pt-3 pb-1 bg-white border-t">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <span className="text-[11px] font-semibold text-muted-foreground">KI-Vorschläge</span>
+          <span className="text-[10px] text-muted-foreground/60">— wird erst nach Ihrer Freigabe gesendet</span>
+        </div>
+        <div className="space-y-1.5">
+          {suggestedReplies.map((r, i) => (
+            <button
+              key={i}
+              onClick={() => setInput(r)}
+              className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl border border-amber-200/60 bg-amber-50/40 hover:bg-amber-50 text-foreground/80 text-[12px] font-medium transition-colors group"
+            >
+              <Zap className="w-3 h-3 shrink-0 text-amber-500" />
+              <span className="flex-1 text-left">{r}</span>
+              <PenSquare className="w-3 h-3 shrink-0 text-muted-foreground/40 group-hover:text-amber-600 transition-colors" />
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Composer ── */}
@@ -655,12 +680,16 @@ function ChatView({
 function ContactPanel({
   conv,
   onBack,
+  isAdmin,
 }: {
   conv: Conversation | null
   onBack?: () => void
+  isAdmin?: boolean
 }) {
   const [attrsOpen, setAttrsOpen] = useState(true)
   const [convOpen,  setConvOpen]  = useState(true)
+  const [assignOpen, setAssignOpen] = useState(false)
+  const assignConversation = useConversationStore((state) => state.assignConversation)
 
   if (!conv) return null
   const lc = conv.label ? labelCls[conv.label] : null
@@ -683,16 +712,69 @@ function ContactPanel({
           <span className="font-semibold text-[14px]">Kontakt</span>
         </div>
         <div className="flex items-center gap-0.5">
-          {([
-            { icon: <ArrowLeftRight className="w-3.5 h-3.5"/>, title: 'Weiterleiten' },
-            { icon: <UserPlus      className="w-3.5 h-3.5"/>, title: 'Zuweisen'     },
-            { icon: <X             className="w-3.5 h-3.5"/>, title: 'Schließen'    },
-          ] as const).map(a => (
-            <button key={a.title} title={a.title}
+          <button title="Weiterleiten"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <ArrowLeftRight className="w-3.5 h-3.5" />
+          </button>
+          {isAdmin ? (
+            <Popover open={assignOpen} onOpenChange={setAssignOpen}>
+              <PopoverTrigger asChild>
+                <button title="Zuweisen"
+                  className={cn(
+                    'p-1.5 rounded-md transition-colors',
+                    conv.assignedTo
+                      ? 'text-[#1a73e8] hover:bg-blue-50'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  )}>
+                  <UserPlus className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" sideOffset={6} className="w-56 p-1.5">
+                <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Zuweisen an
+                </p>
+                <button
+                  onClick={() => { assignConversation(conv.id, null); setAssignOpen(false) }}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left',
+                    !conv.assignedTo ? 'bg-[#EBF5FB] text-[#1a73e8] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  )}
+                >
+                  <UserX className="w-3.5 h-3.5 shrink-0" />
+                  <span>Nicht zugewiesen</span>
+                  {!conv.assignedTo && <Check className="w-3 h-3 shrink-0 ml-auto" />}
+                </button>
+                <Separator className="my-1" />
+                {mockAdvisors.map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => { assignConversation(conv.id, a.name); setAssignOpen(false) }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left',
+                      conv.assignedTo === a.name ? 'bg-[#EBF5FB] text-[#1a73e8] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    )}
+                  >
+                    <Avatar className="w-5 h-5 shrink-0">
+                      <AvatarFallback className="text-[8px] font-bold bg-muted text-foreground/70">
+                        {a.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate">{a.name}</span>
+                    {conv.assignedTo === a.name && <Check className="w-3 h-3 shrink-0" />}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <button title="Zuweisen"
               className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              {a.icon}
+              <UserPlus className="w-3.5 h-3.5" />
             </button>
-          ))}
+          )}
+          <button title="Schließen"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -805,6 +887,84 @@ function ContactPanel({
   )
 }
 
+// ─── Perspective Selector ────────────────────────────────────────────────────
+
+const humanCallAgents = mockCallAgents.filter(a => a.type === 'mensch')
+
+function PerspectiveSelector({
+  perspective,
+  onChange,
+}: {
+  perspective: NachrichtenPerspective
+  onChange: (p: NachrichtenPerspective) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const mounted = useHydrated()
+
+  const renderItem = (p: NachrichtenPerspective, subtitle?: string) => {
+    const active = perspective.type === p.type && perspective.userName === p.userName
+    return (
+      <button
+        key={p.label}
+        onClick={() => { onChange(p); setOpen(false) }}
+        className={cn(
+          'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left',
+          active ? 'bg-[#EBF5FB] text-[#1a73e8] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+        )}
+      >
+        <span className="flex-1 truncate">
+          {p.userName ?? p.label}
+          {subtitle && <span className="ml-1.5 text-[11px] text-muted-foreground/60">{subtitle}</span>}
+        </span>
+        {active && <Check className="w-3 h-3 shrink-0" />}
+      </button>
+    )
+  }
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-2.5 px-4 py-2 border-b bg-muted/20">
+        <Shield className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-[12px] text-muted-foreground font-medium">Perspektive:</span>
+        <span className="text-[13px] font-medium">{perspective.label}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2.5 px-4 py-2 border-b bg-muted/20">
+      <Shield className="w-3.5 h-3.5 text-muted-foreground" />
+      <span className="text-[12px] text-muted-foreground font-medium">Perspektive:</span>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-white text-[13px] font-medium hover:bg-muted/30 transition-colors">
+          <span>{perspective.label}</span>
+          <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground/70 transition-transform duration-150', open && 'rotate-180')} />
+        </PopoverTrigger>
+        <PopoverContent align="start" sideOffset={6} className="w-64 p-1.5">
+          {renderItem({ type: 'admin', label: 'Admin (Alle)' })}
+
+          <Separator className="my-1.5" />
+          <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Serviceberater</p>
+          {mockAdvisors.map(a =>
+            renderItem(
+              { type: 'serviceberater', userName: a.name, label: a.name },
+              a.role,
+            )
+          )}
+
+          <Separator className="my-1.5" />
+          <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Call-Center-Mitarbeiter</p>
+          {humanCallAgents.map(a =>
+            renderItem(
+              { type: 'callcenter', userName: a.name, label: a.name },
+            )
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NachrichtenPage() {
@@ -815,60 +975,75 @@ export default function NachrichtenPage() {
   const setConvStatus = useConversationStore((state) => state.setStatusFilter)
   const selectedConversationId = useConversationStore((state) => state.selectedConversationId)
   const setSelectedConversation = useConversationStore((state) => state.setSelectedConversation)
+  const perspective = useConversationStore((state) => state.perspective)
+  const setPerspective = useConversationStore((state) => state.setPerspective)
   const [mobilePanel, setMobilePanel] = useState<'list' | 'chat' | 'contact'>('list')
 
+  const isAdmin = perspective.type === 'admin'
+
+  // Step 1: Filter by perspective
+  const perspectiveFiltered = (() => {
+    if (isAdmin) return conversations
+    return conversations.filter(c => !c.assignedTo || c.assignedTo === perspective.userName)
+  })()
+
+  // Step 2: Filter by inbox view
   const visible = (() => {
     switch (view) {
-      case 'alle':       return conversations
-      case 'ungelesen':  return conversations.filter(c => c.unread)
-      case 'mir':        return conversations.filter(c => !!c.assignedTo)
-      case 'nicht':      return conversations.filter(c => !c.assignedTo)
-      case 'vip':        return conversations.filter(c => c.label === 'VIP')
+      case 'alle':       return perspectiveFiltered
+      case 'ungelesen':  return perspectiveFiltered.filter(c => c.unread)
+      case 'mir':        return perspectiveFiltered.filter(c => c.assignedTo === perspective.userName)
+      case 'nicht':      return perspectiveFiltered.filter(c => !c.assignedTo)
+      case 'vip':        return perspectiveFiltered.filter(c => c.label === 'VIP')
       case 'berlin-mktg':
-      case 'london-mktg': return conversations.filter(c => c.label === 'Marketing')
+      case 'london-mktg': return perspectiveFiltered.filter(c => c.label === 'Marketing')
       case 'markiert':
       case 'papierkorb':
-      case 'spam':       return conversations
-      default:           return conversations.filter(c => c.inbox === view)
+      case 'spam':       return perspectiveFiltered
+      default:           return perspectiveFiltered.filter(c => c.inbox === view)
     }
   })()
 
   const selected = conversations.find((conversation) => conversation.id === selectedConversationId) ?? null
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <div className={cn('h-full w-full lg:w-[288px] lg:shrink-0 xl:w-[336px]', mobilePanel === 'list' ? 'flex' : 'hidden lg:flex')}>
-        <ConversationList
-          allConversations={conversations}
-          conversations={visible}
-          selected={selected}
-          onSelect={(conversation) => {
-            setSelectedConversation(conversation.id)
-            setMobilePanel('chat')
-          }}
-          view={view}
-          onViewChange={setView}
-          status={convStatus}
-          onStatusChange={setConvStatus}
-        />
-      </div>
-
-      <div className={cn('h-full min-w-0 flex-1', mobilePanel === 'chat' ? 'flex' : 'hidden lg:flex')}>
-        <ChatView
-          conv={selected}
-          onBack={() => setMobilePanel('list')}
-          onOpenContact={() => setMobilePanel('contact')}
-        />
-      </div>
-
-      {(selected || mobilePanel === 'contact') && (
-        <div className={cn('h-full w-full lg:w-[272px] lg:shrink-0', mobilePanel === 'contact' ? 'flex' : 'hidden lg:flex')}>
-          <ContactPanel
-            conv={selected}
-            onBack={() => setMobilePanel('chat')}
+    <div className="flex flex-col h-full overflow-hidden">
+      <PerspectiveSelector perspective={perspective} onChange={setPerspective} />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className={cn('h-full w-full lg:w-[288px] lg:shrink-0 xl:w-[336px]', mobilePanel === 'list' ? 'flex' : 'hidden lg:flex')}>
+          <ConversationList
+            allConversations={perspectiveFiltered}
+            conversations={visible}
+            selected={selected}
+            onSelect={(conversation) => {
+              setSelectedConversation(conversation.id)
+              setMobilePanel('chat')
+            }}
+            view={view}
+            onViewChange={setView}
+            status={convStatus}
+            onStatusChange={setConvStatus}
           />
         </div>
-      )}
+
+        <div className={cn('h-full min-w-0 flex-1', mobilePanel === 'chat' ? 'flex' : 'hidden lg:flex')}>
+          <ChatView
+            conv={selected}
+            onBack={() => setMobilePanel('list')}
+            onOpenContact={() => setMobilePanel('contact')}
+          />
+        </div>
+
+        {(selected || mobilePanel === 'contact') && (
+          <div className={cn('h-full w-full lg:w-[272px] lg:shrink-0', mobilePanel === 'contact' ? 'flex' : 'hidden lg:flex')}>
+            <ContactPanel
+              conv={selected}
+              onBack={() => setMobilePanel('chat')}
+              isAdmin={isAdmin}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -110,6 +110,94 @@ export interface CallAgent {
   type: AgentType
 }
 
+// ---- Employee / Mitarbeiter System ----
+
+export type EmployeeRole = 'verkaufer' | 'serviceberater' | 'werkstattleiter' | 'backoffice' | 'geschaeftsfuehrung'
+export type EmployeeStatus = 'aktiv' | 'abwesend' | 'pause'
+
+export interface Employee {
+  id: string
+  name: string
+  role: EmployeeRole
+  email?: string
+  phone?: string
+  status: EmployeeStatus
+  isCallAgent: boolean
+  isSupervisor: boolean
+  createdAt: string
+}
+
+// ---- Escalation System ----
+
+export type EscalationLevel = 1 | 2 | 3
+export type EscalationTrigger = 'manuell' | 'zeit_basiert' | 'sla_verletzung'
+
+export interface EscalationRule {
+  id: string
+  name: string
+  triggerAfterMinutes: number
+  fromLevel: EscalationLevel
+  toLevel: EscalationLevel
+  notifyChannels: ('app' | 'email')[]
+  isActive: boolean
+}
+
+export interface EscalationEvent {
+  id: string
+  callbackId: string
+  fromLevel: EscalationLevel
+  toLevel: EscalationLevel
+  trigger: EscalationTrigger
+  escalatedBy: string
+  escalatedTo: string
+  escalatedAt: string
+  note?: string
+}
+
+// ---- Reminder System ----
+
+export type ReminderStatus = 'ausstehend' | 'angezeigt' | 'erledigt'
+
+export interface Reminder {
+  id: string
+  callbackId: string
+  employeeId: string
+  reminderAt: string
+  message: string
+  status: ReminderStatus
+  createdAt: string
+  createdBy: string
+}
+
+// ---- SLA Configuration ----
+
+export interface SlaConfig {
+  defaultMinutes: number
+  perPriority: Record<CallbackPriority, number>
+}
+
+// ---- Activity Log for Callback ----
+
+export type CallbackActivityType =
+  | 'erstellt'
+  | 'zugewiesen'
+  | 'status_geaendert'
+  | 'eskaliert'
+  | 'erinnerung_gesetzt'
+  | 'erinnerung_erledigt'
+  | 'email_gesendet'
+  | 'notiz_hinzugefuegt'
+  | 'abgeschlossen'
+
+export interface CallbackActivity {
+  id: string
+  type: CallbackActivityType
+  description: string
+  performedBy: string
+  performedAt: string
+  metadata?: Record<string, string>
+}
+
 export interface Callback {
   id: string
   customerName: string
@@ -117,13 +205,16 @@ export interface Callback {
   reason: string
   notes: string
   assignedAdvisor: string
+  assignedEmployeeId?: string
   status: CallbackStatus
   priority: CallbackPriority
   createdAt: string // ISO datetime
   updatedAt: string
   completedAt?: string
   completionNotes?: string
-  slaDeadline: string // ISO datetime (2h after creation)
+  slaDeadline: string // ISO datetime
+  slaDurationMinutes: number
+  dueAt: string // ISO datetime
   takenBy: CallAgent
   callTranscript?: string
   callDuration?: number // seconds
@@ -132,6 +223,10 @@ export interface Callback {
   reassignedAt?: string
   escalatedAt?: string
   escalatedBy?: string
+  escalationLevel: EscalationLevel
+  escalationHistory: EscalationEvent[]
+  reminders: string[]
+  activityLog: CallbackActivity[]
 }
 
 export interface Advisor {
@@ -170,7 +265,7 @@ export interface Listing {
 
 // ---- Nachrichten-Zentrale (Problem 4) ----
 
-export type MessageChannel = 'whatsapp' | 'email' | 'sms' | 'mobile_de' | 'messenger' | 'instagram' | 'telegram'
+export type MessageChannel = 'whatsapp' | 'email' | 'sms' | 'mobile_de' | 'messenger' | 'instagram' | 'telegram' | 'website' | 'website_chatbot'
 export type ConversationStatus = 'offen' | 'spaeter' | 'erledigt'
 
 export interface Conversation {

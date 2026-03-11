@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Search, User, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { callSourceConfig, mockCallAgents, mockCustomers } from '@/lib/constants'
-import type { CallbackPriority, CallSource, CallAgent } from '@/lib/types'
+import { callSourceConfig, mockCallAgents, mockCustomers, employeeRoleConfig, employeeStatusConfig } from '@/lib/constants'
+import { useCallbackStore } from '@/lib/stores/callback-store'
+import type { CallbackPriority, CallSource, CallAgent, Employee, EmployeeRole } from '@/lib/types'
 
 interface CreateCallbackPayload {
   customerName: string
@@ -17,17 +19,19 @@ interface CreateCallbackPayload {
   reason: string
   notes: string
   assignedAdvisor: string
+  assignedEmployeeId?: string
   priority: CallbackPriority
   source: CallSource
   takenBy: CallAgent
   callTranscript?: string
+  slaDurationMinutes?: number
 }
 
 interface NewCallbackDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreate: (payload: CreateCallbackPayload) => void
-  advisorNames: string[]
+  advisorNames?: string[]
 }
 
 const priorityOptions: { value: CallbackPriority; label: string }[] = [
@@ -35,6 +39,14 @@ const priorityOptions: { value: CallbackPriority; label: string }[] = [
   { value: 'mittel', label: 'Mittel' },
   { value: 'hoch', label: 'Hoch' },
   { value: 'dringend', label: 'Dringend' },
+]
+
+const dueTimeOptions = [
+  { minutes: 5, label: '5 min' },
+  { minutes: 15, label: '15 min' },
+  { minutes: 30, label: '30 min' },
+  { minutes: 60, label: '1 Std' },
+  { minutes: 120, label: '2 Std' },
 ]
 
 const sourceOptions = Object.entries(callSourceConfig).map(([value, cfg]) => ({
@@ -49,13 +61,48 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
   const [notes, setNotes] = useState('')
   const [priority, setPriority] = useState<CallbackPriority>('mittel')
   const [assignedAdvisor, setAssignedAdvisor] = useState('')
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState('')
   const [source, setSource] = useState<CallSource>('telefon')
   const [agentId, setAgentId] = useState('')
+  const [slaDurationMinutes, setSlaDurationMinutes] = useState<number | null>(null)
+  const [manualDueOverride, setManualDueOverride] = useState(false)
+
+  // Store data
+  const employees = useCallbackStore((s) => s.employees)
+  const slaConfig = useCallbackStore((s) => s.slaConfig)
+  const callbacks = useCallbackStore((s) => s.callbacks)
+
+  const useEmployees = employees.length > 0
 
   // Customer search inline combobox
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Compute effective SLA duration
+  const effectiveSla = slaDurationMinutes ?? slaConfig.perPriority[priority] ?? slaConfig.defaultMinutes
+
+  // Group employees by role
+  const groupedEmployees = useMemo(() => {
+    if (!useEmployees) return {}
+    const groups: Record<EmployeeRole, typeof employees> = {} as Record<EmployeeRole, typeof employees>
+    for (const emp of employees) {
+      if (!groups[emp.role]) groups[emp.role] = []
+      groups[emp.role].push(emp)
+    }
+    return groups
+  }, [employees, useEmployees])
+
+  // Count open callbacks per employee
+  const openCountByEmployee = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const cb of callbacks) {
+      if (cb.status !== 'erledigt' && cb.assignedEmployeeId) {
+        counts[cb.assignedEmployeeId] = (counts[cb.assignedEmployeeId] || 0) + 1
+      }
+    }
+    return counts
+  }, [callbacks])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -68,6 +115,19 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [customerDropdownOpen])
+
+  // When priority changes, auto-update SLA unless manually overridden
+  const handlePriorityChange = useCallback((newPriority: CallbackPriority) => {
+    setPriority(newPriority)
+    if (!manualDueOverride) {
+      setSlaDurationMinutes(null)
+    }
+  }, [manualDueOverride])
+
+  const handleDueTimePick = useCallback((minutes: number) => {
+    setSlaDurationMinutes(minutes)
+    setManualDueOverride(true)
+  }, [])
 
   const filteredCustomers = useMemo(() => {
     const q = customerSearch.toLowerCase()
@@ -86,9 +146,12 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
     setNotes('')
     setPriority('mittel')
     setAssignedAdvisor('')
+    setAssignedEmployeeId('')
     setSource('telefon')
     setAgentId('')
     setCustomerSearch('')
+    setSlaDurationMinutes(null)
+    setManualDueOverride(false)
   }
 
   const handleClose = (val: boolean) => {
@@ -111,6 +174,14 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
     setCustomerDropdownOpen(false)
   }
 
+  const handleEmployeeSelect = (employeeId: string) => {
+    const emp = employees.find(e => e.id === employeeId)
+    if (emp) {
+      setAssignedEmployeeId(emp.id)
+      setAssignedAdvisor(emp.name)
+    }
+  }
+
   const handleCreate = () => {
     const agent = mockCallAgents.find(a => a.id === agentId)
     if (!customerName.trim() || !reason.trim() || !assignedAdvisor || !agent) return
@@ -121,9 +192,11 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
       reason: reason.trim(),
       notes: notes.trim(),
       assignedAdvisor,
+      assignedEmployeeId: assignedEmployeeId || undefined,
       priority,
       source,
       takenBy: agent,
+      slaDurationMinutes: effectiveSla,
     })
     reset()
     onOpenChange(false)
@@ -265,7 +338,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Priorität</label>
-            <Select value={priority} onValueChange={v => setPriority(v as CallbackPriority)}>
+            <Select value={priority} onValueChange={v => handlePriorityChange(v as CallbackPriority)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {priorityOptions.map(o => (
@@ -276,15 +349,79 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Zuweisen an *</label>
-            <Select value={assignedAdvisor} onValueChange={setAssignedAdvisor}>
-              <SelectTrigger><SelectValue placeholder="Berater wählen..." /></SelectTrigger>
-              <SelectContent>
-                {advisorNames.map(name => (
-                  <SelectItem key={name} value={name}>{name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {useEmployees ? (
+              <Select value={assignedEmployeeId} onValueChange={handleEmployeeSelect}>
+                <SelectTrigger><SelectValue placeholder="Mitarbeiter wählen..." /></SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(groupedEmployees) as [EmployeeRole, Employee[]][]).map(([role, emps]) => {
+                    const roleCfg = employeeRoleConfig[role]
+                    return (
+                      <SelectGroup key={role}>
+                        <SelectLabel className="text-xs text-muted-foreground">{roleCfg.label}</SelectLabel>
+                        {emps.map(emp => {
+                          const statusCfg = employeeStatusConfig[emp.status]
+                          const openCount = openCountByEmployee[emp.id] ?? 0
+                          return (
+                            <SelectItem key={emp.id} value={emp.id}>
+                              <div className="flex items-center gap-2">
+                                <span className={cn('h-2 w-2 rounded-full flex-shrink-0', statusCfg.dot)} />
+                                <span className="truncate">{emp.name}</span>
+                                <Badge variant="secondary" className={cn('text-[10px] flex-shrink-0', roleCfg.color)}>
+                                  {roleCfg.label}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground flex-shrink-0">
+                                  ({openCount})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectGroup>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Select value={assignedAdvisor} onValueChange={setAssignedAdvisor}>
+                <SelectTrigger><SelectValue placeholder="Berater wählen..." /></SelectTrigger>
+                <SelectContent>
+                  {(advisorNames ?? []).map(name => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
+
+          {/* Due time pill buttons */}
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-sm font-medium">Fälligkeit</label>
+            <div className="flex flex-wrap gap-1.5">
+              {dueTimeOptions.map(opt => {
+                const isActive = effectiveSla === opt.minutes
+                return (
+                  <Button
+                    key={opt.minutes}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'h-7 px-3 text-xs',
+                      isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
+                    )}
+                    onClick={() => handleDueTimePick(opt.minutes)}
+                  >
+                    {opt.label}
+                  </Button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Fällig in {effectiveSla >= 60 ? `${effectiveSla / 60} Std` : `${effectiveSla} min`}
+              {!manualDueOverride && ' (automatisch nach Priorität)'}
+            </p>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Quelle</label>
             <Select value={source} onValueChange={v => handleSourceChange(v as CallSource)}>

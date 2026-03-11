@@ -6,10 +6,12 @@ import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Bot, User, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle } from 'lucide-react'
+import { Bot, User, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Shield, Bell, Mail, Send } from 'lucide-react'
 import { cn, formatTimeAgo } from '@/lib/utils'
-import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig } from '@/lib/constants'
-import type { Callback, CallSource } from '@/lib/types'
+import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig, escalationLevelConfig } from '@/lib/constants'
+import { useCountdown } from '@/lib/hooks/use-countdown'
+import { useCallbackStore } from '@/lib/stores/callback-store'
+import type { Callback, CallSource, EscalationLevel } from '@/lib/types'
 
 interface TranscriptSheetProps {
   open: boolean
@@ -18,6 +20,8 @@ interface TranscriptSheetProps {
   onReassign: (id: string) => void
   onEscalate: (id: string) => void
   onComplete: (id: string) => void
+  onEscalateToLevel?: (id: string) => void
+  onSetReminder?: (id: string) => void
 }
 
 function getSourceIcon(source: CallSource) {
@@ -31,40 +35,72 @@ function getSourceIcon(source: CallSource) {
 }
 
 function formatDuration(seconds?: number): string {
-  if (!seconds) return '—'
+  if (!seconds) return '\u2014'
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return m > 0 ? `${m} min ${s} sek` : `${s} sek`
 }
 
-export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEscalate, onComplete }: TranscriptSheetProps) {
+function CountdownBadge({ dueAt, slaDurationMinutes }: { dueAt: string; slaDurationMinutes?: number }) {
+  const { formatted, isOverdue } = useCountdown(dueAt, slaDurationMinutes)
+  return (
+    <Badge
+      variant="secondary"
+      className={cn(
+        'text-xs font-medium gap-1',
+        isOverdue
+          ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400'
+          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400',
+      )}
+    >
+      <Clock className="h-3 w-3" />
+      {isOverdue ? `+${formatted}` : formatted}
+    </Badge>
+  )
+}
+
+export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEscalate, onComplete, onEscalateToLevel, onSetReminder }: TranscriptSheetProps) {
+  const reminders = useCallbackStore((s) => s.reminders)
+  const employees = useCallbackStore((s) => s.employees)
+  const sendEmailNotification = useCallbackStore((s) => s.sendEmailNotification)
+
   if (!callback) return null
 
+  const callbackReminders = reminders.filter(r => callback.reminders.includes(r.id))
   const isKi = callback.takenBy.type === 'ki'
   const isCompleted = callback.status === 'erledigt'
-  const canEscalate = callback.priority !== 'dringend' && !isCompleted
   const SourceIcon = getSourceIcon(callback.source)
   const statusCfg = callbackStatusConfig[callback.status]
   const priorityCfg = callbackPriorityConfig[callback.priority]
   const sourceCfg = callSourceConfig[callback.source]
   const initials = callback.takenBy.name.split(' ').map(n => n[0]).join('')
+  const assignedEmployee = employees.find(e => e.id === callback.assignedEmployeeId)
+
+  const hasHistory = callback.reassignedFrom || callback.escalatedBy || callback.escalationHistory.length > 0 || callbackReminders.length > 0
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg p-0 flex flex-col">
-        <SheetHeader className="px-6 pt-6 pb-0">
-          <SheetTitle className="text-lg">Anrufdetails</SheetTitle>
-          <p className="text-sm text-muted-foreground">
-            {callback.customerName} · {callback.customerPhone}
-          </p>
+      <SheetContent className="sm:max-w-lg p-0 flex flex-col h-full">
+        {/* Header - fixed */}
+        <SheetHeader className="px-6 pt-6 pb-4 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <SheetTitle className="text-lg">{callback.customerName}</SheetTitle>
+              <p className="text-sm text-muted-foreground">{callback.customerPhone}</p>
+            </div>
+            {!isCompleted && callback.dueAt && (
+              <CountdownBadge dueAt={callback.dueAt} slaDurationMinutes={callback.slaDurationMinutes} />
+            )}
+          </div>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-6">
-          <div className="space-y-5 pb-6 pt-4">
-            {/* Metadata */}
-            <div className="space-y-3">
+        {/* Scrollable content */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 px-6 pb-6">
+              {/* Assigned to - prominent */}
               <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-9 w-9">
                   <AvatarFallback className={cn(
                     'text-xs font-semibold',
                     isKi
@@ -74,133 +110,205 @@ export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEs
                     {isKi ? <Bot className="h-4 w-4" /> : initials}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{callback.takenBy.name}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{callback.assignedAdvisor}</p>
                   <p className="text-xs text-muted-foreground">
-                    {isKi ? 'KI-Agent' : 'Serviceberater'}
+                    Aufgenommen von {callback.takenBy.name}
+                    {isKi && ' (KI)'}
                   </p>
                 </div>
-                {isKi && (
-                  <Badge variant="secondary" className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 text-[10px]">
-                    KI
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <Badge variant="secondary" className={cn('text-[10px]', statusCfg.color)}>
+                    {statusCfg.label}
                   </Badge>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Quelle</p>
-                  <div className="flex items-center gap-1.5">
-                    <SourceIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className={cn('text-xs font-medium rounded-full px-2 py-0.5', sourceCfg.color)}>
-                      {sourceCfg.label}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Dauer</p>
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm">{formatDuration(callback.callDuration)}</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Zeitpunkt</p>
-                  <span className="text-sm">{formatTimeAgo(callback.createdAt)}</span>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Zugewiesen an</p>
-                  <span className="text-sm font-medium">{callback.assignedAdvisor}</span>
+                  <Badge variant="secondary" className={cn('text-[10px]', priorityCfg.color)}>
+                    {priorityCfg.label}
+                  </Badge>
                 </div>
               </div>
-            </div>
 
-            <Separator />
-
-            {/* Transcript */}
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Gespräch / Zusammenfassung</h4>
-              {callback.callTranscript ? (
-                <div className="bg-muted/40 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">
-                  {callback.callTranscript}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">Kein Transkript verfügbar</p>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Status & History */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Status & Details</h4>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary" className={cn('text-xs', statusCfg.color)}>
-                  {statusCfg.label}
-                </Badge>
-                <Badge variant="secondary" className={cn('text-xs', priorityCfg.color)}>
-                  {priorityCfg.label}
-                </Badge>
+              {/* Compact metadata row */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium', sourceCfg.color)}>
+                  <SourceIcon className="h-3 w-3" />
+                  {sourceCfg.label}
+                </span>
+                <span className="text-muted-foreground/40">|</span>
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {formatDuration(callback.callDuration)}
+                </span>
+                <span className="text-muted-foreground/40">|</span>
+                <span>{formatTimeAgo(callback.createdAt)}</span>
               </div>
 
-              <div className="text-sm space-y-1.5">
-                <p className="text-muted-foreground">
-                  <span className="font-medium text-foreground">Anliegen:</span> {callback.reason}
+              {/* Anliegen + Notizen */}
+              <div className="text-sm space-y-1">
+                <p>
+                  <span className="font-medium">Anliegen:</span>{' '}
+                  <span className="text-muted-foreground">{callback.reason}</span>
                 </p>
                 {callback.notes && (
-                  <p className="text-muted-foreground">
-                    <span className="font-medium text-foreground">Notizen:</span> {callback.notes}
+                  <p>
+                    <span className="font-medium">Notizen:</span>{' '}
+                    <span className="text-muted-foreground">{callback.notes}</span>
                   </p>
                 )}
               </div>
 
-              {callback.reassignedFrom && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
-                  <ArrowRightLeft className="h-3.5 w-3.5" />
-                  <span>
-                    Umgeleitet von <span className="font-medium text-foreground">{callback.reassignedFrom}</span>
-                    {callback.reassignedAt && ` · ${formatTimeAgo(callback.reassignedAt)}`}
-                  </span>
-                </div>
-              )}
-
-              {callback.escalatedBy && (
-                <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2">
-                  <ChevronUp className="h-3.5 w-3.5" />
-                  <span>
-                    Eskaliert von <span className="font-medium">{callback.escalatedBy}</span>
-                    {callback.escalatedAt && ` · ${formatTimeAgo(callback.escalatedAt)}`}
-                  </span>
-                </div>
-              )}
-
+              {/* Completion banner */}
               {isCompleted && callback.completionNotes && (
                 <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2">
-                  <CheckCircle className="h-3.5 w-3.5" />
+                  <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
                   <span>{callback.completionNotes}</span>
                 </div>
               )}
 
-              <div className="text-xs text-muted-foreground">
-                SLA-Deadline: {new Date(callback.slaDeadline).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} Uhr
-              </div>
-            </div>
-          </div>
-        </ScrollArea>
+              <Separator />
 
-        {/* Footer actions */}
+              {/* Transcript */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Gespräch / Zusammenfassung</h4>
+                {callback.callTranscript ? (
+                  <div className="bg-muted/40 rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap">
+                    {callback.callTranscript}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">Kein Transkript verfügbar</p>
+                )}
+              </div>
+
+              {/* Verlauf (History) - combined section, only if content exists */}
+              {hasHistory && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">Verlauf</h4>
+                    <div className="relative ml-2 border-l-2 border-muted pl-4 space-y-2.5">
+                      {/* Reassignment */}
+                      {callback.reassignedFrom && (
+                        <div className="relative">
+                          <div className="absolute -left-[22px] top-1 h-2.5 w-2.5 rounded-full border-2 border-background bg-blue-400" />
+                          <div className="text-xs space-y-0.5">
+                            <p className="font-medium text-foreground">Umgeleitet</p>
+                            <p className="text-muted-foreground">
+                              Von <span className="font-medium text-foreground">{callback.reassignedFrom}</span>
+                              {callback.reassignedAt && ` · ${formatTimeAgo(callback.reassignedAt)}`}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Escalation event */}
+                      {callback.escalatedBy && (
+                        <div className="relative">
+                          <div className="absolute -left-[22px] top-1 h-2.5 w-2.5 rounded-full border-2 border-background bg-amber-400" />
+                          <div className="text-xs space-y-0.5">
+                            <p className="font-medium text-amber-700 dark:text-amber-400">Eskaliert</p>
+                            <p className="text-muted-foreground">
+                              Von <span className="font-medium text-foreground">{callback.escalatedBy}</span>
+                              {callback.escalatedAt && ` · ${formatTimeAgo(callback.escalatedAt)}`}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Escalation history */}
+                      {callback.escalationHistory.map((event) => {
+                        const levelCfg = escalationLevelConfig[event.toLevel as EscalationLevel]
+                        return (
+                          <div key={event.id} className="relative">
+                            <div className={cn(
+                              'absolute -left-[22px] top-1 h-2.5 w-2.5 rounded-full border-2 border-background',
+                              levelCfg?.bg ?? 'bg-muted',
+                            )} />
+                            <div className="text-xs space-y-0.5">
+                              <p className={cn('font-medium', levelCfg?.color)}>
+                                Stufe {event.fromLevel} → {event.toLevel}
+                              </p>
+                              <p className="text-muted-foreground">
+                                {event.escalatedBy} → {event.escalatedTo}
+                                {' · '}{formatTimeAgo(event.escalatedAt)}
+                              </p>
+                              {event.note && (
+                                <p className="text-muted-foreground italic">{event.note}</p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {/* Reminders */}
+                      {callbackReminders.map((reminder) => (
+                        <div key={reminder.id} className="relative">
+                          <div className="absolute -left-[22px] top-1 h-2.5 w-2.5 rounded-full border-2 border-background bg-violet-400" />
+                          <div className="text-xs space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-foreground">Erinnerung</p>
+                              <Badge
+                                variant="secondary"
+                                className={cn('text-[9px] py-0 h-4', {
+                                  'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400': reminder.status === 'ausstehend',
+                                  'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400': reminder.status === 'angezeigt',
+                                  'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400': reminder.status === 'erledigt',
+                                })}
+                              >
+                                {reminder.status === 'ausstehend' ? 'Ausstehend' : reminder.status === 'angezeigt' ? 'Angezeigt' : 'Erledigt'}
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground">{reminder.message}</p>
+                            <p className="text-muted-foreground">
+                              {new Date(reminder.reminderAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} Uhr
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Footer actions - fixed */}
         {!isCompleted && (
-          <>
-            <Separator />
-            <div className="flex gap-2 px-6 py-4">
+          <div className="flex-shrink-0 border-t px-6 py-3 space-y-2">
+            {/* Quick email send */}
+            {assignedEmployee?.email && (
+              <button
+                onClick={() => {
+                  if (callback.assignedEmployeeId) {
+                    sendEmailNotification(callback.id, callback.assignedEmployeeId, 'Admin')
+                  }
+                }}
+                className="w-full flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>E-Mail an <span className="font-medium text-foreground">{assignedEmployee.name}</span> senden</span>
+                <span className="ml-auto text-[10px] opacity-60">{assignedEmployee.email}</span>
+              </button>
+            )}
+            <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={() => onReassign(callback.id)}>
                 <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
                 Zuweisen
               </Button>
-              {canEscalate && (
+              {onEscalateToLevel ? (
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalateToLevel(callback.id)}>
+                  <Shield className="h-3.5 w-3.5 mr-1" />
+                  Eskalieren
+                </Button>
+              ) : (
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalate(callback.id)}>
                   <ChevronUp className="h-3.5 w-3.5 mr-1" />
                   Eskalieren
+                </Button>
+              )}
+              {onSetReminder && (
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => onSetReminder(callback.id)}>
+                  <Bell className="h-3.5 w-3.5 mr-1" />
+                  Erinnerung
                 </Button>
               )}
               <Button size="sm" className="flex-1" onClick={() => onComplete(callback.id)}>
@@ -208,7 +316,7 @@ export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEs
                 Erledigt
               </Button>
             </div>
-          </>
+          </div>
         )}
       </SheetContent>
     </Sheet>

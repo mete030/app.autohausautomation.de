@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, PhoneCall, CheckCircle, Clock, Bot } from 'lucide-react'
+import { AlertTriangle, PhoneCall, CheckCircle, Clock, Bot, ShieldAlert, Timer } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface CallcenterKpiRowProps {
@@ -9,6 +9,8 @@ interface CallcenterKpiRowProps {
   completedToday: number
   slaPercentage: number
   aiHandled: number
+  escalations: number
+  avgTime: number
 }
 
 interface KpiItem {
@@ -26,13 +28,15 @@ const kpis: KpiItem[] = [
   { key: 'completedToday', label: 'Heute erledigt', icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
   { key: 'slaPercentage', label: 'SLA-Quote', icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30', suffix: '%' },
   { key: 'aiHandled', label: 'KI-bearbeitet', icon: Bot, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30' },
+  { key: 'escalations', label: 'Eskalationen', icon: ShieldAlert, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30' },
+  { key: 'avgTime', label: 'Ø Bearbeitungszeit', icon: Timer, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-100 dark:bg-cyan-900/30', suffix: ' min' },
 ]
 
-export function CallcenterKpiRow({ overdue, active, completedToday, slaPercentage, aiHandled }: CallcenterKpiRowProps) {
-  const values: Record<string, number> = { overdue, active, completedToday, slaPercentage, aiHandled }
+export function CallcenterKpiRow({ overdue, active, completedToday, slaPercentage, aiHandled, escalations, avgTime }: CallcenterKpiRowProps) {
+  const values: Record<string, number> = { overdue, active, completedToday, slaPercentage, aiHandled, escalations, avgTime }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
       {kpis.map(({ key, label, icon: Icon, color, bg, suffix }) => (
         <div
           key={key}

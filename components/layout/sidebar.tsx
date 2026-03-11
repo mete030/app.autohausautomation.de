@@ -57,11 +57,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-14 items-center border-b border-border/50 px-3">
         {!collapsed ? (
-          <Link href="/dashboard" className="flex items-center">
+          <Link href="/fahrzeuge/hofsteuerung" className="flex items-center">
             <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-auto max-w-[180px] invert dark:invert-0" />
           </Link>
         ) : (
-          <Link href="/dashboard" className="mx-auto">
+          <Link href="/fahrzeuge/hofsteuerung" className="mx-auto">
             <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-7 w-7 object-contain invert dark:invert-0" />
           </Link>
         )}

@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { mockConversations } from '@/lib/mock-data'
 import type { Conversation, ConversationStatus } from '@/lib/types'
+import type { NachrichtenPerspective } from '@/lib/constants'
 
 export type ConversationInboxView =
   | 'alle'
@@ -31,11 +32,13 @@ interface ConversationStoreState {
   view: ConversationInboxView
   statusFilter: ConversationStatus
   selectedConversationId: string | null
+  perspective: NachrichtenPerspective
   setView: (view: ConversationInboxView) => void
   setStatusFilter: (status: ConversationStatus) => void
   setSelectedConversation: (conversationId: string | null) => void
   updateConversationStatus: (conversationId: string, status: ConversationStatus) => void
   assignConversation: (conversationId: string, advisorName: string | null) => void
+  setPerspective: (perspective: NachrichtenPerspective) => void
 }
 
 export const useConversationStore = create<ConversationStoreState>((set) => ({
@@ -43,10 +46,12 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
   view: 'alle',
   statusFilter: 'offen',
   selectedConversationId: initialConversations[0]?.id ?? null,
+  perspective: { type: 'admin', label: 'Admin (Alle)' },
 
   setView: (view) => set({ view }),
   setStatusFilter: (statusFilter) => set({ statusFilter }),
   setSelectedConversation: (selectedConversationId) => set({ selectedConversationId }),
+  setPerspective: (perspective) => set({ perspective }),
 
   updateConversationStatus: (conversationId, status) => {
     set((state) => ({

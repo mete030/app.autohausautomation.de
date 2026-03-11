@@ -12,9 +12,11 @@ import {
 import {
   MoreHorizontal, Bot, User, CheckCircle, ArrowRightLeft,
   ChevronUp, FileText, Phone, Globe, MessageCircle, PenLine,
+  Shield, Bell, Clock,
 } from 'lucide-react'
 import { cn, formatTimeAgo } from '@/lib/utils'
-import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig } from '@/lib/constants'
+import { useCountdown } from '@/lib/hooks/use-countdown'
+import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig, escalationLevelConfig } from '@/lib/constants'
 import type { Callback, CallbackStatus, CallSource } from '@/lib/types'
 
 interface CallcenterTableViewProps {
@@ -23,6 +25,8 @@ interface CallcenterTableViewProps {
   onReassign: (id: string) => void
   onEscalate: (id: string) => void
   onViewTranscript: (id: string) => void
+  onSetReminder?: (id: string) => void
+  onEscalateToLevel?: (id: string) => void
 }
 
 const STATUS_ORDER: Record<CallbackStatus, number> = {
@@ -72,8 +76,25 @@ function getSourceIcon(source: CallSource) {
   }
 }
 
+function CountdownCell({ dueAt, slaDurationMinutes, status }: { dueAt: string; slaDurationMinutes: number; status: string }) {
+  const { formatted, isOverdue, percentRemaining } = useCountdown(dueAt, slaDurationMinutes)
+  if (status === 'erledigt') return <span className="text-xs text-muted-foreground">&mdash;</span>
+  return (
+    <span className={cn(
+      'text-xs font-mono font-medium tabular-nums',
+      isOverdue ? 'text-red-600 dark:text-red-400 animate-pulse' :
+      percentRemaining < 25 ? 'text-red-600 dark:text-red-400' :
+      percentRemaining < 50 ? 'text-amber-600 dark:text-amber-400' :
+      'text-emerald-600 dark:text-emerald-400'
+    )}>
+      {formatted}
+    </span>
+  )
+}
+
 export function CallcenterTableView({
   callbacks, onComplete, onReassign, onEscalate, onViewTranscript,
+  onSetReminder, onEscalateToLevel,
 }: CallcenterTableViewProps) {
   const [sortKey, setSortKey] = useState<'status' | 'priority' | 'created'>('status')
 
@@ -117,6 +138,7 @@ export function CallcenterTableView({
               <TableHead className="hidden lg:table-cell">Angenommen von</TableHead>
               <TableHead className="hidden sm:table-cell w-[100px]">Quelle</TableHead>
               <TableHead className="w-[90px]">SLA</TableHead>
+              <TableHead className="w-[90px]">Fällig</TableHead>
               <TableHead className="w-[80px]">
                 <button className="text-xs font-medium hover:text-foreground" onClick={() => setSortKey('created')}>
                   Erstellt {sortKey === 'created' && '↓'}
@@ -155,6 +177,15 @@ export function CallcenterTableView({
                       <Badge variant="secondary" className={cn('text-[10px] font-medium', statusCfg.color)}>
                         {statusCfg.label}
                       </Badge>
+                      {cb.escalationLevel > 1 && (
+                        <span className={cn('inline-flex items-center gap-0.5', escalationLevelConfig[cb.escalationLevel].color)}>
+                          <Shield className="h-3 w-3" />
+                          <span className="text-[10px] font-semibold">{cb.escalationLevel}</span>
+                        </span>
+                      )}
+                      {cb.reminders.length > 0 && (
+                        <Bell className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -164,7 +195,7 @@ export function CallcenterTableView({
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="text-sm font-medium truncate max-w-[160px]">{cb.customerName}</p>
+                      <p className="text-sm truncate max-w-[160px]">{cb.customerName}</p>
                       <p className="text-xs text-muted-foreground">{cb.customerPhone}</p>
                     </div>
                   </TableCell>
@@ -178,7 +209,7 @@ export function CallcenterTableView({
                           {advisorInitials}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm truncate max-w-[120px]">{cb.assignedAdvisor}</span>
+                      <span className="text-sm font-semibold truncate max-w-[120px]">{cb.assignedAdvisor}</span>
                     </div>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
@@ -215,6 +246,9 @@ export function CallcenterTableView({
                     </span>
                   </TableCell>
                   <TableCell>
+                    <CountdownCell dueAt={cb.dueAt} slaDurationMinutes={cb.slaDurationMinutes} status={cb.status} />
+                  </TableCell>
+                  <TableCell>
                     <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                       {formatTimeAgo(cb.createdAt)}
                     </span>
@@ -239,6 +273,18 @@ export function CallcenterTableView({
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEscalate(cb.id) }}>
                             <ChevronUp className="h-3.5 w-3.5 mr-2" />
                             Priorität erhöhen
+                          </DropdownMenuItem>
+                        )}
+                        {onSetReminder && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSetReminder(cb.id) }}>
+                            <Bell className="h-3.5 w-3.5 mr-2" />
+                            Erinnerung setzen
+                          </DropdownMenuItem>
+                        )}
+                        {onEscalateToLevel && !isCompleted && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEscalateToLevel(cb.id) }}>
+                            <Shield className="h-3.5 w-3.5 mr-2" />
+                            Eskalieren an...
                           </DropdownMenuItem>
                         )}
                         {!isCompleted && (
