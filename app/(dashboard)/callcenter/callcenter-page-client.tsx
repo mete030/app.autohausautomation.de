@@ -88,7 +88,7 @@ export default function CallcenterPageClient() {
       setSelectedUser(firstAgent?.name ?? 'Marina Schittenhelm')
     } else if (newRole === 'berater') {
       const firstBerater = employees.find(e => e.role === 'serviceberater' || e.role === 'verkaufer')
-      setSelectedUser(firstBerater?.name ?? 'Thomas Müller')
+      setSelectedUser(firstBerater?.name ?? 'Alexander Eckhardt')
     }
   }
 

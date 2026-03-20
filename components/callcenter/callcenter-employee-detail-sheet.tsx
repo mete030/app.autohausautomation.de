@@ -22,14 +22,16 @@ interface EmployeeDetailSheetProps {
 
 // Dummy historical stats per employee (simulated data beyond current callbacks)
 const historicalStats: Record<string, { totalReceived: number; accepted: number; declined: number; escalated: number; lateResponded: number; avgResponseMin: number }> = {
-  'emp-tm': { totalReceived: 87, accepted: 72, declined: 3, escalated: 8, lateResponded: 12, avgResponseMin: 18 },
-  'emp-sw': { totalReceived: 64, accepted: 58, declined: 1, escalated: 4, lateResponded: 6, avgResponseMin: 14 },
-  'emp-ms': { totalReceived: 93, accepted: 78, declined: 5, escalated: 11, lateResponded: 15, avgResponseMin: 22 },
-  'emp-lk': { totalReceived: 71, accepted: 65, declined: 2, escalated: 5, lateResponded: 8, avgResponseMin: 12 },
-  'emp-fs': { totalReceived: 12, accepted: 12, declined: 0, escalated: 0, lateResponded: 0, avgResponseMin: 5 },
-  'emp-hb': { totalReceived: 28, accepted: 26, declined: 0, escalated: 2, lateResponded: 3, avgResponseMin: 10 },
-  'emp-mr': { totalReceived: 34, accepted: 29, declined: 2, escalated: 3, lateResponded: 5, avgResponseMin: 25 },
-  'emp-jl': { totalReceived: 22, accepted: 20, declined: 1, escalated: 1, lateResponded: 2, avgResponseMin: 16 },
+  'emp-mp': { totalReceived: 12, accepted: 12, declined: 0, escalated: 0, lateResponded: 0, avgResponseMin: 5 },
+  'emp-rh': { totalReceived: 28, accepted: 26, declined: 0, escalated: 2, lateResponded: 3, avgResponseMin: 10 },
+  'emp-ar': { totalReceived: 31, accepted: 29, declined: 1, escalated: 1, lateResponded: 2, avgResponseMin: 8 },
+  'emp-ae': { totalReceived: 87, accepted: 72, declined: 3, escalated: 8, lateResponded: 12, avgResponseMin: 18 },
+  'emp-cb': { totalReceived: 64, accepted: 58, declined: 1, escalated: 4, lateResponded: 6, avgResponseMin: 14 },
+  'emp-go': { totalReceived: 93, accepted: 78, declined: 5, escalated: 11, lateResponded: 15, avgResponseMin: 22 },
+  'emp-ad': { totalReceived: 71, accepted: 65, declined: 2, escalated: 5, lateResponded: 8, avgResponseMin: 12 },
+  'emp-as': { totalReceived: 34, accepted: 29, declined: 2, escalated: 3, lateResponded: 5, avgResponseMin: 25 },
+  'emp-db': { totalReceived: 22, accepted: 20, declined: 1, escalated: 1, lateResponded: 2, avgResponseMin: 16 },
+  'emp-se': { totalReceived: 45, accepted: 41, declined: 1, escalated: 3, lateResponded: 4, avgResponseMin: 19 },
   // Call-Center-Agenten
   'emp-msc': { totalReceived: 156, accepted: 148, declined: 2, escalated: 6, lateResponded: 4, avgResponseMin: 3 },
   'emp-jsc': { totalReceived: 134, accepted: 128, declined: 1, escalated: 5, lateResponded: 3, avgResponseMin: 4 },

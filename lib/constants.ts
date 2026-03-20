@@ -221,6 +221,7 @@ export const employeeRoleConfig = {
   verkaufer:          { label: 'Verkäufer',          color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' },
   serviceberater:     { label: 'Serviceberater',     color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' },
   werkstattleiter:    { label: 'Werkstattleiter',    color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' },
+  callcenter_agent:   { label: 'Call Center',        color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-400' },
   backoffice:         { label: 'Backoffice',         color: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-400' },
   geschaeftsfuehrung: { label: 'Geschäftsführung',   color: 'bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400' },
 } as const
@@ -258,23 +259,25 @@ export const defaultSlaConfig: SlaConfig = {
 
 export const mockEmployees: Employee[] = [
   // Geschäftsführung
-  { id: 'emp-fs', name: 'Frau Schwab',          role: 'geschaeftsfuehrung', email: 'schwab@wackenhut.de',          phone: '+49 711 100005', status: 'aktiv', isCallAgent: false, isSupervisor: true,  createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-mp', name: 'Markus Pross',           role: 'geschaeftsfuehrung', email: 'm.pross@wackenhut.de',         phone: '+49 7452 6031122', status: 'aktiv', isCallAgent: false, isSupervisor: true,  createdAt: '2024-01-01T00:00:00' },
   // Werkstattleiter
-  { id: 'emp-hb', name: 'Harald Braun',          role: 'werkstattleiter',    email: 'h.braun@wackenhut.de',         phone: '+49 711 100006', status: 'aktiv', isCallAgent: false, isSupervisor: true,  createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-rh', name: 'Ralf Hammann',           role: 'werkstattleiter',    email: 'r.hammann@wackenhut.de',       phone: '+49 7452 6031450', status: 'aktiv', isCallAgent: false, isSupervisor: true,  createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-ar', name: 'Andreas Rötlich',        role: 'werkstattleiter',    email: 'a.roetlich@wackenhut.de',      phone: '+49 7032 97593244', status: 'aktiv', isCallAgent: false, isSupervisor: true, createdAt: '2024-01-01T00:00:00' },
   // Serviceberater
-  { id: 'emp-tm', name: 'Thomas Müller',         role: 'serviceberater',     email: 't.mueller@wackenhut.de',       phone: '+49 711 100001', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
-  { id: 'emp-sw', name: 'Sarah Weber',           role: 'serviceberater',     email: 's.weber@wackenhut.de',         phone: '+49 711 100002', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
-  { id: 'emp-ms', name: 'Michael Schmidt',       role: 'serviceberater',     email: 'm.schmidt@wackenhut.de',       phone: '+49 711 100003', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
-  { id: 'emp-lk', name: 'Lisa Kramer',           role: 'serviceberater',     email: 'l.kramer@wackenhut.de',        phone: '+49 711 100004', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-ae', name: 'Alexander Eckhardt',     role: 'serviceberater',     email: 'a.eckhardt@wackenhut.de',      phone: '+49 7051 93103321', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-cb', name: 'Cedric Bauerdick',       role: 'serviceberater',     email: 'c.bauerdick@wackenhut.de',     phone: '+49 7221 6862442', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-go', name: 'Gabriel Otlik',          role: 'serviceberater',     email: 'g.otlik@wackenhut.de',         phone: '+49 7032 97593220', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
   // Verkäufer
-  { id: 'emp-mr', name: 'Marco Rossi',           role: 'verkaufer',          email: 'm.rossi@wackenhut.de',         phone: '+49 711 100007', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
-  { id: 'emp-jl', name: 'Julia Lang',            role: 'verkaufer',          email: 'j.lang@wackenhut.de',          phone: '+49 711 100008', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
+  { id: 'emp-ad', name: 'Alexander Dittus',       role: 'verkaufer',          email: 'a.dittus@wackenhut.de',        phone: '+49 7452 6031200', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-as', name: 'Alexander Seez',         role: 'verkaufer',          email: 'a.seez@wackenhut.de',          phone: '+49 7452 6031213', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-db', name: 'Daniel Bühler',          role: 'verkaufer',          email: 'd.buehler@wackenhut.de',       phone: '+49 7221 6862220', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
+  { id: 'emp-se', name: 'Sebastian Erhard',       role: 'verkaufer',          email: 's.erhard@wackenhut.de',        phone: '+49 7221 6862213', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
   // Call-Center-Agenten
-  { id: 'emp-msc', name: 'Marina Schittenhelm',  role: 'backoffice',         email: 'm.schittenhelm@wackenhut.de',  phone: '+49 711 100009', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
-  { id: 'emp-jsc', name: 'Justine Schuch',       role: 'backoffice',         email: 'j.schuch@wackenhut.de',        phone: '+49 711 100010', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
-  { id: 'emp-jhz', name: 'Jessica Haizmann',     role: 'backoffice',         email: 'j.haizmann@wackenhut.de',      phone: '+49 711 100011', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
-  { id: 'emp-jom', name: 'Joelle Müller',        role: 'backoffice',         email: 'j.mueller@wackenhut.de',       phone: '+49 711 100012', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
-  { id: 'emp-dpi', name: 'Dominic Pitzke',       role: 'backoffice',         email: 'd.pitzke@wackenhut.de',        phone: '+49 711 100013', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-msc', name: 'Marina Schittenhelm',  role: 'callcenter_agent',   email: 'm.schittenhelm@wackenhut.de',  phone: '+49 711 100009', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-jsc', name: 'Justine Schuch',       role: 'callcenter_agent',   email: 'j.schuch@wackenhut.de',        phone: '+49 711 100010', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-jhz', name: 'Jessica Haizmann',     role: 'callcenter_agent',   email: 'j.haizmann@wackenhut.de',      phone: '+49 711 100011', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-jom', name: 'Joelle Müller',        role: 'callcenter_agent',   email: 'j.mueller@wackenhut.de',       phone: '+49 711 100012', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-dpi', name: 'Dominic Pitzke',       role: 'callcenter_agent',   email: 'd.pitzke@wackenhut.de',        phone: '+49 711 100013', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
 ]
 
 export const mockEscalationRules: EscalationRule[] = [

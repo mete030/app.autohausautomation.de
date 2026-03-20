@@ -112,7 +112,7 @@ export interface CallAgent {
 
 // ---- Employee / Mitarbeiter System ----
 
-export type EmployeeRole = 'verkaufer' | 'serviceberater' | 'werkstattleiter' | 'backoffice' | 'geschaeftsfuehrung'
+export type EmployeeRole = 'verkaufer' | 'serviceberater' | 'werkstattleiter' | 'backoffice' | 'geschaeftsfuehrung' | 'callcenter_agent'
 export type EmployeeStatus = 'aktiv' | 'abwesend' | 'pause'
 
 export interface Employee {

@@ -34,6 +34,7 @@ const departmentOrder: EmployeeRole[] = [
   'werkstattleiter',
   'serviceberater',
   'verkaufer',
+  'callcenter_agent',
   'backoffice',
 ]
 
