@@ -17,9 +17,9 @@ interface TranscriptSheetProps {
   open: boolean
   callback: Callback | null
   onOpenChange: (open: boolean) => void
-  onReassign: (id: string) => void
-  onEscalate: (id: string) => void
-  onComplete: (id: string) => void
+  onReassign?: (id: string) => void
+  onEscalate?: (id: string) => void
+  onComplete?: (id: string) => void
   onEscalateToLevel?: (id: string) => void
   onSetReminder?: (id: string) => void
 }
@@ -290,31 +290,35 @@ export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEs
               </button>
             )}
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => onReassign(callback.id)}>
-                <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
-                Zuweisen
-              </Button>
+              {onReassign && (
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => onReassign(callback.id)}>
+                  <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                  Zuweisen
+                </Button>
+              )}
               {onEscalateToLevel ? (
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalateToLevel(callback.id)}>
                   <Shield className="h-3.5 w-3.5 mr-1" />
                   Eskalieren
                 </Button>
-              ) : (
+              ) : onEscalate ? (
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalate(callback.id)}>
                   <ChevronUp className="h-3.5 w-3.5 mr-1" />
                   Eskalieren
                 </Button>
-              )}
+              ) : null}
               {onSetReminder && (
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => onSetReminder(callback.id)}>
                   <Bell className="h-3.5 w-3.5 mr-1" />
                   Erinnerung
                 </Button>
               )}
-              <Button size="sm" className="flex-1" onClick={() => onComplete(callback.id)}>
-                <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                Erledigt
-              </Button>
+              {onComplete && (
+                <Button size="sm" className="flex-1" onClick={() => onComplete(callback.id)}>
+                  <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                  Erledigt
+                </Button>
+              )}
             </div>
           </div>
         )}

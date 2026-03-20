@@ -39,6 +39,8 @@ interface ConversationStoreState {
   updateConversationStatus: (conversationId: string, status: ConversationStatus) => void
   assignConversation: (conversationId: string, advisorName: string | null) => void
   setPerspective: (perspective: NachrichtenPerspective) => void
+  sendMessage: (conversationId: string, content: string) => void
+  toggleLabel: (conversationId: string, label: string) => void
 }
 
 export const useConversationStore = create<ConversationStoreState>((set) => ({
@@ -82,6 +84,43 @@ export const useConversationStore = create<ConversationStoreState>((set) => ({
         return {
           ...conversation,
           assignedTo: advisorName,
+        }
+      }),
+    }))
+  },
+
+  sendMessage: (conversationId, content) => {
+    const now = new Date().toISOString()
+    set((state) => ({
+      conversations: state.conversations.map((conversation) => {
+        if (conversation.id !== conversationId) return conversation
+        const newMsg = {
+          id: `msg-${Date.now()}`,
+          conversationId,
+          content,
+          sender: 'advisor' as const,
+          senderName: state.perspective.userName ?? 'Admin',
+          timestamp: now,
+          read: true,
+          channel: conversation.channel,
+        }
+        return {
+          ...conversation,
+          messages: [...conversation.messages, newMsg],
+          lastMessage: content,
+          lastMessageAt: now,
+        }
+      }),
+    }))
+  },
+
+  toggleLabel: (conversationId, label) => {
+    set((state) => ({
+      conversations: state.conversations.map((conversation) => {
+        if (conversation.id !== conversationId) return conversation
+        return {
+          ...conversation,
+          label: conversation.label === label ? undefined : label,
         }
       }),
     }))

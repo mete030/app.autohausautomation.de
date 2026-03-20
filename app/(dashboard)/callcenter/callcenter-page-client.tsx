@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Shield } from 'lucide-react'
+import { Shield, Headset, UserCog } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import { CallcenterKpiRow } from '@/components/callcenter/callcenter-kpi-row'
@@ -13,6 +13,7 @@ import { CallcenterTimelineView } from '@/components/callcenter/callcenter-timel
 import { CallcenterAdminDashboard } from '@/components/callcenter/callcenter-admin-dashboard'
 import { CallcenterEmployeeView } from '@/components/callcenter/callcenter-employee-view'
 import { CallcenterSettingsView } from '@/components/callcenter/callcenter-settings-view'
+import { CallcenterEmailInbox } from '@/components/callcenter/callcenter-email-inbox'
 import { NewCallbackDialog } from '@/components/callcenter/callcenter-new-callback-dialog'
 import { CompletionDialog } from '@/components/callcenter/callcenter-completion-dialog'
 import { ReassignDialog } from '@/components/callcenter/callcenter-reassign-dialog'
@@ -21,7 +22,10 @@ import { CallcenterEscalationDialog } from '@/components/callcenter/callcenter-e
 import { CallcenterReminderDialog } from '@/components/callcenter/callcenter-reminder-dialog'
 import { CallcenterReminderToast } from '@/components/callcenter/callcenter-reminder-toast'
 import { CallcenterAutoEscalationProvider } from '@/components/callcenter/callcenter-auto-escalation-provider'
-import { employeeRoleConfig } from '@/lib/constants'
+import { CallcenterRoleSwitcher, type CallcenterRole } from '@/components/callcenter/callcenter-role-switcher'
+import { CallcenterVoiceTestDialog } from '@/components/callcenter/callcenter-voice-test-dialog'
+import { CallcenterMorningSummaryDialog } from '@/components/callcenter/callcenter-morning-summary-dialog'
+import { employeeRoleConfig, mockCallAgents } from '@/lib/constants'
 import type { CallbackPriority } from '@/lib/types'
 
 type FilterMode = 'aktiv' | 'alle' | 'erledigt'
@@ -33,6 +37,12 @@ const NEXT_PRIORITY: Record<string, CallbackPriority> = {
   hoch: 'dringend',
 }
 
+const ROLE_HEADER: Record<CallcenterRole, { icon: typeof Shield; title: string; subtitle: string }> = {
+  admin: { icon: Shield, title: 'Callcenter — Administration', subtitle: 'Rückruf-Management & Mitarbeiter-Tracking' },
+  callcenter: { icon: Headset, title: 'Callcenter — Mein Arbeitsplatz', subtitle: 'Rückrufe erstellen & verfolgen' },
+  berater: { icon: UserCog, title: 'Callcenter — Meine Rückrufe', subtitle: 'Zugewiesene Rückrufe bearbeiten' },
+}
+
 export default function CallcenterPageClient() {
   const callbacks = useCallbackStore(s => s.callbacks)
   const employees = useCallbackStore(s => s.employees)
@@ -41,6 +51,13 @@ export default function CallcenterPageClient() {
   const createCallback = useCallbackStore(s => s.createCallback)
   const reassignCallback = useCallbackStore(s => s.reassignCallback)
   const escalateCallback = useCallbackStore(s => s.escalateCallback)
+
+  // Role state
+  const [role, setRole] = useState<CallcenterRole>('admin')
+  const [selectedUser, setSelectedUser] = useState('Lisa Kramer')
+
+  // Derive current user from role + selection
+  const currentUser = role === 'admin' ? 'Admin' : selectedUser
 
   // UI state
   const [activeTab, setActiveTab] = useState('rueckrufe')
@@ -59,9 +76,34 @@ export default function CallcenterPageClient() {
   const [escalationDialogId, setEscalationDialogId] = useState<string | null>(null)
   const [reminderDialogId, setReminderDialogId] = useState<string | null>(null)
 
-  // Filtered callbacks
+  // Reset tab on role change, set appropriate default user
+  const handleRoleChange = (newRole: CallcenterRole) => {
+    setRole(newRole)
+    setActiveTab('rueckrufe')
+    setViewMode('tabelle')
+    setAdvisorFilter('alle')
+
+    if (newRole === 'callcenter') {
+      const firstAgent = mockCallAgents.find(a => a.type === 'mensch')
+      setSelectedUser(firstAgent?.name ?? 'Lisa Kramer')
+    } else if (newRole === 'berater') {
+      const firstBerater = employees.find(e => e.role === 'serviceberater' || e.role === 'verkaufer')
+      setSelectedUser(firstBerater?.name ?? 'Thomas Müller')
+    }
+  }
+
+  // Role-filtered callbacks
+  const roleCallbacks = useMemo(() => {
+    if (role === 'admin') return callbacks
+    if (role === 'callcenter') {
+      return callbacks.filter(cb => cb.takenBy.name === currentUser)
+    }
+    return callbacks.filter(cb => cb.assignedAdvisor === currentUser)
+  }, [callbacks, role, currentUser])
+
+  // Filtered callbacks (from role-scoped set)
   const filteredCallbacks = useMemo(() => {
-    let result = callbacks
+    let result = roleCallbacks
 
     if (statusFilter === 'aktiv') result = result.filter(cb => cb.status !== 'erledigt')
     else if (statusFilter === 'erledigt') result = result.filter(cb => cb.status === 'erledigt')
@@ -81,25 +123,11 @@ export default function CallcenterPageClient() {
     }
 
     return result
-  }, [callbacks, statusFilter, advisorFilter, sourceFilter, priorityFilter, searchQuery])
+  }, [roleCallbacks, statusFilter, advisorFilter, sourceFilter, priorityFilter, searchQuery])
 
-  // KPIs
-  const todayStr = new Date().toDateString()
+  // KPIs (admin only, from all callbacks)
+  const totalCallbacks = callbacks.filter(cb => cb.status !== 'erledigt').length
   const totalOverdue = callbacks.filter(cb => cb.status === 'ueberfaellig').length
-  const totalActive = callbacks.filter(cb => cb.status !== 'erledigt').length
-  const todayCompleted = callbacks.filter(cb =>
-    cb.status === 'erledigt' && cb.completedAt &&
-    new Date(cb.completedAt).toDateString() === todayStr
-  ).length
-  const aiHandled = callbacks.filter(cb => cb.takenBy.type === 'ki').length
-  const completedCbs = callbacks.filter(cb => cb.status === 'erledigt')
-  const withinSla = completedCbs.filter(cb =>
-    cb.completedAt && new Date(cb.completedAt) <= new Date(cb.slaDeadline)
-  ).length
-  const slaPercentage = completedCbs.length > 0
-    ? Math.round((withinSla / completedCbs.length) * 100)
-    : 100
-
   const escalationCount = callbacks.reduce((sum, cb) => sum + cb.escalationHistory.length, 0)
 
   const avgTime = useMemo(() => {
@@ -146,91 +174,237 @@ export default function CallcenterPageClient() {
       escalateCallback({
         callbackId: id,
         newPriority: NEXT_PRIORITY[cb.priority],
-        escalatedBy: 'Admin',
+        escalatedBy: currentUser,
       })
     }
   }
 
-  const viewActions = {
-    onComplete: setCompleteDialogId,
-    onReassign: setReassignDialogId,
-    onEscalate: handleEscalate,
-    onViewTranscript: setTranscriptSheetId,
-    onSetReminder: setReminderDialogId,
-    onEscalateToLevel: setEscalationDialogId,
-  }
+  // Role-based action permissions
+  const viewActions = useMemo(() => {
+    const base = {
+      onViewTranscript: setTranscriptSheetId,
+    }
+
+    if (role === 'admin') {
+      return {
+        ...base,
+        onComplete: setCompleteDialogId,
+        onReassign: setReassignDialogId,
+        onEscalate: handleEscalate,
+        onSetReminder: setReminderDialogId,
+        onEscalateToLevel: setEscalationDialogId,
+      }
+    }
+
+    if (role === 'callcenter') {
+      return {
+        ...base,
+        onComplete: undefined as unknown as (id: string) => void,
+        onReassign: setReassignDialogId,
+        onEscalate: handleEscalate,
+        onSetReminder: setReminderDialogId,
+        onEscalateToLevel: setEscalationDialogId,
+      }
+    }
+
+    // berater — only complete
+    return {
+      ...base,
+      onComplete: setCompleteDialogId,
+      onReassign: undefined as unknown as (id: string) => void,
+      onEscalate: undefined as unknown as (id: string) => void,
+      onSetReminder: undefined as unknown as (id: string) => void,
+      onEscalateToLevel: undefined as unknown as (id: string) => void,
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role])
+
+  const header = ROLE_HEADER[role]
+  const HeaderIcon = header.icon
 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-bold">
-            <span className="sm:hidden">Callcenter</span>
-            <span className="hidden sm:inline">Callcenter — Administration</span>
-          </h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <HeaderIcon className="h-5 w-5 text-primary" />
+            <h1 className="text-2xl font-bold">
+              <span className="sm:hidden">Callcenter</span>
+              <span className="hidden sm:inline">{header.title}</span>
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {header.subtitle}
+            {role !== 'admin' && (
+              <span className="ml-2 text-xs font-medium text-foreground/70">
+                — {currentUser}
+              </span>
+            )}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Rückruf-Management & Mitarbeiter-Tracking
-        </p>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {role === 'admin' && <CallcenterMorningSummaryDialog />}
+          {role === 'admin' && <CallcenterVoiceTestDialog />}
+          <CallcenterRoleSwitcher
+            role={role}
+            onRoleChange={handleRoleChange}
+            selectedUser={selectedUser}
+            onSelectedUserChange={setSelectedUser}
+          />
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
-          <TabsTrigger value="rueckrufe">Rückrufe</TabsTrigger>
-          <TabsTrigger value="mitarbeiter">Mitarbeiter</TabsTrigger>
-          <TabsTrigger value="einstellungen">Einstellungen</TabsTrigger>
-        </TabsList>
+      {/* ======== ADMIN VIEW ======== */}
+      {role === 'admin' && (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+            <TabsTrigger value="rueckrufe">Rückrufe</TabsTrigger>
+            <TabsTrigger value="mitarbeiter">Mitarbeiter</TabsTrigger>
+            <TabsTrigger value="einstellungen">Einstellungen</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="uebersicht" className="mt-4">
-          <CallcenterAdminDashboard />
-        </TabsContent>
+          <TabsContent value="uebersicht" className="mt-4">
+            <CallcenterAdminDashboard />
+          </TabsContent>
 
-        <TabsContent value="rueckrufe" className="mt-4 space-y-4">
-          <CallcenterKpiRow
-            overdue={totalOverdue}
-            active={totalActive}
-            completedToday={todayCompleted}
-            slaPercentage={slaPercentage}
-            aiHandled={aiHandled}
-            escalations={escalationCount}
-            avgTime={avgTime}
-          />
+          <TabsContent value="rueckrufe" className="mt-4 space-y-4">
+            <CallcenterKpiRow
+              totalCallbacks={totalCallbacks}
+              overdue={totalOverdue}
+              escalations={escalationCount}
+              avgTime={avgTime}
+            />
 
+            <CallcenterToolbar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              advisorFilter={advisorFilter}
+              onAdvisorFilterChange={setAdvisorFilter}
+              sourceFilter={sourceFilter}
+              onSourceFilterChange={setSourceFilter}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              onNewCallback={() => setNewCallbackOpen(true)}
+              advisorNames={advisorNames}
+              advisorEntries={advisorEntries}
+              priorityFilter={priorityFilter}
+              onPriorityFilterChange={setPriorityFilter}
+              activeReminderCount={activeReminderCount}
+            />
+
+            {viewMode === 'tabelle' && (
+              <CallcenterTableView callbacks={filteredCallbacks} {...viewActions} />
+            )}
+            {viewMode === 'berater' && (
+              <CallcenterAdvisorView
+                callbacks={filteredCallbacks}
+                allCallbacks={callbacks}
+                onComplete={setCompleteDialogId}
+                onReassign={setReassignDialogId}
+                onEscalate={handleEscalate}
+                onViewTranscript={setTranscriptSheetId}
+              />
+            )}
+            {viewMode === 'kanban' && (
+              <CallcenterKanbanView callbacks={filteredCallbacks} {...viewActions} />
+            )}
+            {viewMode === 'zeitleiste' && (
+              <CallcenterTimelineView callbacks={filteredCallbacks} {...viewActions} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="mitarbeiter" className="mt-4">
+            <CallcenterEmployeeView />
+          </TabsContent>
+
+          <TabsContent value="einstellungen" className="mt-4">
+            <CallcenterSettingsView />
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {/* ======== CALL CENTER MITARBEITER VIEW ======== */}
+      {role === 'callcenter' && (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="rueckrufe">Rückrufe</TabsTrigger>
+            <TabsTrigger value="mails">Mails</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="rueckrufe" className="mt-4 space-y-4">
+            <CallcenterToolbar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              advisorFilter="alle"
+              onAdvisorFilterChange={() => {}}
+              sourceFilter={sourceFilter}
+              onSourceFilterChange={setSourceFilter}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              onNewCallback={() => setNewCallbackOpen(true)}
+              advisorNames={[]}
+              priorityFilter={priorityFilter}
+              onPriorityFilterChange={setPriorityFilter}
+              activeReminderCount={activeReminderCount}
+              hideAdvisorFilter
+            />
+
+            {viewMode === 'tabelle' && (
+              <CallcenterTableView callbacks={filteredCallbacks} {...viewActions} />
+            )}
+            {viewMode === 'berater' && (
+              <CallcenterAdvisorView
+                callbacks={filteredCallbacks}
+                allCallbacks={roleCallbacks}
+                onReassign={setReassignDialogId}
+                onEscalate={handleEscalate}
+                onViewTranscript={setTranscriptSheetId}
+              />
+            )}
+            {viewMode === 'kanban' && (
+              <CallcenterKanbanView callbacks={filteredCallbacks} {...viewActions} />
+            )}
+            {viewMode === 'zeitleiste' && (
+              <CallcenterTimelineView callbacks={filteredCallbacks} {...viewActions} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="mails" className="mt-4">
+            <CallcenterEmailInbox />
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {/* ======== SERVICEBERATER / VERKÄUFER VIEW ======== */}
+      {role === 'berater' && (
+        <div className="space-y-4">
           <CallcenterToolbar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
-            advisorFilter={advisorFilter}
-            onAdvisorFilterChange={setAdvisorFilter}
+            advisorFilter="alle"
+            onAdvisorFilterChange={() => {}}
             sourceFilter={sourceFilter}
             onSourceFilterChange={setSourceFilter}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
-            onNewCallback={() => setNewCallbackOpen(true)}
-            advisorNames={advisorNames}
-            advisorEntries={advisorEntries}
+            onNewCallback={() => {}}
+            advisorNames={[]}
             priorityFilter={priorityFilter}
             onPriorityFilterChange={setPriorityFilter}
-            activeReminderCount={activeReminderCount}
+            hideAdvisorFilter
+            hideNewCallback
           />
 
           {viewMode === 'tabelle' && (
             <CallcenterTableView callbacks={filteredCallbacks} {...viewActions} />
-          )}
-          {viewMode === 'berater' && (
-            <CallcenterAdvisorView
-              callbacks={filteredCallbacks}
-              allCallbacks={callbacks}
-              onComplete={setCompleteDialogId}
-              onReassign={setReassignDialogId}
-              onEscalate={handleEscalate}
-              onViewTranscript={setTranscriptSheetId}
-            />
           )}
           {viewMode === 'kanban' && (
             <CallcenterKanbanView callbacks={filteredCallbacks} {...viewActions} />
@@ -238,16 +412,8 @@ export default function CallcenterPageClient() {
           {viewMode === 'zeitleiste' && (
             <CallcenterTimelineView callbacks={filteredCallbacks} {...viewActions} />
           )}
-        </TabsContent>
-
-        <TabsContent value="mitarbeiter" className="mt-4">
-          <CallcenterEmployeeView />
-        </TabsContent>
-
-        <TabsContent value="einstellungen" className="mt-4">
-          <CallcenterSettingsView />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
 
       {/* Headless providers */}
       <CallcenterAutoEscalationProvider />
@@ -274,7 +440,7 @@ export default function CallcenterPageClient() {
         callback={findCallback(reassignDialogId)}
         onOpenChange={() => setReassignDialogId(null)}
         onReassign={(id, newAdvisor) => {
-          reassignCallback({ callbackId: id, newAdvisor, reassignedBy: 'Admin' })
+          reassignCallback({ callbackId: id, newAdvisor, reassignedBy: currentUser })
           setReassignDialogId(null)
         }}
         advisorNames={advisorNames}
@@ -283,11 +449,11 @@ export default function CallcenterPageClient() {
         open={!!transcriptSheetId}
         callback={findCallback(transcriptSheetId)}
         onOpenChange={() => setTranscriptSheetId(null)}
-        onReassign={(id) => { setTranscriptSheetId(null); setReassignDialogId(id) }}
-        onEscalate={(id) => { setTranscriptSheetId(null); handleEscalate(id) }}
-        onComplete={(id) => { setTranscriptSheetId(null); setCompleteDialogId(id) }}
-        onEscalateToLevel={(id) => { setTranscriptSheetId(null); setEscalationDialogId(id) }}
-        onSetReminder={(id) => { setTranscriptSheetId(null); setReminderDialogId(id) }}
+        onReassign={role !== 'berater' ? (id) => { setTranscriptSheetId(null); setReassignDialogId(id) } : undefined}
+        onEscalate={role !== 'berater' ? (id) => { setTranscriptSheetId(null); handleEscalate(id) } : undefined}
+        onComplete={role !== 'callcenter' ? (id) => { setTranscriptSheetId(null); setCompleteDialogId(id) } : undefined}
+        onEscalateToLevel={role !== 'berater' ? (id) => { setTranscriptSheetId(null); setEscalationDialogId(id) } : undefined}
+        onSetReminder={role !== 'berater' ? (id) => { setTranscriptSheetId(null); setReminderDialogId(id) } : undefined}
       />
       <CallcenterEscalationDialog
         open={!!escalationDialogId}

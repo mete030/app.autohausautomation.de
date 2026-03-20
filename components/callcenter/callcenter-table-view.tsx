@@ -21,9 +21,9 @@ import type { Callback, CallbackStatus, CallSource } from '@/lib/types'
 
 interface CallcenterTableViewProps {
   callbacks: Callback[]
-  onComplete: (id: string) => void
-  onReassign: (id: string) => void
-  onEscalate: (id: string) => void
+  onComplete?: (id: string) => void
+  onReassign?: (id: string) => void
+  onEscalate?: (id: string) => void
   onViewTranscript: (id: string) => void
   onSetReminder?: (id: string) => void
   onEscalateToLevel?: (id: string) => void
@@ -265,11 +265,13 @@ export function CallcenterTableView({
                           <FileText className="h-3.5 w-3.5 mr-2" />
                           Transkript anzeigen
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onReassign(cb.id) }}>
-                          <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
-                          Neu zuweisen
-                        </DropdownMenuItem>
-                        {cb.priority !== 'dringend' && !isCompleted && (
+                        {onReassign && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onReassign(cb.id) }}>
+                            <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                            Neu zuweisen
+                          </DropdownMenuItem>
+                        )}
+                        {onEscalate && cb.priority !== 'dringend' && !isCompleted && (
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEscalate(cb.id) }}>
                             <ChevronUp className="h-3.5 w-3.5 mr-2" />
                             Priorität erhöhen
@@ -287,7 +289,7 @@ export function CallcenterTableView({
                             Eskalieren an...
                           </DropdownMenuItem>
                         )}
-                        {!isCompleted && (
+                        {onComplete && !isCompleted && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onComplete(cb.id) }}>

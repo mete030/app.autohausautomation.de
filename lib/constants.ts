@@ -23,6 +23,9 @@ export const featureVisibility = {
   buchhaltung: false,
   verifizierung: false,
   dashboard: false,
+  fahrzeuge: false,
+  einkauf: false,
+  inserate: false,
 } as const
 
 export const navigation: NavItem[] = [
@@ -33,35 +36,41 @@ export const navigation: NavItem[] = [
         icon: LayoutDashboard,
       }]
     : []),
-  {
-    title: 'Fahrzeuge',
-    href: '/fahrzeuge/hofsteuerung',
-    icon: Car,
-    children: [
-      { title: 'Hofsteuerung', href: '/fahrzeuge/hofsteuerung' },
-      { title: 'Inventar', href: '/fahrzeuge' },
-      { title: 'Werkstatt', href: '/fahrzeuge/werkstatt' },
-    ],
-  },
-  {
-    title: 'Einkauf',
-    href: '/einkauf',
-    icon: ShoppingCart,
-  },
+  ...(featureVisibility.fahrzeuge
+    ? [{
+        title: 'Fahrzeuge',
+        href: '/fahrzeuge/hofsteuerung',
+        icon: Car,
+        children: [
+          { title: 'Hofsteuerung', href: '/fahrzeuge/hofsteuerung' },
+          { title: 'Inventar', href: '/fahrzeuge' },
+          { title: 'Werkstatt', href: '/fahrzeuge/werkstatt' },
+        ],
+      }]
+    : []),
+  ...(featureVisibility.einkauf
+    ? [{
+        title: 'Einkauf',
+        href: '/einkauf',
+        icon: ShoppingCart,
+      }]
+    : []),
   {
     title: 'Callcenter',
     href: '/callcenter',
     icon: Phone,
   },
-  {
-    title: 'Inserate',
-    href: '/inserate',
-    icon: FileText,
-    children: [
-      { title: 'Übersicht', href: '/inserate' },
-      { title: 'Neues Inserat', href: '/inserate/neu' },
-    ],
-  },
+  ...(featureVisibility.inserate
+    ? [{
+        title: 'Inserate',
+        href: '/inserate',
+        icon: FileText,
+        children: [
+          { title: 'Übersicht', href: '/inserate' },
+          { title: 'Neues Inserat', href: '/inserate/neu' },
+        ],
+      }]
+    : []),
   ...(featureVisibility.buchhaltung
     ? [{
         title: 'Buchhaltung',

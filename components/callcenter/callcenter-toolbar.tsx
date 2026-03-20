@@ -35,6 +35,8 @@ interface CallcenterToolbarProps {
   onPriorityFilterChange?: (value: string) => void
   activeReminderCount?: number
   onShowReminders?: () => void
+  hideAdvisorFilter?: boolean
+  hideNewCallback?: boolean
 }
 
 const filterPills: { value: FilterMode; label: string }[] = [
@@ -54,6 +56,7 @@ export function CallcenterToolbar({
   advisorEntries,
   priorityFilter, onPriorityFilterChange,
   activeReminderCount, onShowReminders,
+  hideAdvisorFilter, hideNewCallback,
 }: CallcenterToolbarProps) {
   return (
     <div className="space-y-3">
@@ -69,10 +72,12 @@ export function CallcenterToolbar({
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={onNewCallback} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            Neuer Rückruf
-          </Button>
+          {!hideNewCallback && (
+            <Button onClick={onNewCallback} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Neuer Rückruf
+            </Button>
+          )}
           {onShowReminders && (
             <Button
               variant="ghost"
@@ -150,39 +155,43 @@ export function CallcenterToolbar({
           ))}
         </div>
 
-        <div className="h-4 w-px bg-border hidden sm:block" />
+        {!hideAdvisorFilter && (
+          <>
+            <div className="h-4 w-px bg-border hidden sm:block" />
 
-        {/* Advisor filter */}
-        <Select value={advisorFilter} onValueChange={onAdvisorFilterChange}>
-          <SelectTrigger className="w-full h-8 text-xs sm:w-[220px]">
-            <SelectValue placeholder="Alle Mitarbeiter" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Mitarbeiter</SelectItem>
-            {advisorEntries ? (() => {
-              const groups = new Map<string, AdvisorEntry[]>()
-              for (const entry of advisorEntries) {
-                const key = entry.roleLabel || 'Sonstige'
-                if (!groups.has(key)) groups.set(key, [])
-                groups.get(key)!.push(entry)
-              }
-              return Array.from(groups.entries()).map(([roleLabel, entries]) => (
-                <SelectGroup key={roleLabel}>
-                  <SelectLabel className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
-                    {roleLabel}
-                  </SelectLabel>
-                  {entries.map(entry => (
-                    <SelectItem key={entry.name} value={entry.name}>
-                      {entry.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))
-            })() : advisorNames.map(name => (
-              <SelectItem key={name} value={name}>{name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            {/* Advisor filter */}
+            <Select value={advisorFilter} onValueChange={onAdvisorFilterChange}>
+              <SelectTrigger className="w-full h-8 text-xs sm:w-[220px]">
+                <SelectValue placeholder="Alle Mitarbeiter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle Mitarbeiter</SelectItem>
+                {advisorEntries ? (() => {
+                  const groups = new Map<string, AdvisorEntry[]>()
+                  for (const entry of advisorEntries) {
+                    const key = entry.roleLabel || 'Sonstige'
+                    if (!groups.has(key)) groups.set(key, [])
+                    groups.get(key)!.push(entry)
+                  }
+                  return Array.from(groups.entries()).map(([roleLabel, entries]) => (
+                    <SelectGroup key={roleLabel}>
+                      <SelectLabel className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
+                        {roleLabel}
+                      </SelectLabel>
+                      {entries.map(entry => (
+                        <SelectItem key={entry.name} value={entry.name}>
+                          {entry.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))
+                })() : advisorNames.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        )}
 
         {/* Source filter */}
         <Select value={sourceFilter} onValueChange={onSourceFilterChange}>

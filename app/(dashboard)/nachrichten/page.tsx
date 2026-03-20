@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -19,7 +19,8 @@ import {
   ArrowLeftRight, UserPlus, X, Tag, Clock, CheckCircle2, MoreHorizontal,
   Phone, AtSign, FolderOpen, Plus, Settings, Paperclip,
   Smile, Image as ImageIcon, Hash, PenSquare, Check, Zap, Filter, ChevronLeft,
-  Sparkles, Shield,
+  Sparkles, Shield, FileText, StickyNote, Bot, Plug, Globe, Download, Eye,
+  Calendar, Link2, MousePointerClick, ExternalLink,
 } from 'lucide-react'
 
 // ─── Brand SVG Icons ──────────────────────────────────────────────────────────
@@ -128,11 +129,11 @@ function dayLabel(iso: string) {
   return d.toLocaleDateString('de', { weekday: 'long', day: '2-digit', month: 'long' })
 }
 
-// Label colour map — pastel pills
+// Label colour map — refined pastel pills
 const labelCls: Record<string, { pill: string; dot: string }> = {
-  Marketing: { pill: 'bg-pink-50 text-pink-600 border-pink-200',   dot: 'bg-pink-400'   },
-  VIP:       { pill: 'bg-amber-50 text-amber-600 border-amber-200', dot: 'bg-amber-400'  },
-  B2B:       { pill: 'bg-blue-50 text-blue-600 border-blue-200',    dot: 'bg-blue-400'   },
+  Marketing: { pill: 'bg-pink-50/80 text-pink-600 border-pink-100',   dot: 'bg-pink-400'   },
+  VIP:       { pill: 'bg-amber-50/80 text-amber-600 border-amber-100', dot: 'bg-amber-400'  },
+  B2B:       { pill: 'bg-blue-50/80 text-blue-600 border-blue-100',    dot: 'bg-blue-400'   },
 }
 
 // ─── View dropdown ────────────────────────────────────────────────────────────
@@ -176,7 +177,7 @@ function ViewDropdown({
         onClick={() => { onChange(id); setOpen(false) }}
         className={cn(
           'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left',
-          active ? 'bg-[#EBF5FB] text-[#1a73e8] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+          active ? 'bg-blue-50/60 text-[#2563EB] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
         )}
       >
         <span className="shrink-0 opacity-70">{icon}</span>
@@ -192,9 +193,9 @@ function ViewDropdown({
   return (
     mounted ? (
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger className="flex min-w-0 max-w-full items-center gap-1 font-semibold text-[15px] text-foreground transition-colors hover:text-muted-foreground">
+        <PopoverTrigger className="flex min-w-0 max-w-full items-center gap-1 font-semibold text-[14px] text-foreground transition-colors hover:text-foreground/70">
           <span className="truncate">{viewLabel[current]}</span>
-          <ChevronDown className={cn('w-4 h-4 text-muted-foreground/70 transition-transform duration-150', open && 'rotate-180')} />
+          <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-150', open && 'rotate-180')} />
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={10} className="w-60 p-1.5">
           {renderItem({ id: 'alle', icon: <Hash className="w-3.5 h-3.5"/>, label: 'Alle Unterhaltungen', count: allConversations.length })}
@@ -230,9 +231,9 @@ function ViewDropdown({
         </PopoverContent>
       </Popover>
     ) : (
-      <button type="button" className="flex min-w-0 max-w-full items-center gap-1 font-semibold text-[15px] text-foreground transition-colors hover:text-muted-foreground">
+      <button type="button" className="flex min-w-0 max-w-full items-center gap-1 font-semibold text-[14px] text-foreground transition-colors hover:text-foreground/70">
         <span className="truncate">{viewLabel[current]}</span>
-        <ChevronDown className="w-4 h-4 text-muted-foreground/70" />
+        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/50" />
       </button>
     )
   )
@@ -280,54 +281,49 @@ function ConversationList({
   }
 
   return (
-    <div className="w-full border-r flex flex-col h-full bg-background lg:w-[288px] lg:shrink-0 xl:w-[336px]">
+    <div className="w-full border-r border-border/50 flex flex-col h-full bg-background lg:w-[288px] lg:shrink-0 xl:w-[336px]">
 
       {/* ── Top header ── */}
-      <div className="border-b border-border/70 bg-white/95 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <ViewDropdown current={view} onChange={onViewChange} allConversations={allConversations} />
-              <span className="inline-flex h-6 shrink-0 items-center rounded-full border border-border/80 bg-muted/40 px-2.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
-                {filtered.length}
-              </span>
-            </div>
-            <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
-              {statusDescription[status]}
-            </p>
+      <div className="border-b border-border/40 bg-white px-3.5 pt-3.5 pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <ViewDropdown current={view} onChange={onViewChange} allConversations={allConversations} />
+            <span className="inline-flex h-5.5 shrink-0 items-center rounded-md bg-muted/60 px-2 text-[11px] font-medium tabular-nums text-muted-foreground">
+              {filtered.length}
+            </span>
           </div>
           <button
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00BCD4] text-white shadow-sm transition-colors hover:bg-[#00ACC1]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-sm transition-all hover:opacity-80 active:scale-95"
             title="Neue Unterhaltung"
           >
-            <PenSquare className="h-4 w-4" />
+            <PenSquare className="h-3.5 w-3.5" />
           </button>
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-2.5 flex items-center gap-1.5">
           <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Unterhaltungen durchsuchen"
-              className="h-10 rounded-xl border-border/70 bg-[#F6F8FA] pl-9 pr-3 text-[13px] shadow-none focus-visible:bg-white"
+              placeholder="Suchen..."
+              className="h-8 rounded-lg border-transparent bg-muted/50 pl-8 pr-3 text-[13px] shadow-none placeholder:text-muted-foreground/40 focus-visible:bg-white focus-visible:border-border"
             />
           </div>
-          <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-[#F6F8FA] text-muted-foreground transition-colors hover:bg-white hover:text-foreground">
-            <Filter className="h-4 w-4" />
+          <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+            <Filter className="h-3.5 w-3.5" />
           </button>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-[#F3F6F9] p-1">
+        <div className="mt-2.5 grid grid-cols-3 gap-0.5 rounded-lg bg-muted/50 p-0.5">
           {tabs.map(t => (
             <button
               key={t.value}
               onClick={() => onStatusChange(t.value)}
               className={cn(
-                'rounded-xl px-3 py-2 text-[12px] font-medium transition-all',
+                'rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-all',
                 status === t.value
-                  ? 'bg-white text-[#1a73e8] shadow-sm'
+                  ? 'bg-white text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -336,21 +332,21 @@ function ConversationList({
           ))}
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
-          <button className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-white px-3 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+        <div className="mt-2.5 flex items-center justify-between">
+          <button className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground">
             Am neuesten <ChevronDown className="h-3 w-3" />
           </button>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="rounded-full px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 Suche löschen
               </button>
             )}
-            <button className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-              <MoreHorizontal className="h-4 w-4" />
+            <button className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+              <MoreHorizontal className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -358,12 +354,12 @@ function ConversationList({
 
       {/* ── List ── */}
       <ScrollArea className="flex-1">
-        <div className="space-y-2 px-3 py-3">
+        <div className="px-1.5 py-1.5">
         {filtered.length === 0 && (
-          <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/80 bg-muted/20 text-muted-foreground/70">
-            <Mail className="w-7 h-7" />
-            <span className="text-xs">
-              {search ? 'Keine Treffer für diese Suche' : 'Keine Unterhaltungen in dieser Ansicht'}
+          <div className="flex h-40 flex-col items-center justify-center gap-2 mx-2 rounded-xl border border-dashed border-border/60 text-muted-foreground/60">
+            <Mail className="w-6 h-6" />
+            <span className="text-[12px]">
+              {search ? 'Keine Treffer für diese Suche' : 'Keine Unterhaltungen'}
             </span>
           </div>
         )}
@@ -375,62 +371,65 @@ function ConversationList({
               key={conv.id}
               onClick={() => onSelect(conv)}
               className={cn(
-                'w-full rounded-2xl border px-3 py-3 text-left transition-all group',
+                'w-full rounded-lg px-3 py-2.5 text-left transition-all group relative',
                 isSelected
-                  ? 'border-[#BBD6FF] bg-[#F5FAFF] shadow-[0_10px_28px_rgba(26,115,232,0.10)]'
-                  : 'border-transparent bg-transparent hover:border-border/80 hover:bg-white'
+                  ? 'bg-blue-50/70'
+                  : 'hover:bg-muted/40'
               )}
             >
-              <div className="flex items-start gap-3">
-                {/* Channel icon as avatar — key Superchat pattern */}
+              {isSelected && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full bg-[#2563EB]" />
+              )}
+              <div className="flex items-start gap-2.5">
+                {/* Channel icon as avatar */}
                 <ChannelIcon ch={conv.channel} size="lg" />
 
                 <div className="flex-1 min-w-0">
                   {/* Row 1: name + time */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className={cn(
                           'text-[13px] truncate',
-                          conv.unread ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'
+                          conv.unread ? 'font-semibold text-foreground' : 'font-normal text-foreground/80'
                         )}>
                           {conv.customerName}
                         </span>
-                        {conv.unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1a73e8]" />}
+                        {conv.unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563EB]" />}
                       </div>
                       {conv.inbox && (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground truncate">
-                          ▸ {conv.inbox}
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/60 truncate">
+                          {conv.inbox}
                         </p>
                       )}
                     </div>
                     <span className={cn(
-                      'pt-0.5 text-[11px] shrink-0 tabular-nums',
-                      conv.unread ? 'text-[#1a73e8] font-medium' : 'text-muted-foreground'
+                      'pt-0.5 text-[10px] shrink-0 tabular-nums',
+                      conv.unread ? 'text-[#2563EB] font-medium' : 'text-muted-foreground/50'
                     )}>
                       {fmtTime(conv.lastMessageAt)}
                     </span>
                   </div>
 
-                  {/* Row 2: unread badge + preview */}
-                  <div className="mt-2 flex min-w-0 items-start gap-2">
-                    {conv.unreadCount > 0 && (
-                      <span className="mt-0.5 flex h-4 min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#1a73e8] px-1 text-[9px] font-bold text-white">
-                        {conv.unreadCount}
-                      </span>
-                    )}
+                  {/* Row 2: preview + unread badge */}
+                  <div className="mt-1.5 flex min-w-0 items-start gap-2">
                     <p className={cn(
-                      'min-w-0 flex-1 overflow-hidden text-[12px] leading-[1.45] break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]',
-                      conv.unread ? 'text-foreground/80' : 'text-muted-foreground'
+                      'min-w-0 flex-1 overflow-hidden text-[12px] leading-[1.4] break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]',
+                      conv.unread ? 'text-foreground/70' : 'text-muted-foreground/60'
                     )}>
                       {conv.lastMessage}
                     </p>
+                    {conv.unreadCount > 0 && (
+                      <span className="mt-0.5 flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#2563EB] px-1 text-[9px] font-bold text-white">
+                        {conv.unreadCount}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Row 4: label pill */}
+                  {/* Label pill */}
                   {lc && (
                     <span className={cn(
-                      'inline-flex items-center gap-1 mt-1.5 text-[10px] px-2 py-0.5 rounded-full border font-semibold tracking-wide',
+                      'inline-flex items-center gap-1 mt-1.5 text-[10px] px-1.5 py-px rounded-md font-medium',
                       lc.pill
                     )}>
                       {conv.label}
@@ -465,16 +464,35 @@ function ChatView({
   onOpenContact?: () => void
 }) {
   const [input, setInput] = useState('')
+  const sendMessage = useConversationStore((state) => state.sendMessage)
+  const updateConversationStatus = useConversationStore((state) => state.updateConversationStatus)
+  const toggleLabel = useConversationStore((state) => state.toggleLabel)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [labelOpen, setLabelOpen] = useState(false)
+
+  const handleSend = () => {
+    if (!conv || !input.trim()) return
+    sendMessage(conv.id, input.trim())
+    setInput('')
+  }
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    if (scrollRef.current) {
+      const el = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
+      if (el) el.scrollTop = el.scrollHeight
+    }
+  }, [conv?.messages.length])
 
   if (!conv) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#F8FAFB] text-muted-foreground gap-3">
-        <div className="w-16 h-16 rounded-full bg-muted/40 flex items-center justify-center">
-          <Mail className="w-7 h-7 opacity-25" />
+      <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 text-muted-foreground gap-2">
+        <div className="w-12 h-12 rounded-xl bg-muted/40 flex items-center justify-center">
+          <Mail className="w-5 h-5 opacity-20" />
         </div>
-        <p className="text-sm font-medium">Wähle eine Unterhaltung aus</p>
-        <p className="text-xs text-muted-foreground/60 max-w-[180px] text-center leading-relaxed">
-          Klicke links auf eine Nachricht, um sie hier zu öffnen.
+        <p className="text-[13px] font-medium text-foreground/50">Keine Unterhaltung ausgewählt</p>
+        <p className="text-[11px] text-muted-foreground/40 max-w-[200px] text-center leading-relaxed">
+          Wähle links eine Konversation aus, um sie hier zu öffnen.
         </p>
       </div>
     )
@@ -492,30 +510,29 @@ function ChatView({
   })
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-background">
+    <div className="flex-1 flex flex-col min-w-0 bg-white">
 
       {/* ── Chat header ── */}
-      <div className="px-3 py-3 border-b flex items-center gap-2 bg-white min-h-[57px] sm:px-5 sm:gap-3">
+      <div className="px-4 py-2.5 border-b border-border/40 flex items-center gap-2.5 bg-white min-h-[52px] sm:px-5">
         {onBack && (
           <button
             onClick={onBack}
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
             title="Zurück zur Liste"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
-        {/* Initials avatar (Superchat uses initials in the chat header, not channel icon) */}
         <Avatar className="w-8 h-8 shrink-0">
-          <AvatarFallback className="text-xs font-bold bg-muted text-foreground/70">
+          <AvatarFallback className="text-[10px] font-semibold bg-muted/80 text-foreground/60">
             {conv.customerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-[14px]">{conv.customerName}</span>
+            <span className="font-semibold text-[14px] text-foreground">{conv.customerName}</span>
             {lc && (
-              <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-semibold', lc.pill)}>
+              <span className={cn('text-[10px] px-1.5 py-px rounded-md font-medium', lc.pill)}>
                 {conv.label}
               </span>
             )}
@@ -524,33 +541,63 @@ function ChatView({
         {/* Right actions */}
         <div className="hidden items-center gap-0.5 shrink-0 sm:flex">
           {conv.assignedTo && (
-            <div className="flex items-center -space-x-1 mr-2">
-              <Avatar className="w-6 h-6 ring-2 ring-white">
-                <AvatarFallback className="text-[8px] font-bold bg-[#1a73e8] text-white">
+            <div className="flex items-center gap-1.5 mr-1.5 px-2 py-1 rounded-md bg-muted/40">
+              <Avatar className="w-5 h-5">
+                <AvatarFallback className="text-[8px] font-bold bg-[#2563EB] text-white">
                   {conv.assignedTo.split(' ').map(n => n[0]).join('').slice(0,2)}
                 </AvatarFallback>
               </Avatar>
-              <span className="ml-2 text-[11px] text-muted-foreground font-medium">
+              <span className="text-[11px] text-muted-foreground font-medium">
                 {conv.assignedTo.split(' ')[0]}
               </span>
             </div>
           )}
-          {([
-            { icon: <Tag className="w-4 h-4"/>,          title: 'Label' },
-            { icon: <Clock className="w-4 h-4"/>,         title: 'Erinnern' },
-            { icon: <CheckCircle2 className="w-4 h-4"/>,  title: 'Erledigen' },
-            { icon: <MoreHorizontal className="w-4 h-4"/>, title: 'Mehr' },
-          ] as const).map(a => (
-            <button key={a.title} title={a.title}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              {a.icon}
-            </button>
-          ))}
+          <Popover open={labelOpen} onOpenChange={setLabelOpen}>
+            <PopoverTrigger asChild>
+              <button title="Label"
+                className="p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
+                <Tag className="w-3.5 h-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" sideOffset={6} className="w-44 p-1.5">
+              <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Label</p>
+              {['Marketing', 'VIP', 'B2B'].map(l => (
+                <button key={l} onClick={() => { toggleLabel(conv.id, l); setLabelOpen(false) }}
+                  className={cn('w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left',
+                    conv.label === l ? 'bg-blue-50/60 text-[#2563EB] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  )}>
+                  <span className={cn('w-2 h-2 rounded-full', labelCls[l]?.dot ?? 'bg-gray-400')} />
+                  <span className="flex-1">{l}</span>
+                  {conv.label === l && <Check className="w-3 h-3 shrink-0" />}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+          <button title="Erinnern"
+            className="p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
+            <Clock className="w-3.5 h-3.5" />
+          </button>
+          <button title="Erledigen"
+            onClick={() => {
+              const next = (conv.status ?? 'offen') === 'erledigt' ? 'offen' : 'erledigt'
+              updateConversationStatus(conv.id, next)
+            }}
+            className={cn('p-1.5 rounded-md transition-colors',
+              (conv.status ?? 'offen') === 'erledigt'
+                ? 'text-emerald-600 hover:bg-emerald-50'
+                : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/50'
+            )}>
+            <CheckCircle2 className="w-3.5 h-3.5" />
+          </button>
+          <button title="Mehr"
+            className="p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
+            <MoreHorizontal className="w-3.5 h-3.5" />
+          </button>
         </div>
         {onOpenContact && (
           <button
             onClick={onOpenContact}
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
             title="Kontakt öffnen"
           >
             <Users className="h-4 w-4" />
@@ -559,45 +606,46 @@ function ChatView({
       </div>
 
       {/* ── Messages ── */}
-      <ScrollArea className="flex-1 bg-[#F8FAFB]">
-        <div className="px-5 py-4">
+      <ScrollArea className="flex-1 bg-[#F7F8FA]" ref={scrollRef}>
+        <div className="px-4 py-4 sm:px-6">
           {groups.map((group, gi) => (
             <div key={group.label}>
-              {/* Channel indicator — shown above first group like Superchat */}
+              {/* Channel indicator — shown above first group */}
               {gi === 0 && (
-                <div className="flex flex-col items-center mb-5 mt-1 gap-1.5">
+                <div className="flex flex-col items-center mb-5 mt-1 gap-1">
                   <ChannelIcon ch={conv.channel} size="md" />
                   {conv.customerPhone && (
-                    <p className="text-[11px] text-muted-foreground">via {conv.customerPhone}</p>
+                    <p className="text-[10px] text-muted-foreground/50 font-medium">via {conv.customerPhone}</p>
                   )}
                 </div>
               )}
               {/* Day divider */}
-              <div className="flex items-center justify-center mb-4">
-                <span className="bg-white border text-muted-foreground text-[10px] px-3 py-1 rounded-full font-medium shadow-xs">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-border/30" />
+                <span className="text-muted-foreground/50 text-[10px] font-medium shrink-0">
                   {group.label}
                 </span>
+                <div className="flex-1 h-px bg-border/30" />
               </div>
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {group.msgs.map(msg => {
                   const isAdvisor = msg.sender === 'advisor'
                   return (
                     <div key={msg.id} className={cn('flex gap-2', isAdvisor ? 'justify-end' : 'justify-start')}>
                       <div className={cn(
-                        'max-w-[84%] rounded-2xl px-3.5 py-2.5 sm:max-w-[72%] lg:max-w-[65%]',
+                        'max-w-[80%] rounded-[18px] px-3.5 py-2 sm:max-w-[70%] lg:max-w-[60%]',
                         isAdvisor
-                          ? 'bg-[#1a73e8] text-white rounded-br-[4px]'
-                          : 'bg-white border border-border/60 text-foreground rounded-bl-[4px] shadow-xs'
+                          ? 'bg-[#2563EB] text-white'
+                          : 'bg-white text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
                       )}>
-                        <p className="text-[13px] leading-[1.5]">{msg.content}</p>
+                        <p className="text-[13px] leading-[1.55]">{msg.content}</p>
                         <div className={cn(
-                          'flex items-center gap-1 mt-1 justify-end',
-                          isAdvisor ? 'opacity-60' : 'opacity-40'
+                          'flex items-center gap-1 mt-0.5 justify-end',
+                          isAdvisor ? 'opacity-50' : 'opacity-30'
                         )}>
                           <span className="text-[10px] tabular-nums">{fmtMsgTime(msg.timestamp)}</span>
                           {isAdvisor && (
-                            /* double-tick checkmark */
-                            <svg viewBox="0 0 16 10" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg viewBox="0 0 16 10" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="1 5 4 8 9 2" />
                               <polyline points="6 5 9 8 14 2" opacity=".55" />
                             </svg>
@@ -613,61 +661,63 @@ function ChatView({
         </div>
       </ScrollArea>
 
-      {/* ── AI suggested replies ── */}
-      <div className="px-5 pt-3 pb-1 bg-white border-t">
-        <div className="flex items-center gap-1.5 mb-2">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span className="text-[11px] font-semibold text-muted-foreground">KI-Vorschläge</span>
-          <span className="text-[10px] text-muted-foreground/60">— wird erst nach Ihrer Freigabe gesendet</span>
-        </div>
-        <div className="space-y-1.5">
-          {suggestedReplies.map((r, i) => (
-            <button
-              key={i}
-              onClick={() => setInput(r)}
-              className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl border border-amber-200/60 bg-amber-50/40 hover:bg-amber-50 text-foreground/80 text-[12px] font-medium transition-colors group"
-            >
-              <Zap className="w-3 h-3 shrink-0 text-amber-500" />
-              <span className="flex-1 text-left">{r}</span>
-              <PenSquare className="w-3 h-3 shrink-0 text-muted-foreground/40 group-hover:text-amber-600 transition-colors" />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Composer ── */}
-      <div className="px-4 py-3 bg-white border-t">
-        <div className="flex items-end gap-2 rounded-xl border bg-muted/20 px-3 py-2 focus-within:ring-1 focus-within:ring-[#1a73e8]/40 transition-shadow">
-          <div className="flex items-center gap-0.5 shrink-0 pb-0.5">
-            <button className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors">
-              <Paperclip className="w-4 h-4" />
-            </button>
-            <button className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors">
-              <ImageIcon className="w-4 h-4" />
-            </button>
+      {/* ── AI suggested replies + Composer ── */}
+      <div className="bg-white border-t border-border/40">
+        {/* AI suggestions */}
+        <div className="px-4 pt-3 pb-2">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+            <span className="text-[11px] font-medium text-muted-foreground">KI-Vorschläge</span>
+            <span className="text-[10px] text-muted-foreground/40">— wird erst nach Freigabe gesendet</span>
           </div>
-          <Textarea
-            placeholder={`Hi ${conv.customerName.split(' ')[0]},`}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setInput('') } }}
-            className="flex-1 min-h-0 max-h-28 resize-none border-0 bg-transparent p-0 text-[13px] focus-visible:ring-0 shadow-none"
-            rows={1}
-          />
-          <div className="flex items-center gap-0.5 shrink-0 pb-0.5">
-            <button className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors">
-              <Smile className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setInput('')}
-              disabled={!input.trim()}
-              className={cn(
-                'w-7 h-7 rounded-full flex items-center justify-center transition-colors',
-                input.trim() ? 'bg-[#1a73e8] text-white hover:bg-[#1557b0]' : 'bg-muted text-muted-foreground'
-              )}
-            >
-              <Send className="w-3.5 h-3.5" />
-            </button>
+          <div className="flex flex-wrap gap-1.5">
+            {suggestedReplies.map((r, i) => (
+              <button
+                key={i}
+                onClick={() => setInput(r)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-white hover:bg-violet-50 hover:border-violet-200 text-foreground/80 text-[12px] font-medium transition-all group shadow-xs"
+              >
+                <Zap className="w-2.5 h-2.5 shrink-0 text-violet-400 group-hover:text-violet-500 transition-colors" />
+                <span>{r}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Composer */}
+        <div className="px-4 pt-1 pb-3">
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-white px-3 py-1.5 focus-within:border-[#2563EB]/40 focus-within:shadow-[0_0_0_3px_rgba(37,99,235,0.08)] transition-all">
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button className="p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-muted/40 transition-colors">
+                <Paperclip className="w-4 h-4" />
+              </button>
+              <button className="p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-muted/40 transition-colors">
+                <ImageIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <Textarea
+              placeholder="Nachricht schreiben..."
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+              className="flex-1 min-h-0 max-h-28 resize-none border-0 bg-transparent px-0 py-1 text-[13px] leading-6 focus-visible:ring-0 shadow-none placeholder:text-muted-foreground/40"
+              rows={1}
+            />
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button className="p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-muted/40 transition-colors">
+                <Smile className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={!input.trim()}
+                className={cn(
+                  'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
+                  input.trim() ? 'bg-[#2563EB] text-white hover:bg-[#1d4ed8] shadow-sm' : 'bg-muted/50 text-muted-foreground/30'
+                )}
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -689,42 +739,48 @@ function ContactPanel({
   const [attrsOpen, setAttrsOpen] = useState(true)
   const [convOpen,  setConvOpen]  = useState(true)
   const [assignOpen, setAssignOpen] = useState(false)
+  const [filesOpen, setFilesOpen] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [autoOpen, setAutoOpen] = useState(false)
+  const [intOpen, setIntOpen] = useState(false)
+  const [trackOpen, setTrackOpen] = useState(false)
+  const mounted = useHydrated()
   const assignConversation = useConversationStore((state) => state.assignConversation)
 
   if (!conv) return null
   const lc = conv.label ? labelCls[conv.label] : null
 
   return (
-    <div className="w-full border-t flex flex-col h-full bg-background lg:w-[272px] lg:shrink-0 lg:border-l lg:border-t-0">
+    <div className="w-full border-t flex flex-col h-full bg-background lg:w-[280px] lg:shrink-0 lg:border-l lg:border-t-0 border-border/40">
 
       {/* Header */}
-      <div className="px-4 py-3 border-b flex items-center justify-between min-h-[57px]">
+      <div className="px-4 py-2.5 border-b border-border/40 flex items-center justify-between min-h-[52px]">
         <div className="flex items-center gap-1.5">
           {onBack && (
             <button
               onClick={onBack}
-              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+              className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
               title="Zurück zum Chat"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
           )}
-          <span className="font-semibold text-[14px]">Kontakt</span>
+          <span className="font-semibold text-[13px]">Kontakt</span>
         </div>
         <div className="flex items-center gap-0.5">
           <button title="Weiterleiten"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            className="p-1.5 rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors">
             <ArrowLeftRight className="w-3.5 h-3.5" />
           </button>
-          {isAdmin ? (
+          {isAdmin && mounted ? (
             <Popover open={assignOpen} onOpenChange={setAssignOpen}>
               <PopoverTrigger asChild>
                 <button title="Zuweisen"
                   className={cn(
                     'p-1.5 rounded-md transition-colors',
                     conv.assignedTo
-                      ? 'text-[#1a73e8] hover:bg-blue-50'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      ? 'text-[#2563EB] hover:bg-blue-50/50'
+                      : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
                   )}>
                   <UserPlus className="w-3.5 h-3.5" />
                 </button>
@@ -737,7 +793,7 @@ function ContactPanel({
                   onClick={() => { assignConversation(conv.id, null); setAssignOpen(false) }}
                   className={cn(
                     'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left',
-                    !conv.assignedTo ? 'bg-[#EBF5FB] text-[#1a73e8] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    !conv.assignedTo ? 'bg-blue-50/60 text-[#2563EB] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                   )}
                 >
                   <UserX className="w-3.5 h-3.5 shrink-0" />
@@ -751,7 +807,7 @@ function ContactPanel({
                     onClick={() => { assignConversation(conv.id, a.name); setAssignOpen(false) }}
                     className={cn(
                       'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left',
-                      conv.assignedTo === a.name ? 'bg-[#EBF5FB] text-[#1a73e8] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                      conv.assignedTo === a.name ? 'bg-blue-50/60 text-[#2563EB] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                     )}
                   >
                     <Avatar className="w-5 h-5 shrink-0">
@@ -767,12 +823,17 @@ function ContactPanel({
             </Popover>
           ) : (
             <button title="Zuweisen"
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                isAdmin && conv.assignedTo
+                  ? 'text-[#2563EB] hover:bg-blue-50/50'
+                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
+              )}>
               <UserPlus className="w-3.5 h-3.5" />
             </button>
           )}
           <button title="Schließen"
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            className="p-1.5 rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -781,49 +842,49 @@ function ContactPanel({
       <ScrollArea className="flex-1">
 
         {/* Kontaktlisten */}
-        <div className="px-4 py-3 border-b">
-          <p className="text-[11px] text-muted-foreground font-medium mb-2">Kontaktlisten</p>
+        <div className="px-4 py-3 border-b border-border/30">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-medium mb-2">Kontaktlisten</p>
           <div className="flex flex-wrap items-center gap-1.5">
             {lc && (
-              <span className={cn('text-[11px] px-2 py-0.5 rounded-md border font-semibold', lc.pill)}>
+              <span className={cn('text-[10px] px-2 py-0.5 rounded-md font-medium', lc.pill)}>
                 {conv.label}
               </span>
             )}
-            <span className="text-[11px] px-2 py-0.5 rounded-md border bg-muted/50 text-muted-foreground font-medium">
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground font-medium">
               New Leads
             </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-md border bg-muted/50 text-muted-foreground font-medium cursor-pointer hover:bg-muted">
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-muted/40 text-muted-foreground/60 font-medium cursor-pointer hover:bg-muted/70 transition-colors">
               +2
             </span>
           </div>
         </div>
 
         {/* Letzte Unterhaltungen */}
-        <div className="border-b">
+        <div className="border-b border-border/30">
           <button
             onClick={() => setConvOpen(v => !v)}
-            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/30 transition-colors"
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors"
           >
-            <span className="text-[12px] font-semibold">
+            <span className="text-[12px] font-medium text-foreground/80">
               Letzte Unterhaltungen
-              <span className="ml-1.5 text-muted-foreground font-normal">2</span>
+              <span className="ml-1.5 text-muted-foreground/40 text-[11px]">2</span>
             </span>
-            <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground/60 transition-transform', !convOpen && '-rotate-90')} />
+            <ChevronDown className={cn('w-3 h-3 text-muted-foreground/40 transition-transform', !convOpen && '-rotate-90')} />
           </button>
           {convOpen && (
-            <div className="px-4 pb-3 space-y-3">
+            <div className="px-4 pb-3 space-y-2.5">
               {[
                 { ch: 'whatsapp' as MessageChannel, label: 'Zentrale',  date: 'Gestern',    preview: 'Freut mich, wieder von dir zu hören! Hier…' },
                 { ch: 'instagram' as MessageChannel, label: 'Marketing', date: '20.12.2024', preview: 'Danke, dass Sie das Dokument geteilt ha…' },
               ].map(r => (
-                <div key={r.label} className="flex items-start gap-2.5">
+                <div key={r.label} className="flex items-start gap-2 group cursor-pointer rounded-md px-1 py-1 -mx-1 hover:bg-muted/20 transition-colors">
                   <ChannelIcon ch={r.ch} size="xs" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-1">
-                      <span className="text-[12px] font-medium">{r.label}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{r.date}</span>
+                      <span className="text-[11px] font-medium text-foreground/80">{r.label}</span>
+                      <span className="text-[10px] text-muted-foreground/40 shrink-0">{r.date}</span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">{r.preview}</p>
+                    <p className="text-[11px] text-muted-foreground/50 truncate">{r.preview}</p>
                   </div>
                 </div>
               ))}
@@ -832,16 +893,16 @@ function ContactPanel({
         </div>
 
         {/* Attribute */}
-        <div className="border-b">
+        <div className="border-b border-border/30">
           <button
             onClick={() => setAttrsOpen(v => !v)}
-            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/30 transition-colors"
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors"
           >
-            <span className="text-[12px] font-semibold">Attribute</span>
-            <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground/60 transition-transform', !attrsOpen && '-rotate-90')} />
+            <span className="text-[12px] font-medium text-foreground/80">Attribute</span>
+            <ChevronDown className={cn('w-3 h-3 text-muted-foreground/40 transition-transform', !attrsOpen && '-rotate-90')} />
           </button>
           {attrsOpen && (
-            <div className="px-4 pb-3 space-y-2.5">
+            <div className="px-4 pb-3 space-y-2">
                 {[
                   { icon: <Users className="w-3 h-3"/>, label: 'Vorname',  value: conv.customerName.split(' ')[0] },
                   { icon: <Users className="w-3 h-3"/>, label: 'Nachname', value: conv.customerName.split(' ').slice(1).join(' ') || '—' },
@@ -849,38 +910,155 @@ function ContactPanel({
                   { icon: <Phone className="w-3 h-3"/>,  label: 'Telefon', value: conv.customerPhone ?? '—' },
                 ].map(row => (
                   <div key={row.label} className="flex items-center gap-2 min-w-0">
-                    <span className="text-muted-foreground shrink-0">{row.icon}</span>
-                    <span className="text-[11px] text-muted-foreground w-14 shrink-0 sm:w-[52px]">{row.label}</span>
-                    <span className="text-[11px] text-foreground truncate flex-1">{row.value}</span>
+                    <span className="text-muted-foreground/40 shrink-0">{row.icon}</span>
+                    <span className="text-[11px] text-muted-foreground/50 w-[52px] shrink-0">{row.label}</span>
+                    <span className={cn('text-[11px] truncate flex-1', row.value === '—' ? 'text-muted-foreground/30' : 'text-foreground/80')}>{row.value}</span>
                   </div>
                 ))}
-              <button className="text-[11px] text-[#1a73e8] hover:underline mt-0.5 font-medium">Alle anzeigen</button>
+              <button className="text-[11px] text-[#2563EB] hover:text-[#1d4ed8] mt-1 font-medium transition-colors">Alle anzeigen</button>
             </div>
           )}
         </div>
 
-        {/* Expandable sections */}
-        {[
-          { label: 'Dateien',      count: undefined },
-          { label: 'Notizen',      count: undefined },
-          { label: 'Automations',  count: 1         },
-          { label: 'Integrations', count: 1         },
-          { label: 'Web-Tracking', count: undefined },
-        ].map(s => (
-          <button key={s.label}
-            className="w-full px-4 py-3 border-b flex items-center justify-between hover:bg-muted/30 transition-colors"
-          >
-            <span className="text-[12px] font-medium">{s.label}</span>
+        {/* Dateien */}
+        <div className="border-b border-border/30">
+          <button onClick={() => setFilesOpen(v => !v)}
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors">
+            <span className="text-[12px] font-medium text-foreground/80">Dateien</span>
             <div className="flex items-center gap-1.5">
-              {s.count !== undefined && (
-                <span className="text-[10px] bg-muted text-muted-foreground rounded-full w-5 h-5 flex items-center justify-center font-medium">
-                  {s.count}
-                </span>
-              )}
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/60 -rotate-90" />
+              <span className="text-[10px] bg-muted/60 text-muted-foreground/60 rounded-md px-1.5 py-px font-medium tabular-nums">3</span>
+              <ChevronDown className={cn('w-3 h-3 text-muted-foreground/40 transition-transform', !filesOpen && '-rotate-90')} />
             </div>
           </button>
-        ))}
+          {filesOpen && (
+            <div className="px-4 pb-3 space-y-2">
+              {[
+                { name: 'Fahrzeugschein_320d.pdf', size: '245 KB', date: '02.03.2026', icon: <FileText className="w-3.5 h-3.5" /> },
+                { name: 'Angebot_BMW_320d.pdf', size: '128 KB', date: '01.03.2026', icon: <FileText className="w-3.5 h-3.5" /> },
+                { name: 'Foto_Fahrzeug.jpg', size: '1.2 MB', date: '28.02.2026', icon: <ImageIcon className="w-3.5 h-3.5" /> },
+              ].map(f => (
+                <div key={f.name} className="flex items-center gap-2 group cursor-pointer rounded-md px-1 py-1 -mx-1 hover:bg-muted/20 transition-colors">
+                  <span className="text-muted-foreground/50 shrink-0">{f.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium text-foreground/80 truncate">{f.name}</p>
+                    <p className="text-[10px] text-muted-foreground/40">{f.size} · {f.date}</p>
+                  </div>
+                  <Download className="w-3 h-3 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Notizen */}
+        <div className="border-b border-border/30">
+          <button onClick={() => setNotesOpen(v => !v)}
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors">
+            <span className="text-[12px] font-medium text-foreground/80">Notizen</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] bg-muted/60 text-muted-foreground/60 rounded-md px-1.5 py-px font-medium tabular-nums">2</span>
+              <ChevronDown className={cn('w-3 h-3 text-muted-foreground/40 transition-transform', !notesOpen && '-rotate-90')} />
+            </div>
+          </button>
+          {notesOpen && (
+            <div className="px-4 pb-3 space-y-2">
+              {[
+                { text: 'Kunde bevorzugt Finanzierung über 48 Monate. Schufa-Score anfragen.', author: 'Thomas', date: '04.03.2026' },
+                { text: 'Interesse an Garantieverlängerung. Angebot nachreichen.', author: 'Sarah', date: '02.03.2026' },
+              ].map((n, i) => (
+                <div key={i} className="rounded-md bg-amber-50/40 border border-amber-100/50 px-2.5 py-2">
+                  <p className="text-[11px] text-foreground/80 leading-relaxed">{n.text}</p>
+                  <p className="text-[10px] text-muted-foreground/40 mt-1">{n.author} · {n.date}</p>
+                </div>
+              ))}
+              <button className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-medium text-[#2563EB] hover:bg-blue-50/50 transition-colors">
+                <Plus className="w-3 h-3" /> Notiz hinzufügen
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Automations */}
+        <div className="border-b border-border/30">
+          <button onClick={() => setAutoOpen(v => !v)}
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors">
+            <span className="text-[12px] font-medium text-foreground/80">Automations</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] bg-muted/60 text-muted-foreground/60 rounded-md px-1.5 py-px font-medium tabular-nums">1</span>
+              <ChevronDown className={cn('w-3 h-3 text-muted-foreground/40 transition-transform', !autoOpen && '-rotate-90')} />
+            </div>
+          </button>
+          {autoOpen && (
+            <div className="px-4 pb-3 space-y-2">
+              <div className="flex items-start gap-2 rounded-md px-1 py-1 -mx-1">
+                <Bot className="w-3.5 h-3.5 text-violet-500 shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium text-foreground/80">Follow-up nach 48h</p>
+                  <p className="text-[10px] text-muted-foreground/40">Automatische Erinnerung wenn keine Antwort</p>
+                  <span className="inline-flex items-center mt-1 text-[9px] font-medium px-1.5 py-px rounded bg-emerald-50 text-emerald-600">Aktiv</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Integrations */}
+        <div className="border-b border-border/30">
+          <button onClick={() => setIntOpen(v => !v)}
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors">
+            <span className="text-[12px] font-medium text-foreground/80">Integrations</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] bg-muted/60 text-muted-foreground/60 rounded-md px-1.5 py-px font-medium tabular-nums">2</span>
+              <ChevronDown className={cn('w-3 h-3 text-muted-foreground/40 transition-transform', !intOpen && '-rotate-90')} />
+            </div>
+          </button>
+          {intOpen && (
+            <div className="px-4 pb-3 space-y-2">
+              {[
+                { name: 'mobile.de', status: 'Verbunden', icon: <Link2 className="w-3.5 h-3.5" />, color: 'text-orange-500' },
+                { name: 'AutoScout24', status: 'Verbunden', icon: <ExternalLink className="w-3.5 h-3.5" />, color: 'text-blue-500' },
+              ].map(int => (
+                <div key={int.name} className="flex items-center gap-2 rounded-md px-1 py-1 -mx-1">
+                  <span className={cn('shrink-0', int.color)}>{int.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium text-foreground/80">{int.name}</p>
+                  </div>
+                  <span className="text-[9px] font-medium px-1.5 py-px rounded bg-emerald-50 text-emerald-600">{int.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Web-Tracking */}
+        <div className="border-b border-border/30">
+          <button onClick={() => setTrackOpen(v => !v)}
+            className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors">
+            <span className="text-[12px] font-medium text-foreground/80">Web-Tracking</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] bg-muted/60 text-muted-foreground/60 rounded-md px-1.5 py-px font-medium tabular-nums">4</span>
+              <ChevronDown className={cn('w-3 h-3 text-muted-foreground/40 transition-transform', !trackOpen && '-rotate-90')} />
+            </div>
+          </button>
+          {trackOpen && (
+            <div className="px-4 pb-3 space-y-2">
+              {[
+                { page: 'BMW 320d Touring - Detailseite', time: 'Heute, 10:42', duration: '3:24 Min', icon: <Eye className="w-3 h-3" /> },
+                { page: 'Finanzierungsrechner', time: 'Heute, 10:38', duration: '1:48 Min', icon: <MousePointerClick className="w-3 h-3" /> },
+                { page: 'Startseite', time: 'Heute, 10:35', duration: '0:32 Min', icon: <Globe className="w-3 h-3" /> },
+                { page: 'BMW Fahrzeuge - Übersicht', time: 'Gestern, 16:12', duration: '5:10 Min', icon: <Eye className="w-3 h-3" /> },
+              ].map((t, i) => (
+                <div key={i} className="flex items-start gap-2 rounded-md px-1 py-1 -mx-1">
+                  <span className="text-muted-foreground/40 shrink-0 mt-0.5">{t.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium text-foreground/80 truncate">{t.page}</p>
+                    <p className="text-[10px] text-muted-foreground/40">{t.time} · {t.duration}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="h-4" />
       </ScrollArea>
     </div>
@@ -909,7 +1087,7 @@ function PerspectiveSelector({
         onClick={() => { onChange(p); setOpen(false) }}
         className={cn(
           'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left',
-          active ? 'bg-[#EBF5FB] text-[#1a73e8] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+          active ? 'bg-blue-50/60 text-[#2563EB] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
         )}
       >
         <span className="flex-1 truncate">
@@ -923,28 +1101,28 @@ function PerspectiveSelector({
 
   if (!mounted) {
     return (
-      <div className="flex items-center gap-2.5 px-4 py-2 border-b bg-muted/20">
-        <Shield className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-[12px] text-muted-foreground font-medium">Perspektive:</span>
-        <span className="text-[13px] font-medium">{perspective.label}</span>
+      <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border/30 bg-muted/10">
+        <Shield className="w-3 h-3 text-muted-foreground/40" />
+        <span className="text-[11px] text-muted-foreground/50 font-medium">Perspektive:</span>
+        <span className="text-[12px] font-medium text-foreground/70">{perspective.label}</span>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-2.5 px-4 py-2 border-b bg-muted/20">
-      <Shield className="w-3.5 h-3.5 text-muted-foreground" />
-      <span className="text-[12px] text-muted-foreground font-medium">Perspektive:</span>
+    <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border/30 bg-muted/10">
+      <Shield className="w-3 h-3 text-muted-foreground/40" />
+      <span className="text-[11px] text-muted-foreground/50 font-medium">Perspektive:</span>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-white text-[13px] font-medium hover:bg-muted/30 transition-colors">
+        <PopoverTrigger className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium text-foreground/70 hover:bg-muted/40 transition-colors">
           <span>{perspective.label}</span>
-          <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground/70 transition-transform duration-150', open && 'rotate-180')} />
+          <ChevronDown className={cn('w-3 h-3 text-muted-foreground/40 transition-transform duration-150', open && 'rotate-180')} />
         </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={6} className="w-64 p-1.5">
+        <PopoverContent align="start" sideOffset={6} className="w-60 p-1.5">
           {renderItem({ type: 'admin', label: 'Admin (Alle)' })}
 
           <Separator className="my-1.5" />
-          <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Serviceberater</p>
+          <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Serviceberater</p>
           {mockAdvisors.map(a =>
             renderItem(
               { type: 'serviceberater', userName: a.name, label: a.name },
@@ -953,7 +1131,7 @@ function PerspectiveSelector({
           )}
 
           <Separator className="my-1.5" />
-          <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Call-Center-Mitarbeiter</p>
+          <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Call-Center-Mitarbeiter</p>
           {humanCallAgents.map(a =>
             renderItem(
               { type: 'callcenter', userName: a.name, label: a.name },
@@ -1035,7 +1213,7 @@ export default function NachrichtenPage() {
         </div>
 
         {(selected || mobilePanel === 'contact') && (
-          <div className={cn('h-full w-full lg:w-[272px] lg:shrink-0', mobilePanel === 'contact' ? 'flex' : 'hidden lg:flex')}>
+          <div className={cn('h-full w-full lg:w-[280px] lg:shrink-0', mobilePanel === 'contact' ? 'flex' : 'hidden lg:flex')}>
             <ContactPanel
               conv={selected}
               onBack={() => setMobilePanel('chat')}

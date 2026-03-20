@@ -531,65 +531,66 @@ export function CallcenterAdminDashboard() {
                   Keine Eskalationen
                 </p>
               ) : (
-                <ScrollArea className="max-h-[320px]">
-                  <div className="space-y-3">
-                    {recentEscalations.map((event) => {
-                      const dotColor = escalationDotColor(event.toLevel)
-                      return (
-                        <div key={event.id} className="flex gap-3">
-                          {/* Colored dot */}
-                          <div className="flex flex-col items-center pt-1.5">
-                            <span
-                              className={cn(
-                                'h-2.5 w-2.5 rounded-full flex-shrink-0',
-                                dotColor,
-                              )}
-                            />
-                            <div className="w-px flex-1 bg-border mt-1" />
-                          </div>
-                          {/* Content */}
-                          <div className="pb-3 min-w-0">
-                            <p className="text-sm font-semibold leading-snug">
-                              {event.escalatedTo}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Rückruf von {event.customerName}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              von{' '}
-                              <Badge
-                                variant="secondary"
-                                className={cn(
-                                  'text-[10px] px-1.5 py-0',
-                                  escalationLevelConfig[event.fromLevel].bg,
-                                  escalationLevelConfig[event.fromLevel].color,
-                                )}
-                              >
-                                Stufe {event.fromLevel}
-                              </Badge>
-                              {' → '}
-                              <Badge
-                                variant="secondary"
-                                className={cn(
-                                  'text-[10px] px-1.5 py-0',
-                                  escalationLevelConfig[event.toLevel].bg,
-                                  escalationLevelConfig[event.toLevel].color,
-                                )}
-                              >
-                                Stufe {event.toLevel}
-                              </Badge>
-                              {' '}
-                              durch {event.escalatedBy}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground border-b">
+                        <th className="text-left py-2 pr-2 font-medium">An</th>
+                        <th className="text-left py-2 px-2 font-medium">Rückruf</th>
+                        <th className="text-left py-2 px-2 font-medium">Eskalation</th>
+                        <th className="text-left py-2 px-2 font-medium">Durch</th>
+                        <th className="text-right py-2 pl-2 font-medium">Wann</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentEscalations.map((event) => {
+                        const dotColor = escalationDotColor(event.toLevel)
+                        return (
+                          <tr key={event.id} className="border-b last:border-b-0">
+                            <td className="py-2 pr-2">
+                              <div className="flex items-center gap-2">
+                                <span className={cn('h-2 w-2 rounded-full flex-shrink-0', dotColor)} />
+                                <span className="font-medium truncate max-w-[120px]">{event.escalatedTo}</span>
+                              </div>
+                            </td>
+                            <td className="py-2 px-2">
+                              <span className="text-muted-foreground truncate max-w-[120px] block">{event.customerName}</span>
+                            </td>
+                            <td className="py-2 px-2">
+                              <div className="flex items-center gap-1">
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    'text-[9px] px-1 py-0 h-4',
+                                    escalationLevelConfig[event.fromLevel].bg,
+                                    escalationLevelConfig[event.fromLevel].color,
+                                  )}
+                                >
+                                  {event.fromLevel}
+                                </Badge>
+                                <span className="text-[10px] text-muted-foreground">→</span>
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    'text-[9px] px-1 py-0 h-4',
+                                    escalationLevelConfig[event.toLevel].bg,
+                                    escalationLevelConfig[event.toLevel].color,
+                                  )}
+                                >
+                                  {event.toLevel}
+                                </Badge>
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 text-muted-foreground">{event.escalatedBy}</td>
+                            <td className="py-2 pl-2 text-right text-[11px] text-muted-foreground/70 whitespace-nowrap">
                               {formatRelativeTime(event.escalatedAt)}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </ScrollArea>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardContent>
           </Card>

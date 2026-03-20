@@ -20,9 +20,9 @@ import { useCountdown } from '@/lib/hooks/use-countdown'
 
 interface CallcenterTimelineViewProps {
   callbacks: Callback[]
-  onComplete: (id: string) => void
-  onReassign: (id: string) => void
-  onEscalate: (id: string) => void
+  onComplete?: (id: string) => void
+  onReassign?: (id: string) => void
+  onEscalate?: (id: string) => void
   onViewTranscript: (id: string) => void
 }
 
