@@ -54,7 +54,7 @@ export default function CallcenterPageClient() {
 
   // Role state
   const [role, setRole] = useState<CallcenterRole>('admin')
-  const [selectedUser, setSelectedUser] = useState('Lisa Kramer')
+  const [selectedUser, setSelectedUser] = useState('Marina Schittenhelm')
 
   // Derive current user from role + selection
   const currentUser = role === 'admin' ? 'Admin' : selectedUser
@@ -85,7 +85,7 @@ export default function CallcenterPageClient() {
 
     if (newRole === 'callcenter') {
       const firstAgent = mockCallAgents.find(a => a.type === 'mensch')
-      setSelectedUser(firstAgent?.name ?? 'Lisa Kramer')
+      setSelectedUser(firstAgent?.name ?? 'Marina Schittenhelm')
     } else if (newRole === 'berater') {
       const firstBerater = employees.find(e => e.role === 'serviceberater' || e.role === 'verkaufer')
       setSelectedUser(firstBerater?.name ?? 'Thomas Müller')

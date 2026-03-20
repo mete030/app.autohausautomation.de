@@ -30,6 +30,12 @@ const historicalStats: Record<string, { totalReceived: number; accepted: number;
   'emp-hb': { totalReceived: 28, accepted: 26, declined: 0, escalated: 2, lateResponded: 3, avgResponseMin: 10 },
   'emp-mr': { totalReceived: 34, accepted: 29, declined: 2, escalated: 3, lateResponded: 5, avgResponseMin: 25 },
   'emp-jl': { totalReceived: 22, accepted: 20, declined: 1, escalated: 1, lateResponded: 2, avgResponseMin: 16 },
+  // Call-Center-Agenten
+  'emp-msc': { totalReceived: 156, accepted: 148, declined: 2, escalated: 6, lateResponded: 4, avgResponseMin: 3 },
+  'emp-jsc': { totalReceived: 134, accepted: 128, declined: 1, escalated: 5, lateResponded: 3, avgResponseMin: 4 },
+  'emp-jhz': { totalReceived: 112, accepted: 107, declined: 3, escalated: 4, lateResponded: 5, avgResponseMin: 5 },
+  'emp-jom': { totalReceived: 98,  accepted: 94,  declined: 1, escalated: 3, lateResponded: 2, avgResponseMin: 3 },
+  'emp-dpi': { totalReceived: 89,  accepted: 85,  declined: 2, escalated: 2, lateResponded: 3, avgResponseMin: 4 },
 }
 
 const defaultStats = { totalReceived: 0, accepted: 0, declined: 0, escalated: 0, lateResponded: 0, avgResponseMin: 0 }
