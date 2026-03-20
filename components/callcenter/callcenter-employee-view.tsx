@@ -21,6 +21,7 @@ import { useCallbackStore } from '@/lib/stores/callback-store'
 import { employeeRoleConfig, employeeStatusConfig } from '@/lib/constants'
 import type { Employee, EmployeeRole, EmployeeStatus } from '@/lib/types'
 import { CallcenterEmployeeDialog } from './callcenter-employee-dialog'
+import { EmployeeDetailSheet } from './callcenter-employee-detail-sheet'
 
 const statusActions: { status: EmployeeStatus; label: string; icon: typeof UserCheck }[] = [
   { status: 'aktiv', label: 'Aktiv', icon: UserCheck },
@@ -41,6 +42,7 @@ export function CallcenterEmployeeView() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>(undefined)
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [roleFilter, setRoleFilter] = useState<EmployeeRole | 'alle'>('alle')
+  const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null)
 
   const employeeMetrics = useMemo(() => {
     const metricsMap = new Map<string, { open: number; completed: number; slaPercent: number }>()
@@ -172,7 +174,7 @@ export function CallcenterEmployeeView() {
                 const metrics = employeeMetrics.get(emp.id) ?? { open: 0, completed: 0, slaPercent: 100 }
 
                 return (
-                  <div key={emp.id} className="flex items-center gap-3 px-3 py-2 bg-card hover:bg-muted/30 transition-colors">
+                  <div key={emp.id} className="flex items-center gap-3 px-3 py-2 bg-card hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setDetailEmployee(emp)}>
                     {/* Avatar */}
                     <Avatar className="h-7 w-7 flex-shrink-0">
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
@@ -298,6 +300,12 @@ export function CallcenterEmployeeView() {
         onOpenChange={open => { if (!open) setEditingEmployee(undefined) }}
         employee={editingEmployee}
         onSave={handleSaveEdit}
+      />
+
+      <EmployeeDetailSheet
+        open={!!detailEmployee}
+        employee={detailEmployee}
+        onOpenChange={(open) => { if (!open) setDetailEmployee(null) }}
       />
     </>
   )
