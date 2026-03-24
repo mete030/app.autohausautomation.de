@@ -53,7 +53,7 @@ export default function CallcenterPageClient() {
   const escalateCallback = useCallbackStore(s => s.escalateCallback)
 
   // Role state
-  const [role, setRole] = useState<CallcenterRole>('admin')
+  const [role, setRole] = useState<CallcenterRole>('callcenter')
   const [selectedUser, setSelectedUser] = useState('Marina Schittenhelm')
 
   // Derive current user from role + selection
@@ -425,6 +425,7 @@ export default function CallcenterPageClient() {
         onOpenChange={setNewCallbackOpen}
         onCreate={createCallback}
         advisorNames={advisorNames}
+        defaultAgentId={role === 'callcenter' ? mockCallAgents.find(a => a.name === selectedUser)?.id : undefined}
       />
       <CompletionDialog
         open={!!completeDialogId}
@@ -454,6 +455,7 @@ export default function CallcenterPageClient() {
         onComplete={role !== 'callcenter' ? (id) => { setTranscriptSheetId(null); setCompleteDialogId(id) } : undefined}
         onEscalateToLevel={role !== 'berater' ? (id) => { setTranscriptSheetId(null); setEscalationDialogId(id) } : undefined}
         onSetReminder={role !== 'berater' ? (id) => { setTranscriptSheetId(null); setReminderDialogId(id) } : undefined}
+        currentUserName={currentUser}
       />
       <CallcenterEscalationDialog
         open={!!escalationDialogId}

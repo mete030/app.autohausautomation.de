@@ -6,7 +6,7 @@ import { defaultSlaConfig, mockEmployees, mockEscalationRules } from '@/lib/cons
 import type {
   Callback, CallbackStatus, CallbackPriority, CallSource, CallAgent,
   CallbackActivity, CallbackActivityType,
-  Employee, EmployeeRole, EmployeeStatus,
+  Employee, EmployeeRole,
   EscalationLevel, EscalationTrigger, EscalationEvent, EscalationRule,
   Reminder, ReminderStatus, SlaConfig,
 } from '@/lib/types'
@@ -85,6 +85,15 @@ interface AddEmployeePayload {
   isSupervisor: boolean
 }
 
+interface RecordCallbackNotificationEmailSentPayload {
+  callbackId: string
+  recipientEmail: string
+  recipientName: string
+  sentBy: string
+  provider: string
+  providerMessageId?: string
+}
+
 // ---- Store Interface ----
 
 interface CallbackStoreState {
@@ -126,6 +135,7 @@ interface CallbackStoreState {
   // Email notifications
   sendEmailNotification: (callbackId: string, recipientEmployeeId: string, sentBy: string) => void
   sendMorningSummary: (sentBy: string) => void
+  recordCallbackNotificationEmailSent: (payload: RecordCallbackNotificationEmailSentPayload) => void
 
   // Auto-escalation
   checkAutoEscalations: () => void
@@ -266,6 +276,7 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
     set((s) => ({
       callbacks: s.callbacks.map((callback) => {
         if (callback.id !== callbackId) return callback
+        const activity = createActivity('zugewiesen', `Zugewiesen an ${employee.name}`, assignedBy, { employeeId })
         return {
           ...callback,
           reassignedFrom: callback.assignedAdvisor,
@@ -273,6 +284,7 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
           assignedEmployeeId: employeeId,
           reassignedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          activityLog: [...callback.activityLog, activity],
         }
       }),
     }))
@@ -401,9 +413,14 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
 
     const activity = createActivity(
       'email_gesendet',
-      `E-Mail-Benachrichtigung gesendet an ${employee.name} (${employee.email ?? 'keine E-Mail'})`,
+      `Erinnerungs-E-Mail gesendet an ${employee.name} (${employee.email ?? 'keine E-Mail'})`,
       sentBy,
-      { recipientEmail: employee.email ?? '', recipientName: employee.name }
+      {
+        recipientEmail: employee.email ?? '',
+        recipientName: employee.name,
+        emailKind: 'erinnerung',
+        provider: 'intern',
+      }
     )
     get().addActivityToCallback(callbackId, activity)
   },
@@ -419,10 +436,32 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
         'email_gesendet',
         `Morgen-Zusammenfassung versendet — ${overdueCallbacks.length} überfällig, ${activeCallbacks.length} aktiv`,
         sentBy,
-        { type: 'morgen_zusammenfassung' }
+        { emailKind: 'morgen_zusammenfassung' }
       )
       get().addActivityToCallback(cb.id, activity)
     })
+  },
+
+  recordCallbackNotificationEmailSent: ({ callbackId, recipientEmail, recipientName, sentBy, provider, providerMessageId }) => {
+    const metadata: Record<string, string> = {
+      recipientEmail,
+      recipientName,
+      provider,
+      emailKind: 'callback_benachrichtigung',
+    }
+
+    if (providerMessageId) {
+      metadata.providerMessageId = providerMessageId
+    }
+
+    const activity = createActivity(
+      'email_gesendet',
+      `Callback-Benachrichtigung gesendet an ${recipientName} (${recipientEmail})`,
+      sentBy,
+      metadata,
+    )
+
+    get().addActivityToCallback(callbackId, activity)
   },
 
   // ---- Auto-Escalation ----

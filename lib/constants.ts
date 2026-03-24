@@ -272,6 +272,7 @@ export const mockEmployees: Employee[] = [
   { id: 'emp-as', name: 'Alexander Seez',         role: 'verkaufer',          email: 'a.seez@wackenhut.de',          phone: '+49 7452 6031213', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
   { id: 'emp-db', name: 'Daniel Bühler',          role: 'verkaufer',          email: 'd.buehler@wackenhut.de',       phone: '+49 7221 6862220', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
   { id: 'emp-se', name: 'Sebastian Erhard',       role: 'verkaufer',          email: 's.erhard@wackenhut.de',        phone: '+49 7221 6862213', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
+  { id: 'emp-vs', name: 'Verena Schwab',          role: 'verkaufer',          email: 'v.schwab@wackenhut.de',        phone: '+49 711 100014', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-06-01T00:00:00' },
   // Call-Center-Agenten
   { id: 'emp-msc', name: 'Marina Schittenhelm',  role: 'callcenter_agent',   email: 'm.schittenhelm@wackenhut.de',  phone: '+49 711 100009', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
   { id: 'emp-jsc', name: 'Justine Schuch',       role: 'callcenter_agent',   email: 'j.schuch@wackenhut.de',        phone: '+49 711 100010', status: 'aktiv', isCallAgent: true,  isSupervisor: false, createdAt: '2024-01-01T00:00:00' },

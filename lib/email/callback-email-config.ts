@@ -1,0 +1,11 @@
+export const VERENA_SCHWAB_EMPLOYEE_ID = 'emp-vs'
+export const VERENA_SCHWAB_NAME = 'Verena Schwab'
+export const VERENA_SCHWAB_EMAIL = 'v.schwab@wackenhut.de'
+
+// The same public env value is used for the visible UI hint and the server-side
+// mail target so test/live switches only require changing one setting.
+export const CALLBACK_NOTIFICATION_RECIPIENT_EMAIL =
+  process.env.NEXT_PUBLIC_CALLBACK_NOTIFICATION_RECIPIENT_EMAIL ?? VERENA_SCHWAB_EMAIL
+
+export const CALLBACK_NOTIFICATION_RECIPIENT_NAME =
+  process.env.NEXT_PUBLIC_CALLBACK_NOTIFICATION_RECIPIENT_NAME ?? VERENA_SCHWAB_NAME

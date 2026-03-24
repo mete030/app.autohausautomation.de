@@ -1,14 +1,21 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Bot, User, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Shield, Bell, Mail, Send } from 'lucide-react'
+import { Bot, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Shield, Bell, Mail, Send } from 'lucide-react'
 import { cn, formatTimeAgo } from '@/lib/utils'
 import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig, escalationLevelConfig } from '@/lib/constants'
+import {
+  CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
+  CALLBACK_NOTIFICATION_RECIPIENT_NAME,
+  VERENA_SCHWAB_EMPLOYEE_ID,
+  VERENA_SCHWAB_NAME,
+} from '@/lib/email/callback-email-config'
 import { useCountdown } from '@/lib/hooks/use-countdown'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import type { Callback, CallSource, EscalationLevel } from '@/lib/types'
@@ -22,6 +29,20 @@ interface TranscriptSheetProps {
   onComplete?: (id: string) => void
   onEscalateToLevel?: (id: string) => void
   onSetReminder?: (id: string) => void
+  currentUserName?: string
+}
+
+function getEmailActivityLabel(emailKind?: string) {
+  switch (emailKind) {
+    case 'erinnerung':
+      return 'Erinnerungs-E-Mail'
+    case 'callback_benachrichtigung':
+      return 'Benachrichtigungs-E-Mail'
+    case 'morgen_zusammenfassung':
+      return 'Morning Summary'
+    default:
+      return 'E-Mail'
+  }
 }
 
 function getSourceIcon(source: CallSource) {
@@ -59,10 +80,22 @@ function CountdownBadge({ dueAt, slaDurationMinutes }: { dueAt: string; slaDurat
   )
 }
 
-export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEscalate, onComplete, onEscalateToLevel, onSetReminder }: TranscriptSheetProps) {
+export function TranscriptSheet({
+  open,
+  callback,
+  onOpenChange,
+  onReassign,
+  onEscalate,
+  onComplete,
+  onEscalateToLevel,
+  onSetReminder,
+  currentUserName = 'Admin',
+}: TranscriptSheetProps) {
   const reminders = useCallbackStore((s) => s.reminders)
   const employees = useCallbackStore((s) => s.employees)
-  const sendEmailNotification = useCallbackStore((s) => s.sendEmailNotification)
+  const recordCallbackNotificationEmailSent = useCallbackStore((s) => s.recordCallbackNotificationEmailSent)
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
+  const [emailStatusMessage, setEmailStatusMessage] = useState('')
 
   if (!callback) return null
 
@@ -75,11 +108,93 @@ export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEs
   const sourceCfg = callSourceConfig[callback.source]
   const initials = callback.takenBy.name.split(' ').map(n => n[0]).join('')
   const assignedEmployee = employees.find(e => e.id === callback.assignedEmployeeId)
+  const isVerenaCallback =
+    callback.assignedEmployeeId === VERENA_SCHWAB_EMPLOYEE_ID
+    && callback.assignedAdvisor === VERENA_SCHWAB_NAME
+  const emailActivities = [...callback.activityLog]
+    .filter((activity) => activity.type === 'email_gesendet')
+    .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime())
 
-  const hasHistory = callback.reassignedFrom || callback.escalatedBy || callback.escalationHistory.length > 0 || callbackReminders.length > 0
+  const hasHistory =
+    callback.reassignedFrom
+    || callback.escalatedBy
+    || callback.escalationHistory.length > 0
+    || callbackReminders.length > 0
+    || emailActivities.length > 0
+
+  const handleSheetOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setEmailStatus('idle')
+      setEmailStatusMessage('')
+    }
+    onOpenChange(nextOpen)
+  }
+
+  const handleSendNotificationEmail = async () => {
+    if (!isVerenaCallback) return
+
+    setEmailStatus('sending')
+    setEmailStatusMessage('')
+
+    try {
+      const response = await fetch('/api/email/send-callback-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assignedEmployeeId: callback.assignedEmployeeId,
+          assignedAdvisor: callback.assignedAdvisor,
+          sentBy: currentUserName,
+          callback: {
+            id: callback.id,
+            customerName: callback.customerName,
+            customerPhone: callback.customerPhone,
+            reason: callback.reason,
+            notes: callback.notes || undefined,
+            priority: callback.priority,
+            status: callback.status,
+            dueAt: callback.dueAt,
+            slaDeadline: callback.slaDeadline,
+            takenByName: callback.takenBy.name,
+          },
+        }),
+      })
+
+      const data = await response.json() as {
+        error?: string
+        provider?: string
+        providerMessageId?: string
+        recipientEmail?: string
+        recipientName?: string
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error ?? 'Benachrichtigungs-E-Mail konnte nicht gesendet werden.')
+      }
+
+      const recipientEmail = data.recipientEmail ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
+      const recipientName = data.recipientName ?? CALLBACK_NOTIFICATION_RECIPIENT_NAME
+
+      recordCallbackNotificationEmailSent({
+        callbackId: callback.id,
+        recipientEmail,
+        recipientName,
+        sentBy: currentUserName,
+        provider: data.provider ?? 'brevo',
+        providerMessageId: data.providerMessageId,
+      })
+
+      setEmailStatus('success')
+      setEmailStatusMessage(`Benachrichtigung an ${recipientEmail} gesendet.`)
+    } catch (error) {
+      setEmailStatus('error')
+      setEmailStatusMessage(error instanceof Error ? error.message : 'Benachrichtigungs-E-Mail konnte nicht gesendet werden.')
+    }
+  }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleSheetOpenChange}>
       <SheetContent className="sm:max-w-lg p-0 flex flex-col h-full">
         {/* Header - fixed */}
         <SheetHeader className="px-6 pt-6 pb-4 flex-shrink-0">
@@ -263,6 +378,31 @@ export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEs
                           </div>
                         </div>
                       ))}
+
+                      {/* Sent emails */}
+                      {emailActivities.map((activity) => {
+                        const recipientName = activity.metadata?.recipientName
+                        const recipientEmail = activity.metadata?.recipientEmail
+                        const emailLabel = getEmailActivityLabel(activity.metadata?.emailKind)
+
+                        return (
+                          <div key={activity.id} className="relative">
+                            <div className="absolute -left-[22px] top-1 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-400" />
+                            <div className="text-xs space-y-0.5">
+                              <p className="font-medium text-emerald-700 dark:text-emerald-400">{emailLabel} gesendet</p>
+                              <p className="text-muted-foreground">
+                                {recipientName ? `An ${recipientName}` : 'Empfänger unbekannt'}
+                                {recipientEmail ? ` (${recipientEmail})` : ''}
+                                {' · '}
+                                {formatTimeAgo(activity.performedAt)}
+                              </p>
+                              <p className="text-muted-foreground">
+                                Ausgelöst von <span className="font-medium text-foreground">{activity.performedBy}</span>
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </>
@@ -274,20 +414,47 @@ export function TranscriptSheet({ open, callback, onOpenChange, onReassign, onEs
         {/* Footer actions - fixed */}
         {!isCompleted && (
           <div className="flex-shrink-0 border-t px-6 py-3 space-y-2">
-            {/* Quick email send */}
-            {assignedEmployee?.email && (
-              <button
-                onClick={() => {
-                  if (callback.assignedEmployeeId) {
-                    sendEmailNotification(callback.id, callback.assignedEmployeeId, 'Admin')
-                  }
-                }}
-                className="w-full flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-              >
-                <Send className="h-3.5 w-3.5" />
-                <span>E-Mail an <span className="font-medium text-foreground">{assignedEmployee.name}</span> senden</span>
-                <span className="ml-auto text-[10px] opacity-60">{assignedEmployee.email}</span>
-              </button>
+            {isVerenaCallback && assignedEmployee && (
+              <div className="space-y-2 rounded-lg border border-dashed px-3 py-2.5">
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground">Benachrichtigungs-E-Mail senden</p>
+                    <p>
+                      Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
+                    </p>
+                    <p className="truncate">
+                      Aktueller Empfänger: <span className="font-medium text-foreground">{CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleSendNotificationEmail}
+                    disabled={emailStatus === 'sending'}
+                    className="flex-shrink-0"
+                  >
+                    <Send className={cn('mr-1 h-3.5 w-3.5', emailStatus === 'sending' && 'animate-pulse')} />
+                    {emailStatus === 'sending' ? 'Sende...' : 'Senden'}
+                  </Button>
+                </div>
+
+                {emailStatus !== 'idle' && (
+                  <p
+                    className={cn(
+                      'text-xs',
+                      emailStatus === 'success' && 'text-emerald-700 dark:text-emerald-400',
+                      emailStatus === 'error' && 'text-red-700 dark:text-red-400',
+                      emailStatus === 'sending' && 'text-muted-foreground',
+                    )}
+                  >
+                    {emailStatusMessage || (
+                      emailStatus === 'sending'
+                        ? 'Benachrichtigungs-E-Mail wird versendet...'
+                        : ''
+                    )}
+                  </p>
+                )}
+              </div>
             )}
             <div className="flex gap-2">
               {onReassign && (

@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Search, User, X, Check } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import { Plus, Search, User, X, Check, Phone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { callSourceConfig, mockCallAgents, mockCustomers, employeeRoleConfig, employeeStatusConfig } from '@/lib/constants'
 import { useCallbackStore } from '@/lib/stores/callback-store'
@@ -32,6 +33,7 @@ interface NewCallbackDialogProps {
   onOpenChange: (open: boolean) => void
   onCreate: (payload: CreateCallbackPayload) => void
   advisorNames?: string[]
+  defaultAgentId?: string
 }
 
 const priorityOptions: { value: CallbackPriority; label: string }[] = [
@@ -54,7 +56,9 @@ const sourceOptions = Object.entries(callSourceConfig).map(([value, cfg]) => ({
   label: cfg.label,
 }))
 
-export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }: NewCallbackDialogProps) {
+const assignableRoles = new Set<EmployeeRole>(['serviceberater', 'verkaufer'])
+
+export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, defaultAgentId }: NewCallbackDialogProps) {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [reason, setReason] = useState('')
@@ -85,8 +89,9 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
   // Group employees by role
   const groupedEmployees = useMemo(() => {
     if (!useEmployees) return {}
+    const eligibleEmployees = employees.filter((employee) => assignableRoles.has(employee.role))
     const groups: Record<EmployeeRole, typeof employees> = {} as Record<EmployeeRole, typeof employees>
-    for (const emp of employees) {
+    for (const emp of eligibleEmployees) {
       if (!groups[emp.role]) groups[emp.role] = []
       groups[emp.role].push(emp)
     }
@@ -103,6 +108,13 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
     }
     return counts
   }, [callbacks])
+
+  // Pre-fill agent when dialog opens with a default
+  useEffect(() => {
+    if (open && defaultAgentId && !agentId) {
+      setAgentId(defaultAgentId)
+    }
+  }, [open, defaultAgentId, agentId])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -206,29 +218,42 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Neuer Rückruf</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {/* Customer name with inline search dropdown */}
-          <div className="space-y-1.5 sm:col-span-2" ref={dropdownRef}>
-            <label className="text-sm font-medium">Kundenname *</label>
-            {/* Selected state vs search state */}
+        <div className="space-y-4">
+          {/* === Section 1: Customer === */}
+          <div className="space-y-1.5" ref={dropdownRef}>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Kunde</label>
             {customerName && !customerDropdownOpen ? (
-              <button
-                type="button"
-                onClick={() => { setCustomerDropdownOpen(true); setCustomerSearch('') }}
-                className="flex h-9 items-center gap-2 w-full rounded-md border border-input bg-background px-3 text-sm text-left"
-              >
-                <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="flex-1 truncate font-medium">{customerName}</span>
-                <span className="text-xs text-muted-foreground mr-1">{customerPhone}</span>
-                <X
-                  className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground flex-shrink-0"
-                  onClick={(e) => { e.stopPropagation(); setCustomerName(''); setCustomerPhone('') }}
-                />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setCustomerDropdownOpen(true); setCustomerSearch('') }}
+                  className="flex h-9 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-left hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary flex-shrink-0">
+                    <User className="h-3 w-3" />
+                  </div>
+                  <span className="flex-1 truncate font-medium">{customerName}</span>
+                  {customerPhone && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      {customerPhone}
+                    </span>
+                  )}
+                </button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 flex-shrink-0"
+                  onClick={() => { setCustomerName(''); setCustomerPhone('') }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             ) : (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
@@ -238,6 +263,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
                   onChange={e => { setCustomerSearch(e.target.value); setCustomerDropdownOpen(true) }}
                   onFocus={() => setCustomerDropdownOpen(true)}
                   className="pl-9 pr-8"
+                  autoFocus={customerDropdownOpen}
                 />
                 {customerSearch && (
                   <button
@@ -253,8 +279,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
 
             {/* Dropdown results */}
             {customerDropdownOpen && (
-              <div className="border rounded-lg bg-background shadow-lg overflow-hidden -mt-1">
-                <div className="max-h-[200px] overflow-y-auto">
+              <div className="border rounded-lg bg-background shadow-lg overflow-hidden -mt-0.5">
+                <div className="max-h-[180px] overflow-y-auto">
                   {filteredCustomers.length === 0 ? (
                     <div className="px-3 py-3 text-center text-sm text-muted-foreground">
                       Kein Kunde gefunden
@@ -306,145 +332,177 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames }
                 )}
               </div>
             )}
-          </div>
 
-          {/* Phone is auto-filled from customer selection but can be edited manually */}
-          {customerName && !customerDropdownOpen && (
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-sm font-medium">Telefonnummer</label>
+            {/* Phone field only for manually-entered customers without phone */}
+            {customerName && !customerDropdownOpen && !customerPhone && (
               <Input
-                placeholder="+49 711 ..."
+                placeholder="Telefonnummer eingeben..."
                 value={customerPhone}
                 onChange={e => setCustomerPhone(e.target.value)}
+                className="mt-1.5"
               />
-            </div>
-          )}
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-sm font-medium">Anliegen *</label>
-            <Input
-              placeholder="Grund des Anrufs..."
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-sm font-medium">Notizen</label>
-            <Textarea
-              placeholder="Weitere Details..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={2}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Priorität</label>
-            <Select value={priority} onValueChange={v => handlePriorityChange(v as CallbackPriority)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {priorityOptions.map(o => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Zuweisen an *</label>
-            {useEmployees ? (
-              <Select value={assignedEmployeeId} onValueChange={handleEmployeeSelect}>
-                <SelectTrigger><SelectValue placeholder="Mitarbeiter wählen..." /></SelectTrigger>
-                <SelectContent>
-                  {(Object.entries(groupedEmployees) as [EmployeeRole, Employee[]][]).map(([role, emps]) => {
-                    const roleCfg = employeeRoleConfig[role]
-                    return (
-                      <SelectGroup key={role}>
-                        <SelectLabel className="text-xs text-muted-foreground">{roleCfg.label}</SelectLabel>
-                        {emps.map(emp => {
-                          const statusCfg = employeeStatusConfig[emp.status]
-                          const openCount = openCountByEmployee[emp.id] ?? 0
-                          return (
-                            <SelectItem key={emp.id} value={emp.id}>
-                              <div className="flex items-center gap-2">
-                                <span className={cn('h-2 w-2 rounded-full flex-shrink-0', statusCfg.dot)} />
-                                <span className="truncate">{emp.name}</span>
-                                <Badge variant="secondary" className={cn('text-[10px] flex-shrink-0', roleCfg.color)}>
-                                  {roleCfg.label}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground flex-shrink-0">
-                                  ({openCount})
-                                </span>
-                              </div>
-                            </SelectItem>
-                          )
-                        })}
-                      </SelectGroup>
-                    )
-                  })}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select value={assignedAdvisor} onValueChange={setAssignedAdvisor}>
-                <SelectTrigger><SelectValue placeholder="Berater wählen..." /></SelectTrigger>
-                <SelectContent>
-                  {(advisorNames ?? []).map(name => (
-                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             )}
           </div>
 
-          {/* Due time pill buttons */}
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-sm font-medium">Fälligkeit</label>
-            <div className="flex flex-wrap gap-1.5">
-              {dueTimeOptions.map(opt => {
-                const isActive = effectiveSla === opt.minutes
-                return (
-                  <Button
-                    key={opt.minutes}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      'h-7 px-3 text-xs',
-                      isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
-                    )}
-                    onClick={() => handleDueTimePick(opt.minutes)}
-                  >
-                    {opt.label}
-                  </Button>
-                )
-              })}
+          <Separator />
+
+          {/* === Section 2: Anliegen === */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Anliegen *</label>
+              <Input
+                placeholder="Grund des Anrufs..."
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+              />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Fällig in {effectiveSla >= 60 ? `${effectiveSla / 60} Std` : `${effectiveSla} min`}
-              {!manualDueOverride && ' (automatisch nach Priorität)'}
-            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Notizen</label>
+              <Textarea
+                placeholder="Weitere Details..."
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Quelle</label>
-            <Select value={source} onValueChange={v => handleSourceChange(v as CallSource)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {sourceOptions.map(o => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Angenommen von *</label>
-            <Select value={agentId} onValueChange={setAgentId}>
-              <SelectTrigger><SelectValue placeholder="Agent wählen..." /></SelectTrigger>
-              <SelectContent>
-                {mockCallAgents.map(a => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.type === 'ki' ? `🤖 ${a.name}` : a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Separator />
+
+          {/* === Section 3: Zuweisung & Priorität === */}
+          <div className="space-y-3">
+            {/* Zuweisen an - full width to avoid overflow */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Zuweisen an *</label>
+              {useEmployees ? (
+                <Select value={assignedEmployeeId} onValueChange={handleEmployeeSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Mitarbeiter wählen...">
+                      {(() => {
+                        const emp = employees.find(e => e.id === assignedEmployeeId)
+                        if (!emp) return null
+                        const statusCfg = employeeStatusConfig[emp.status]
+                        const roleCfg = employeeRoleConfig[emp.role]
+                        return (
+                          <span className="flex items-center gap-2 truncate">
+                            <span className={cn('h-2 w-2 rounded-full flex-shrink-0', statusCfg.dot)} />
+                            <span className="truncate">{emp.name}</span>
+                            <span className={cn('text-[10px] px-1.5 py-0.5 rounded', roleCfg.color)}>
+                              {roleCfg.label}
+                            </span>
+                          </span>
+                        )
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.entries(groupedEmployees) as [EmployeeRole, Employee[]][]).map(([role, emps]) => {
+                      const roleCfg = employeeRoleConfig[role]
+                      return (
+                        <SelectGroup key={role}>
+                          <SelectLabel className="text-xs text-muted-foreground">{roleCfg.label}</SelectLabel>
+                          {emps.map(emp => {
+                            const statusCfg = employeeStatusConfig[emp.status]
+                            const openCount = openCountByEmployee[emp.id] ?? 0
+                            return (
+                              <SelectItem key={emp.id} value={emp.id} textValue={emp.name}>
+                                <div className="flex items-center gap-2">
+                                  <span className={cn('h-2 w-2 rounded-full flex-shrink-0', statusCfg.dot)} />
+                                  <span className="truncate">{emp.name}</span>
+                                  <Badge variant="secondary" className={cn('text-[10px] flex-shrink-0', roleCfg.color)}>
+                                    {roleCfg.label}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                                    ({openCount})
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectGroup>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={assignedAdvisor} onValueChange={setAssignedAdvisor}>
+                  <SelectTrigger><SelectValue placeholder="Berater wählen..." /></SelectTrigger>
+                  <SelectContent>
+                    {(advisorNames ?? []).map(name => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Priorität + Fälligkeit on one row */}
+            <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Priorität</label>
+                <Select value={priority} onValueChange={v => handlePriorityChange(v as CallbackPriority)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {priorityOptions.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Fälligkeit</label>
+                <div className="flex items-center gap-1 h-9">
+                  {dueTimeOptions.map(opt => {
+                    const isActive = effectiveSla === opt.minutes
+                    return (
+                      <Button
+                        key={opt.minutes}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          'h-7 px-2.5 text-xs rounded-full',
+                          isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground border-primary',
+                        )}
+                        onClick={() => handleDueTimePick(opt.minutes)}
+                      >
+                        {opt.label}
+                      </Button>
+                    )
+                  })}
+                </div>
+                {!manualDueOverride && (
+                  <p className="text-[11px] text-muted-foreground">Automatisch nach Priorität</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Quelle</label>
+                <Select value={source} onValueChange={v => handleSourceChange(v as CallSource)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {sourceOptions.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Angenommen von *</label>
+                <Select value={agentId} onValueChange={setAgentId}>
+                  <SelectTrigger><SelectValue placeholder="Agent wählen..." /></SelectTrigger>
+                  <SelectContent>
+                    {mockCallAgents.map(a => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.type === 'ki' ? `🤖 ${a.name}` : a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
         <DialogFooter>
