@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Bot, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Shield, Bell, Mail, Send } from 'lucide-react'
+import { Bot, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Shield, Bell, Mail, Send, Trash2 } from 'lucide-react'
 import { cn, formatTimeAgo } from '@/lib/utils'
 import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig, escalationLevelConfig } from '@/lib/constants'
 import {
@@ -30,6 +30,7 @@ interface TranscriptSheetProps {
   onComplete?: (id: string) => void
   onEscalateToLevel?: (id: string) => void
   onSetReminder?: (id: string) => void
+  onDelete?: (id: string) => void
   currentUserName?: string
 }
 
@@ -90,6 +91,7 @@ export function TranscriptSheet({
   onComplete,
   onEscalateToLevel,
   onSetReminder,
+  onDelete,
   currentUserName = 'Admin',
 }: TranscriptSheetProps) {
   const reminders = useCallbackStore((s) => s.reminders)
@@ -444,93 +446,108 @@ export function TranscriptSheet({
         </div>
 
         {/* Footer actions - fixed */}
-        {!isCompleted && (
+        {(!isCompleted || onDelete) && (
           <div className="flex-shrink-0 border-t px-6 py-3 space-y-2">
-            {isVerenaCallback && assignedEmployee && (
-              <div className="space-y-2 rounded-lg border border-dashed px-3 py-2.5">
-                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground">Benachrichtigungs-E-Mail senden</p>
-                    <p>
-                      Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
-                    </p>
-                    <p className="truncate">
-                      Aktueller Empfänger: <span className="font-medium text-foreground">{notificationRecipientEmail || CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={handleSendNotificationEmail}
-                    disabled={
-                      emailStatus === 'sending'
-                      || isNotificationEmailAvailabilityLoading
-                      || isNotificationEmailAvailable === false
-                    }
-                    className="flex-shrink-0"
-                  >
-                    <Send className={cn('mr-1 h-3.5 w-3.5', emailStatus === 'sending' && 'animate-pulse')} />
-                    {emailStatus === 'sending'
-                      ? 'Sende...'
-                      : isNotificationEmailAvailabilityLoading
-                        ? 'Pruefe...'
-                        : isNotificationEmailAvailable === false
-                          ? 'Nicht verfuegbar'
-                          : 'Senden'}
-                  </Button>
-                </div>
+            {!isCompleted && (
+              <>
+                {isVerenaCallback && assignedEmployee && (
+                  <div className="space-y-2 rounded-lg border border-dashed px-3 py-2.5">
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground">Benachrichtigungs-E-Mail senden</p>
+                        <p>
+                          Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
+                        </p>
+                        <p className="truncate">
+                          Aktueller Empfänger: <span className="font-medium text-foreground">{notificationRecipientEmail || CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleSendNotificationEmail}
+                        disabled={
+                          emailStatus === 'sending'
+                          || isNotificationEmailAvailabilityLoading
+                          || isNotificationEmailAvailable === false
+                        }
+                        className="flex-shrink-0"
+                      >
+                        <Send className={cn('mr-1 h-3.5 w-3.5', emailStatus === 'sending' && 'animate-pulse')} />
+                        {emailStatus === 'sending'
+                          ? 'Sende...'
+                          : isNotificationEmailAvailabilityLoading
+                            ? 'Pruefe...'
+                            : isNotificationEmailAvailable === false
+                              ? 'Nicht verfuegbar'
+                              : 'Senden'}
+                      </Button>
+                    </div>
 
-                {(emailStatus !== 'idle' || notificationEmailUnavailableMessage) && (
-                  <p
-                    className={cn(
-                      'text-xs',
-                      emailStatus === 'success' && 'text-emerald-700 dark:text-emerald-400',
-                      emailStatus === 'error' && 'text-red-700 dark:text-red-400',
-                      emailStatus === 'sending' && 'text-muted-foreground',
-                      !emailStatusMessage
-                      && notificationEmailUnavailableMessage
-                      && 'text-red-700 dark:text-red-400',
+                    {(emailStatus !== 'idle' || notificationEmailUnavailableMessage) && (
+                      <p
+                        className={cn(
+                          'text-xs',
+                          emailStatus === 'success' && 'text-emerald-700 dark:text-emerald-400',
+                          emailStatus === 'error' && 'text-red-700 dark:text-red-400',
+                          emailStatus === 'sending' && 'text-muted-foreground',
+                          !emailStatusMessage
+                          && notificationEmailUnavailableMessage
+                          && 'text-red-700 dark:text-red-400',
+                        )}
+                      >
+                        {emailStatusMessage
+                          || (emailStatus === 'sending'
+                            ? 'Benachrichtigungs-E-Mail wird versendet...'
+                            : notificationEmailUnavailableMessage)}
+                      </p>
                     )}
-                  >
-                    {emailStatusMessage
-                      || (emailStatus === 'sending'
-                        ? 'Benachrichtigungs-E-Mail wird versendet...'
-                        : notificationEmailUnavailableMessage)}
-                  </p>
+                  </div>
                 )}
-              </div>
+                <div className="flex gap-2">
+                  {onReassign && (
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onReassign(callback.id)}>
+                      <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                      Zuweisen
+                    </Button>
+                  )}
+                  {onEscalateToLevel ? (
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalateToLevel(callback.id)}>
+                      <Shield className="h-3.5 w-3.5 mr-1" />
+                      Eskalieren
+                    </Button>
+                  ) : onEscalate ? (
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalate(callback.id)}>
+                      <ChevronUp className="h-3.5 w-3.5 mr-1" />
+                      Eskalieren
+                    </Button>
+                  ) : null}
+                  {onSetReminder && (
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onSetReminder(callback.id)}>
+                      <Bell className="h-3.5 w-3.5 mr-1" />
+                      Erinnerung
+                    </Button>
+                  )}
+                  {onComplete && (
+                    <Button size="sm" className="flex-1" onClick={() => onComplete(callback.id)}>
+                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                      Erledigt
+                    </Button>
+                  )}
+                </div>
+              </>
             )}
-            <div className="flex gap-2">
-              {onReassign && (
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => onReassign(callback.id)}>
-                  <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
-                  Zuweisen
-                </Button>
-              )}
-              {onEscalateToLevel ? (
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalateToLevel(callback.id)}>
-                  <Shield className="h-3.5 w-3.5 mr-1" />
-                  Eskalieren
-                </Button>
-              ) : onEscalate ? (
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalate(callback.id)}>
-                  <ChevronUp className="h-3.5 w-3.5 mr-1" />
-                  Eskalieren
-                </Button>
-              ) : null}
-              {onSetReminder && (
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => onSetReminder(callback.id)}>
-                  <Bell className="h-3.5 w-3.5 mr-1" />
-                  Erinnerung
-                </Button>
-              )}
-              {onComplete && (
-                <Button size="sm" className="flex-1" onClick={() => onComplete(callback.id)}>
-                  <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                  Erledigt
-                </Button>
-              )}
-            </div>
+            {onDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive"
+                onClick={() => onDelete(callback.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Rückruf löschen
+              </Button>
+            )}
           </div>
         )}
       </SheetContent>

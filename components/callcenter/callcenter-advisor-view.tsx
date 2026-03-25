@@ -9,7 +9,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { CheckCircle, AlertTriangle, MoreHorizontal, Bot, FileText, ArrowRightLeft, ChevronUp } from 'lucide-react'
+import { CheckCircle, AlertTriangle, MoreHorizontal, Bot, FileText, ArrowRightLeft, ChevronUp, Trash2 } from 'lucide-react'
 import { cn, formatTimeAgo } from '@/lib/utils'
 import { callSourceConfig, callbackPriorityConfig } from '@/lib/constants'
 import type { Callback, CallbackStatus } from '@/lib/types'
@@ -20,6 +20,7 @@ interface CallcenterAdvisorViewProps {
   onComplete?: (id: string) => void
   onReassign?: (id: string) => void
   onEscalate?: (id: string) => void
+  onDelete?: (id: string) => void
   onViewTranscript: (id: string) => void
 }
 
@@ -60,7 +61,7 @@ interface GroupData {
 }
 
 export function CallcenterAdvisorView({
-  callbacks, allCallbacks, onComplete, onReassign, onEscalate, onViewTranscript,
+  callbacks, allCallbacks, onComplete, onReassign, onEscalate, onDelete, onViewTranscript,
 }: CallcenterAdvisorViewProps) {
   const todayStr = new Date().toDateString()
 
@@ -244,6 +245,18 @@ export function CallcenterAdvisorView({
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onComplete(cb.id) }}>
                                 <CheckCircle className="h-3.5 w-3.5 mr-2" />
                                 Erledigt
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {onDelete && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={(e) => { e.stopPropagation(); onDelete(cb.id) }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Rückruf löschen
                               </DropdownMenuItem>
                             </>
                           )}

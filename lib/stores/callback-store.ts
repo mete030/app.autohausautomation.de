@@ -151,6 +151,7 @@ interface CallbackStoreState {
 
   updateCallbackStatus: (payload: UpdateCallbackPayload) => Promise<void>
   createCallback: (payload: CreateCallbackPayload) => Promise<Callback>
+  deleteCallback: (callbackId: string) => Promise<void>
   reassignCallback: (payload: ReassignCallbackPayload) => void
   escalateCallback: (payload: EscalateCallbackPayload) => void
   escalateCallbackToLevel: (payload: EscalateToLevelPayload) => void
@@ -315,6 +316,30 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
     }))
 
     return createdCallback
+  },
+
+  deleteCallback: async (callbackId) => {
+    const existingCallback = get().callbacks.find((callback) => callback.id === callbackId)
+    if (!existingCallback) {
+      return
+    }
+
+    if (existingCallback.isPersisted) {
+      const response = await fetch(`/api/callbacks/${callbackId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json().catch(() => ({ error: '' })) as { error?: string }
+
+      if (!response.ok) {
+        throw new Error(data.error ?? 'Rückruf konnte nicht gelöscht werden.')
+      }
+    }
+
+    set((state) => ({
+      callbacks: state.callbacks.filter((callback) => callback.id !== callbackId),
+      reminders: state.reminders.filter((reminder) => reminder.callbackId !== callbackId),
+    }))
   },
 
   reassignCallback: ({ callbackId, newAdvisor, newEmployeeId, reassignedBy }) => {

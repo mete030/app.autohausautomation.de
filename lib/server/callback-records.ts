@@ -183,6 +183,23 @@ export async function createPersistedCallback(input: CreatePersistedCallbackInpu
   return mapCallbackRecordToDto(record)
 }
 
+export async function deletePersistedCallback(id: string) {
+  const prisma = getPrismaClient()
+  const existing = await prisma.callbackRecord.findUnique({
+    where: { id },
+  })
+
+  if (!existing) {
+    return false
+  }
+
+  await prisma.callbackRecord.delete({
+    where: { id },
+  })
+
+  return true
+}
+
 export async function appendPersistedCallbackActivity(input: CreateCallbackActivityInput): Promise<CallbackActivity> {
   const prisma = getPrismaClient()
   const record = await prisma.callbackActivityRecord.create({

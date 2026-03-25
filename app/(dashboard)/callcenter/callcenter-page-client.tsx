@@ -49,6 +49,7 @@ export default function CallcenterPageClient() {
   const reminders = useCallbackStore(s => s.reminders)
   const updateCallbackStatus = useCallbackStore(s => s.updateCallbackStatus)
   const createCallback = useCallbackStore(s => s.createCallback)
+  const deleteCallback = useCallbackStore(s => s.deleteCallback)
   const reassignCallback = useCallbackStore(s => s.reassignCallback)
   const escalateCallback = useCallbackStore(s => s.escalateCallback)
   const loadPersistedCallbacks = useCallbackStore(s => s.loadPersistedCallbacks)
@@ -207,10 +208,40 @@ export default function CallcenterPageClient() {
     }
   }
 
+  const closeCallbackOverlays = (id: string) => {
+    if (completeDialogId === id) {
+      setCompleteDialogId(null)
+    }
+    if (reassignDialogId === id) {
+      setReassignDialogId(null)
+    }
+    if (transcriptSheetId === id) {
+      setTranscriptSheetId(null)
+    }
+    if (escalationDialogId === id) {
+      setEscalationDialogId(null)
+    }
+    if (reminderDialogId === id) {
+      setReminderDialogId(null)
+    }
+  }
+
+  const handleDeleteCallback = async (id: string) => {
+    closeCallbackOverlays(id)
+
+    try {
+      await deleteCallback(id)
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : 'Rückruf konnte nicht gelöscht werden.')
+    }
+  }
+
   // Role-based action permissions
   const viewActions = useMemo(() => {
     const base = {
       onViewTranscript: setTranscriptSheetId,
+      onDelete: (id: string) => { void handleDeleteCallback(id) },
     }
 
     if (role === 'admin') {
@@ -245,7 +276,7 @@ export default function CallcenterPageClient() {
       onEscalateToLevel: undefined as unknown as (id: string) => void,
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role])
+  }, [role, completeDialogId, reassignDialogId, transcriptSheetId, escalationDialogId, reminderDialogId])
 
   const header = ROLE_HEADER[role]
   const HeaderIcon = header.icon
@@ -334,6 +365,7 @@ export default function CallcenterPageClient() {
                 onComplete={setCompleteDialogId}
                 onReassign={setReassignDialogId}
                 onEscalate={handleEscalate}
+                onDelete={(id) => { void handleDeleteCallback(id) }}
                 onViewTranscript={setTranscriptSheetId}
               />
             )}
@@ -392,6 +424,7 @@ export default function CallcenterPageClient() {
                 allCallbacks={roleCallbacks}
                 onReassign={setReassignDialogId}
                 onEscalate={handleEscalate}
+                onDelete={(id) => { void handleDeleteCallback(id) }}
                 onViewTranscript={setTranscriptSheetId}
               />
             )}
@@ -488,6 +521,7 @@ export default function CallcenterPageClient() {
         onComplete={role !== 'callcenter' ? (id) => { setTranscriptSheetId(null); setCompleteDialogId(id) } : undefined}
         onEscalateToLevel={role !== 'berater' ? (id) => { setTranscriptSheetId(null); setEscalationDialogId(id) } : undefined}
         onSetReminder={role !== 'berater' ? (id) => { setTranscriptSheetId(null); setReminderDialogId(id) } : undefined}
+        onDelete={(id) => { void handleDeleteCallback(id) }}
         currentUserName={currentUser}
       />
       <CallcenterEscalationDialog

@@ -10,9 +10,9 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  MoreHorizontal, Bot, User, CheckCircle, ArrowRightLeft,
+  MoreHorizontal, Bot, CheckCircle, ArrowRightLeft,
   ChevronUp, FileText, Phone, Globe, MessageCircle, PenLine,
-  Shield, Bell, Clock,
+  Shield, Bell, Trash2,
 } from 'lucide-react'
 import { cn, formatTimeAgo } from '@/lib/utils'
 import { useCountdown } from '@/lib/hooks/use-countdown'
@@ -27,6 +27,7 @@ interface CallcenterTableViewProps {
   onViewTranscript: (id: string) => void
   onSetReminder?: (id: string) => void
   onEscalateToLevel?: (id: string) => void
+  onDelete?: (id: string) => void
 }
 
 const STATUS_ORDER: Record<CallbackStatus, number> = {
@@ -94,7 +95,7 @@ function CountdownCell({ dueAt, slaDurationMinutes, status }: { dueAt: string; s
 
 export function CallcenterTableView({
   callbacks, onComplete, onReassign, onEscalate, onViewTranscript,
-  onSetReminder, onEscalateToLevel,
+  onSetReminder, onEscalateToLevel, onDelete,
 }: CallcenterTableViewProps) {
   const [sortKey, setSortKey] = useState<'status' | 'priority' | 'created'>('status')
 
@@ -295,6 +296,18 @@ export function CallcenterTableView({
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onComplete(cb.id) }}>
                               <CheckCircle className="h-3.5 w-3.5 mr-2" />
                               Als erledigt markieren
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {onDelete && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={(e) => { e.stopPropagation(); onDelete(cb.id) }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              Rückruf löschen
                             </DropdownMenuItem>
                           </>
                         )}
