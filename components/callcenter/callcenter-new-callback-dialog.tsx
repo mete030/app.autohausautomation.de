@@ -120,6 +120,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const {
     isAvailable: isNotificationEmailAvailable,
     isLoading: isNotificationEmailAvailabilityLoading,
+    recipientEmail: notificationRecipientEmail,
+    recipientName: notificationRecipientName,
     unavailableMessage: notificationEmailUnavailableMessage,
   } = useCallbackNotificationEmailAvailability(dialogStep === 'success' && isEmailCapable)
 
@@ -297,18 +299,28 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
       }
       if (!res.ok) throw new Error(data.error || 'Fehler beim Senden der E-Mail')
 
+      const recipientEmail =
+        data.recipientEmail
+        ?? notificationRecipientEmail
+        ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
+      const recipientName =
+        data.recipientName
+        ?? notificationRecipientName
+        ?? CALLBACK_NOTIFICATION_RECIPIENT_NAME
+      const provider = data.provider ?? 'brevo'
+
       recordCallbackNotificationEmailSent({
         callbackId: createdCallback.id,
-        recipientEmail: data.recipientEmail,
-        recipientName: data.recipientName,
+        recipientEmail,
+        recipientName,
         sentBy: currentUser ?? 'System',
-        provider: data.provider,
+        provider,
         providerMessageId: data.providerMessageId,
       })
 
       setSentEmailRecipient({
-        name: data.recipientName ?? CALLBACK_NOTIFICATION_RECIPIENT_NAME,
-        email: data.recipientEmail ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
+        name: recipientName,
+        email: recipientEmail,
       })
       setDialogStep('emailSent')
     } catch (err) {
@@ -668,6 +680,9 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   <p className="text-sm text-muted-foreground">
                     Möchtest du jetzt direkt eine Benachrichtigungs-E-Mail senden?
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    Aktueller Empfänger: {notificationRecipientEmail || CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}
+                  </p>
                   {(emailError || notificationEmailUnavailableMessage) && (
                     <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
                       {emailError || notificationEmailUnavailableMessage}
@@ -731,7 +746,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   Die Benachrichtigung wurde an {sentEmailRecipient?.name ?? createdCallback?.assignedAdvisor} versendet.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Empfänger: <span className="font-medium text-foreground">{sentEmailRecipient?.email ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
+                  Empfänger: <span className="font-medium text-foreground">{sentEmailRecipient?.email ?? notificationRecipientEmail ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
                 </p>
               </div>
               <div className="flex gap-2 pt-2">

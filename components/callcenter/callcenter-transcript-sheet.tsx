@@ -104,6 +104,8 @@ export function TranscriptSheet({
   const {
     isAvailable: isNotificationEmailAvailable,
     isLoading: isNotificationEmailAvailabilityLoading,
+    recipientEmail: notificationRecipientEmail,
+    recipientName: notificationRecipientName,
     unavailableMessage: notificationEmailUnavailableMessage,
   } = useCallbackNotificationEmailAvailability(open && isVerenaCallback)
 
@@ -171,8 +173,14 @@ export function TranscriptSheet({
         throw new Error(data.error ?? 'Benachrichtigungs-E-Mail konnte nicht gesendet werden.')
       }
 
-      const recipientEmail = data.recipientEmail ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
-      const recipientName = data.recipientName ?? CALLBACK_NOTIFICATION_RECIPIENT_NAME
+      const recipientEmail =
+        data.recipientEmail
+        ?? notificationRecipientEmail
+        ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
+      const recipientName =
+        data.recipientName
+        ?? notificationRecipientName
+        ?? CALLBACK_NOTIFICATION_RECIPIENT_NAME
 
       recordCallbackNotificationEmailSent({
         callbackId: callback.id,
@@ -448,7 +456,7 @@ export function TranscriptSheet({
                       Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
                     </p>
                     <p className="truncate">
-                      Aktueller Empfänger: <span className="font-medium text-foreground">{CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
+                      Aktueller Empfänger: <span className="font-medium text-foreground">{notificationRecipientEmail || CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
                     </p>
                   </div>
                   <Button

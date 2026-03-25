@@ -5,13 +5,17 @@ import { CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE } from '@/lib/email/cal
 
 interface CallbackNotificationEmailAvailabilityResponse {
   available?: boolean
+  recipientEmail?: string
+  recipientName?: string
 }
 
 export function useCallbackNotificationEmailAvailability(enabled: boolean) {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [recipientName, setRecipientName] = useState('')
 
   useEffect(() => {
-    if (!enabled || isAvailable !== null) {
+    if (!enabled) {
       return
     }
 
@@ -31,9 +35,13 @@ export function useCallbackNotificationEmailAvailability(enabled: boolean) {
         }
 
         setIsAvailable(Boolean(response.ok && data.available))
+        setRecipientEmail(data.recipientEmail ?? '')
+        setRecipientName(data.recipientName ?? '')
       } catch {
         if (!cancelled) {
           setIsAvailable(false)
+          setRecipientEmail('')
+          setRecipientName('')
         }
       }
     }
@@ -43,11 +51,13 @@ export function useCallbackNotificationEmailAvailability(enabled: boolean) {
     return () => {
       cancelled = true
     }
-  }, [enabled, isAvailable])
+  }, [enabled])
 
   return {
     isAvailable: enabled ? isAvailable : null,
     isLoading: enabled && isAvailable === null,
+    recipientEmail: enabled ? recipientEmail : '',
+    recipientName: enabled ? recipientName : '',
     unavailableMessage: enabled && isAvailable === false
       ? CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE
       : '',

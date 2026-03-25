@@ -15,10 +15,24 @@ interface CallbackNotificationEmailServerConfig {
   isConfigured: boolean
 }
 
+function readTrimmedEnv(key: string): string {
+  return process.env[key]?.trim() ?? ''
+}
+
 export function getCallbackNotificationEmailServerConfig(): CallbackNotificationEmailServerConfig {
-  const apiKey = process.env.BREVO_API_KEY?.trim() ?? ''
-  const senderEmail = process.env.BREVO_SENDER_EMAIL?.trim() ?? ''
-  const senderName = process.env.BREVO_SENDER_NAME?.trim() || 'Wackenhut Callcenter'
+  const apiKey = readTrimmedEnv('BREVO_API_KEY')
+  const senderEmail = readTrimmedEnv('BREVO_SENDER_EMAIL')
+  const senderName = readTrimmedEnv('BREVO_SENDER_NAME') || 'Wackenhut Callcenter'
+  const recipientEmail =
+    readTrimmedEnv('CALLBACK_NOTIFICATION_RECIPIENT_EMAIL')
+    || readTrimmedEnv('NEXT_PUBLIC_CALLBACK_NOTIFICATION_RECIPIENT_EMAIL')
+    || senderEmail
+    || CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
+  const recipientName =
+    readTrimmedEnv('CALLBACK_NOTIFICATION_RECIPIENT_NAME')
+    || readTrimmedEnv('NEXT_PUBLIC_CALLBACK_NOTIFICATION_RECIPIENT_NAME')
+    || senderName
+    || CALLBACK_NOTIFICATION_RECIPIENT_NAME
   const missing: string[] = []
 
   if (!apiKey) {
@@ -33,8 +47,8 @@ export function getCallbackNotificationEmailServerConfig(): CallbackNotification
     apiKey,
     senderEmail,
     senderName,
-    recipientEmail: CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
-    recipientName: CALLBACK_NOTIFICATION_RECIPIENT_NAME,
+    recipientEmail,
+    recipientName,
     missing,
     isConfigured: missing.length === 0,
   }
