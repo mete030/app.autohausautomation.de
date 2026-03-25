@@ -426,6 +426,7 @@ export default function CallcenterPageClient() {
         onCreate={createCallback}
         advisorNames={advisorNames}
         defaultAgentId={role === 'callcenter' ? mockCallAgents.find(a => a.name === selectedUser)?.id : undefined}
+        currentUser={currentUser}
       />
       <CompletionDialog
         open={!!completeDialogId}

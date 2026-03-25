@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE,
   CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
   CALLBACK_NOTIFICATION_RECIPIENT_NAME,
   VERENA_SCHWAB_EMPLOYEE_ID,
   VERENA_SCHWAB_NAME,
 } from '@/lib/email/callback-email-config'
+import { getCallbackNotificationEmailServerConfig } from '@/lib/email/callback-email-server-config'
 import { renderCallbackNotificationEmail } from '@/lib/email/render-callback-notification-email'
 
 const callbackPrioritySchema = z.enum(['niedrig', 'mittel', 'hoch', 'dringend'])
@@ -29,6 +31,16 @@ const requestSchema = z.object({
   }),
 })
 
+export async function GET() {
+  const config = getCallbackNotificationEmailServerConfig()
+
+  return NextResponse.json({
+    available: config.isConfigured,
+    recipientEmail: config.recipientEmail,
+    recipientName: config.recipientName,
+  })
+}
+
 export async function POST(req: NextRequest) {
   try {
     const payload = requestSchema.parse(await req.json())
@@ -43,16 +55,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const apiKey = process.env.BREVO_API_KEY ?? ''
-    const senderEmail = process.env.BREVO_SENDER_EMAIL ?? ''
-    const senderName = process.env.BREVO_SENDER_NAME ?? 'Wackenhut Callcenter'
+    const emailConfig = getCallbackNotificationEmailServerConfig()
     const recipientEmail = CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
     const recipientName = CALLBACK_NOTIFICATION_RECIPIENT_NAME
 
-    if (!apiKey || !senderEmail) {
+    if (!emailConfig.isConfigured) {
+      console.error('Callback notification email is not fully configured.', {
+        missing: emailConfig.missing,
+      })
+
       return NextResponse.json(
-        { error: 'Brevo ist nicht vollständig konfiguriert (BREVO_API_KEY, BREVO_SENDER_EMAIL).' },
-        { status: 500 },
+        { error: CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE },
+        { status: 503 },
       )
     }
 
@@ -75,13 +89,13 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         accept: 'application/json',
-        'api-key': apiKey,
+        'api-key': emailConfig.apiKey,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
         sender: {
-          name: senderName,
-          email: senderEmail,
+          name: emailConfig.senderName,
+          email: emailConfig.senderEmail,
         },
         to: [
           {

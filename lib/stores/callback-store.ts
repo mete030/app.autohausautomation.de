@@ -105,7 +105,7 @@ interface CallbackStoreState {
 
   // Callback actions
   updateCallbackStatus: (payload: UpdateCallbackPayload) => void
-  createCallback: (payload: CreateCallbackPayload) => void
+  createCallback: (payload: CreateCallbackPayload) => Callback
   reassignCallback: (payload: ReassignCallbackPayload) => void
   escalateCallback: (payload: EscalateCallbackPayload) => void
   escalateCallbackToLevel: (payload: EscalateToLevelPayload) => void
@@ -204,6 +204,7 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
       ],
     }
     set((state) => ({ callbacks: [newCallback, ...state.callbacks] }))
+    return newCallback
   },
 
   reassignCallback: ({ callbackId, newAdvisor, newEmployeeId, reassignedBy }) => {

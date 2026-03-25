@@ -17,6 +17,7 @@ import {
   VERENA_SCHWAB_NAME,
 } from '@/lib/email/callback-email-config'
 import { useCountdown } from '@/lib/hooks/use-countdown'
+import { useCallbackNotificationEmailAvailability } from '@/lib/hooks/use-callback-notification-email-availability'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import type { Callback, CallSource, EscalationLevel } from '@/lib/types'
 
@@ -96,6 +97,14 @@ export function TranscriptSheet({
   const recordCallbackNotificationEmailSent = useCallbackStore((s) => s.recordCallbackNotificationEmailSent)
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
   const [emailStatusMessage, setEmailStatusMessage] = useState('')
+  const isVerenaCallback =
+    callback?.assignedEmployeeId === VERENA_SCHWAB_EMPLOYEE_ID
+    && callback?.assignedAdvisor === VERENA_SCHWAB_NAME
+  const {
+    isAvailable: isNotificationEmailAvailable,
+    isLoading: isNotificationEmailAvailabilityLoading,
+    unavailableMessage: notificationEmailUnavailableMessage,
+  } = useCallbackNotificationEmailAvailability(open && isVerenaCallback)
 
   if (!callback) return null
 
@@ -108,9 +117,6 @@ export function TranscriptSheet({
   const sourceCfg = callSourceConfig[callback.source]
   const initials = callback.takenBy.name.split(' ').map(n => n[0]).join('')
   const assignedEmployee = employees.find(e => e.id === callback.assignedEmployeeId)
-  const isVerenaCallback =
-    callback.assignedEmployeeId === VERENA_SCHWAB_EMPLOYEE_ID
-    && callback.assignedAdvisor === VERENA_SCHWAB_NAME
   const emailActivities = [...callback.activityLog]
     .filter((activity) => activity.type === 'email_gesendet')
     .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime())
@@ -131,7 +137,7 @@ export function TranscriptSheet({
   }
 
   const handleSendNotificationEmail = async () => {
-    if (!isVerenaCallback) return
+    if (!isVerenaCallback || isNotificationEmailAvailable !== true) return
 
     setEmailStatus('sending')
     setEmailStatusMessage('')
@@ -430,28 +436,40 @@ export function TranscriptSheet({
                   <Button
                     size="sm"
                     onClick={handleSendNotificationEmail}
-                    disabled={emailStatus === 'sending'}
+                    disabled={
+                      emailStatus === 'sending'
+                      || isNotificationEmailAvailabilityLoading
+                      || isNotificationEmailAvailable === false
+                    }
                     className="flex-shrink-0"
                   >
                     <Send className={cn('mr-1 h-3.5 w-3.5', emailStatus === 'sending' && 'animate-pulse')} />
-                    {emailStatus === 'sending' ? 'Sende...' : 'Senden'}
+                    {emailStatus === 'sending'
+                      ? 'Sende...'
+                      : isNotificationEmailAvailabilityLoading
+                        ? 'Pruefe...'
+                        : isNotificationEmailAvailable === false
+                          ? 'Nicht verfuegbar'
+                          : 'Senden'}
                   </Button>
                 </div>
 
-                {emailStatus !== 'idle' && (
+                {(emailStatus !== 'idle' || notificationEmailUnavailableMessage) && (
                   <p
                     className={cn(
                       'text-xs',
                       emailStatus === 'success' && 'text-emerald-700 dark:text-emerald-400',
                       emailStatus === 'error' && 'text-red-700 dark:text-red-400',
                       emailStatus === 'sending' && 'text-muted-foreground',
+                      !emailStatusMessage
+                      && notificationEmailUnavailableMessage
+                      && 'text-red-700 dark:text-red-400',
                     )}
                   >
-                    {emailStatusMessage || (
-                      emailStatus === 'sending'
+                    {emailStatusMessage
+                      || (emailStatus === 'sending'
                         ? 'Benachrichtigungs-E-Mail wird versendet...'
-                        : ''
-                    )}
+                        : notificationEmailUnavailableMessage)}
                   </p>
                 )}
               </div>
