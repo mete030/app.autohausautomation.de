@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Mail, Send, Reply, Bot, Clock, CheckCheck, ChevronDown, ChevronRight, Search, Inbox } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Mail, Send, Reply, Bot, CheckCheck, ChevronDown, ChevronRight, Search, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -352,7 +352,6 @@ function buildGeneratedThreads(
 
       const messages: EmailMessage[] = emailActivities.map((activity, index) => {
         const recipientName = activity.metadata?.recipientName || callback.assignedAdvisor
-        const recipientEmail = activity.metadata?.recipientEmail || recipientName
 
         return {
           id: `${callback.id}-${activity.id}-sent`,
@@ -439,21 +438,12 @@ export function CallcenterEmailInbox({
     )
   }, [threads, searchQuery])
 
-  const selectedThread = threads.find(t => t.id === selectedThreadId)
+  const effectiveSelectedThreadId =
+    selectedThreadId && filteredThreads.some((thread) => thread.id === selectedThreadId)
+      ? selectedThreadId
+      : filteredThreads[0]?.id ?? null
+  const selectedThread = threads.find(t => t.id === effectiveSelectedThreadId)
   const unreadCount = threads.filter(t => !t.isRead).length
-
-  useEffect(() => {
-    if (!filteredThreads.length) {
-      setSelectedThreadId(null)
-      return
-    }
-
-    if (!selectedThreadId || !filteredThreads.some((thread) => thread.id === selectedThreadId)) {
-      const firstThread = filteredThreads[0]
-      setSelectedThreadId(firstThread.id)
-      setExpandedMessages(new Set(firstThread.messages.map((message) => message.id)))
-    }
-  }, [filteredThreads, selectedThreadId])
 
   const toggleMessage = (msgId: string) => {
     setExpandedMessages(prev => {

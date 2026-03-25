@@ -13,7 +13,11 @@ import { cn } from '@/lib/utils'
 import { callSourceConfig, mockCallAgents, mockCustomers, employeeRoleConfig, employeeStatusConfig } from '@/lib/constants'
 import { useCallbackNotificationEmailAvailability } from '@/lib/hooks/use-callback-notification-email-availability'
 import { useCallbackStore } from '@/lib/stores/callback-store'
-import { VERENA_SCHWAB_EMPLOYEE_ID } from '@/lib/email/callback-email-config'
+import {
+  CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
+  CALLBACK_NOTIFICATION_RECIPIENT_NAME,
+  VERENA_SCHWAB_EMPLOYEE_ID,
+} from '@/lib/email/callback-email-config'
 import type { Callback, CallbackPriority, CallSource, CallAgent, Employee, EmployeeRole } from '@/lib/types'
 
 interface CreateCallbackPayload {
@@ -87,6 +91,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   // Dialog step state
   const [dialogStep, setDialogStep] = useState<DialogStep>('form')
   const [createdCallback, setCreatedCallback] = useState<Callback | null>(null)
+  const [sentEmailRecipient, setSentEmailRecipient] = useState<{ name: string; email: string } | null>(null)
   const [isCreatingCallback, setIsCreatingCallback] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [isSendingEmail, setIsSendingEmail] = useState(false)
@@ -202,6 +207,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     resetForm()
     setDialogStep('form')
     setCreatedCallback(null)
+    setSentEmailRecipient(null)
     setCreateError(null)
     setIsCreatingCallback(false)
     setEmailError(null)
@@ -300,6 +306,10 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
         providerMessageId: data.providerMessageId,
       })
 
+      setSentEmailRecipient({
+        name: data.recipientName ?? CALLBACK_NOTIFICATION_RECIPIENT_NAME,
+        email: data.recipientEmail ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
+      })
       setDialogStep('emailSent')
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : 'Fehler beim Senden der E-Mail')
@@ -718,7 +728,10 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
               <div>
                 <h3 className="text-lg font-semibold">E-Mail erfolgreich gesendet</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Die Benachrichtigung wurde an {createdCallback?.assignedAdvisor} versendet.
+                  Die Benachrichtigung wurde an {sentEmailRecipient?.name ?? createdCallback?.assignedAdvisor} versendet.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Empfänger: <span className="font-medium text-foreground">{sentEmailRecipient?.email ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
                 </p>
               </div>
               <div className="flex gap-2 pt-2">
