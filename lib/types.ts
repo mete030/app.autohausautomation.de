@@ -227,6 +227,27 @@ export interface Callback {
   escalationHistory: EscalationEvent[]
   reminders: string[]
   activityLog: CallbackActivity[]
+  dataOrigin?: 'mock' | 'persisted'
+  isPersisted?: boolean
+}
+
+export type PersistedCallbackDto = Callback & {
+  dataOrigin: 'persisted'
+  isPersisted: true
+}
+
+export interface CallbackCompletionLinkViewModel {
+  callbackId: string
+  customerName: string
+  reason: string
+  assignedAdvisor: string
+  status: CallbackStatus
+  expiresAt: string
+  completionNotes?: string
+  isAlreadyCompleted: boolean
+  isLinkExpired: boolean
+  isLinkUsed: boolean
+  isInvalid: boolean
 }
 
 export interface Advisor {

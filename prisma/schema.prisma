@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum CallbackStatus {
+  offen
+  in_bearbeitung
+  erledigt
+  ueberfaellig
+}
+
+enum CallbackPriority {
+  niedrig
+  mittel
+  hoch
+  dringend
+}
+
+enum CallSource {
+  telefon
+  website
+  whatsapp
+  ki_agent
+  manuell
+}
+
+enum AgentType {
+  mensch
+  ki
+}
+
+enum CallbackEmailActionType {
+  complete_callback
+}
+
+model CallbackRecord {
+  id                 String                    @id @default(cuid())
+  customerName       String
+  customerPhone      String
+  reason             String
+  notes              String                    @default("")
+  assignedAdvisor    String
+  assignedEmployeeId String?
+  status             CallbackStatus            @default(offen)
+  priority           CallbackPriority
+  source             CallSource
+  takenById          String
+  takenByName        String
+  takenByType        AgentType
+  callTranscript     String?
+  callDuration       Int?
+  slaDurationMinutes Int
+  dueAt              DateTime
+  slaDeadline        DateTime
+  completionNotes    String?
+  completedAt        DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  activities         CallbackActivityRecord[]
+  emailActions       CallbackEmailActionRecord[]
+
+  @@index([status, createdAt])
+  @@index([assignedEmployeeId])
+}
+
+model CallbackActivityRecord {
+  id          String         @id @default(cuid())
+  callbackId  String
+  type        String
+  description String
+  performedBy String
+  performedAt DateTime       @default(now())
+  metadata    Json?
+  callback    CallbackRecord @relation(fields: [callbackId], references: [id], onDelete: Cascade)
+
+  @@index([callbackId, performedAt])
+}
+
+model CallbackEmailActionRecord {
+  id             String                  @id @default(cuid())
+  callbackId     String
+  actionType     CallbackEmailActionType
+  recipientEmail String
+  recipientName  String
+  tokenHash      String                  @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  usedByIp       String?
+  invalidatedAt  DateTime?
+  createdAt      DateTime                @default(now())
+  callback       CallbackRecord          @relation(fields: [callbackId], references: [id], onDelete: Cascade)
+
+  @@index([callbackId, actionType])
+  @@index([expiresAt])
+}

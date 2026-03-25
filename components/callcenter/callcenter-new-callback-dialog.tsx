@@ -35,7 +35,7 @@ type DialogStep = 'form' | 'success' | 'emailSent'
 interface NewCallbackDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreate: (payload: CreateCallbackPayload) => Callback
+  onCreate: (payload: CreateCallbackPayload) => Promise<Callback>
   advisorNames?: string[]
   defaultAgentId?: string
   currentUser?: string
@@ -87,6 +87,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   // Dialog step state
   const [dialogStep, setDialogStep] = useState<DialogStep>('form')
   const [createdCallback, setCreatedCallback] = useState<Callback | null>(null)
+  const [isCreatingCallback, setIsCreatingCallback] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [isSendingEmail, setIsSendingEmail] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
 
@@ -107,7 +109,9 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const effectiveSla = slaDurationMinutes ?? slaConfig.perPriority[priority] ?? slaConfig.defaultMinutes
 
   // Check if assigned employee can receive email notifications
-  const isEmailCapable = createdCallback?.assignedEmployeeId === VERENA_SCHWAB_EMPLOYEE_ID
+  const isEmailCapable =
+    createdCallback?.assignedEmployeeId === VERENA_SCHWAB_EMPLOYEE_ID
+    && createdCallback?.isPersisted === true
   const {
     isAvailable: isNotificationEmailAvailable,
     isLoading: isNotificationEmailAvailabilityLoading,
@@ -198,6 +202,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     resetForm()
     setDialogStep('form')
     setCreatedCallback(null)
+    setCreateError(null)
+    setIsCreatingCallback(false)
     setEmailError(null)
     setIsSendingEmail(false)
   }
@@ -230,25 +236,35 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     }
   }
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const agent = mockCallAgents.find(a => a.id === agentId)
     if (!customerName.trim() || !reason.trim() || !assignedAdvisor || !agent) return
 
-    const cb = onCreate({
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
-      reason: reason.trim(),
-      notes: notes.trim(),
-      assignedAdvisor,
-      assignedEmployeeId: assignedEmployeeId || undefined,
-      priority,
-      source,
-      takenBy: agent,
-      slaDurationMinutes: effectiveSla,
-    })
-    resetForm()
-    setCreatedCallback(cb)
-    setDialogStep('success')
+    setIsCreatingCallback(true)
+    setCreateError(null)
+
+    try {
+      const cb = await onCreate({
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        reason: reason.trim(),
+        notes: notes.trim(),
+        assignedAdvisor,
+        assignedEmployeeId: assignedEmployeeId || undefined,
+        priority,
+        source,
+        takenBy: agent,
+        slaDurationMinutes: effectiveSla,
+      })
+
+      resetForm()
+      setCreatedCallback(cb)
+      setDialogStep('success')
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : 'Rückruf konnte nicht erstellt werden.')
+    } finally {
+      setIsCreatingCallback(false)
+    }
   }
 
   const handleSendEmail = async () => {
@@ -261,25 +277,18 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          assignedEmployeeId: createdCallback.assignedEmployeeId,
-          assignedAdvisor: createdCallback.assignedAdvisor,
+          callbackId: createdCallback.id,
           sentBy: currentUser ?? 'System',
-          callback: {
-            id: createdCallback.id,
-            customerName: createdCallback.customerName,
-            customerPhone: createdCallback.customerPhone,
-            reason: createdCallback.reason,
-            notes: createdCallback.notes || undefined,
-            priority: createdCallback.priority,
-            status: createdCallback.status,
-            dueAt: createdCallback.dueAt,
-            slaDeadline: createdCallback.slaDeadline,
-            takenByName: createdCallback.takenBy.name,
-          },
         }),
       })
 
-      const data = await res.json()
+      const data = await res.json() as {
+        error?: string
+        provider?: string
+        providerMessageId?: string
+        recipientEmail?: string
+        recipientName?: string
+      }
       if (!res.ok) throw new Error(data.error || 'Fehler beim Senden der E-Mail')
 
       recordCallbackNotificationEmailSent({
@@ -592,11 +601,14 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                 </div>
               </div>
             </div>
+            {createError && (
+              <p className="text-sm text-red-700">{createError}</p>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => handleClose(false)}>Abbrechen</Button>
-              <Button disabled={!isValid} onClick={handleCreate}>
-                <Plus className="h-4 w-4 mr-1" />
-                Erstellen
+              <Button disabled={!isValid || isCreatingCallback} onClick={() => { void handleCreate() }}>
+                {isCreatingCallback ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
+                {isCreatingCallback ? 'Erstelle...' : 'Erstellen'}
               </Button>
             </DialogFooter>
           </>

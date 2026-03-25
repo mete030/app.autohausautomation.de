@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Shield, Headset, UserCog } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCallbackStore } from '@/lib/stores/callback-store'
@@ -51,6 +51,34 @@ export default function CallcenterPageClient() {
   const createCallback = useCallbackStore(s => s.createCallback)
   const reassignCallback = useCallbackStore(s => s.reassignCallback)
   const escalateCallback = useCallbackStore(s => s.escalateCallback)
+  const loadPersistedCallbacks = useCallbackStore(s => s.loadPersistedCallbacks)
+
+  useEffect(() => {
+    let mounted = true
+
+    const refreshCallbacks = async () => {
+      try {
+        await loadPersistedCallbacks()
+      } catch (error) {
+        if (mounted) {
+          console.error(error)
+        }
+      }
+    }
+
+    void refreshCallbacks()
+
+    const handleFocus = () => {
+      void refreshCallbacks()
+    }
+
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      mounted = false
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [loadPersistedCallbacks])
 
   // Role state
   const [role, setRole] = useState<CallcenterRole>('callcenter')
@@ -433,7 +461,7 @@ export default function CallcenterPageClient() {
         callbackId={completeDialogId}
         onOpenChange={() => setCompleteDialogId(null)}
         onComplete={(id, notes) => {
-          updateCallbackStatus({ callbackId: id, status: 'erledigt', completionNotes: notes })
+          void updateCallbackStatus({ callbackId: id, status: 'erledigt', completionNotes: notes })
           setCompleteDialogId(null)
         }}
       />

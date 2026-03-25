@@ -14,6 +14,7 @@ export interface CallbackNotificationEmailPayload {
   slaDeadline: string
   takenByName: string
   sentBy: string
+  completionUrl?: string
 }
 
 function escapeHtml(value: string): string {
@@ -92,6 +93,7 @@ export function renderCallbackNotificationEmail(payload: CallbackNotificationEma
   const dueAt = formatDateTime(payload.dueAt)
   const slaDeadline = formatDateTime(payload.slaDeadline)
   const priorityStyle = priorityColors(payload.priority)
+  const completionUrl = payload.completionUrl ? escapeHtml(payload.completionUrl) : ''
 
   const subject = `Neuer Rückruf: ${payload.customerName} — ${payload.reason}`
 
@@ -186,6 +188,24 @@ export function renderCallbackNotificationEmail(payload: CallbackNotificationEma
                   </tr>
                 </table>` : ''}
 
+                ${completionUrl ? `
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:24px;border:1px solid #dbeafe;border-radius:12px;background:#eff6ff;">
+                  <tr>
+                    <td style="padding:20px 18px;">
+                      <div style="font-size:13px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Rückruf abschließen</div>
+                      <div style="font-size:15px;line-height:1.6;color:#1e3a8a;margin-bottom:16px;">
+                        Wenn der Rückruf erledigt wurde, kannst du ihn über diesen Button bestätigen und optional eine kurze Notiz hinterlassen.
+                      </div>
+                      <a
+                        href="${completionUrl}"
+                        style="display:inline-block;border-radius:999px;background:#2563eb;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 18px;"
+                      >
+                        Rückruf als erledigt markieren
+                      </a>
+                    </td>
+                  </tr>
+                </table>` : ''}
+
                 <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#4b5563;">
                   Viele Grüße<br />
                   <strong style="color:#111827;">Wackenhut Callcenter</strong>
@@ -218,6 +238,14 @@ export function renderCallbackNotificationEmail(payload: CallbackNotificationEma
 
   if (payload.notes?.trim()) {
     textLines.push('', `Notizen: ${payload.notes.trim()}`)
+  }
+
+  if (payload.completionUrl?.trim()) {
+    textLines.push(
+      '',
+      'Zum Abschließen des Rückrufs:',
+      payload.completionUrl.trim(),
+    )
   }
 
   textLines.push('', 'Viele Grüße', 'Wackenhut Callcenter')

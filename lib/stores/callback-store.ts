@@ -4,14 +4,31 @@ import { create } from 'zustand'
 import { mockCallbacks } from '@/lib/mock-data'
 import { defaultSlaConfig, mockEmployees, mockEscalationRules } from '@/lib/constants'
 import type {
-  Callback, CallbackStatus, CallbackPriority, CallSource, CallAgent,
-  CallbackActivity, CallbackActivityType,
-  Employee, EmployeeRole,
-  EscalationLevel, EscalationTrigger, EscalationEvent, EscalationRule,
-  Reminder, ReminderStatus, SlaConfig,
+  Callback,
+  CallbackStatus,
+  CallbackPriority,
+  CallSource,
+  CallAgent,
+  CallbackActivity,
+  CallbackActivityType,
+  Employee,
+  EmployeeRole,
+  EscalationLevel,
+  EscalationTrigger,
+  EscalationEvent,
+  EscalationRule,
+  Reminder,
+  ReminderStatus,
+  SlaConfig,
+  PersistedCallbackDto,
 } from '@/lib/types'
 
-function createActivity(type: CallbackActivityType, description: string, performedBy: string, metadata?: Record<string, string>): CallbackActivity {
+function createActivity(
+  type: CallbackActivityType,
+  description: string,
+  performedBy: string,
+  metadata?: Record<string, string>,
+): CallbackActivity {
   return {
     id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     type,
@@ -22,9 +39,37 @@ function createActivity(type: CallbackActivityType, description: string, perform
   }
 }
 
-const initialCallbacks = mockCallbacks.map((callback) => ({ ...callback }))
+function normalizeMockCallback(callback: Callback): Callback {
+  return {
+    ...callback,
+    dataOrigin: 'mock',
+    isPersisted: false,
+  }
+}
 
-// ---- Payload Interfaces ----
+function normalizePersistedCallback(callback: PersistedCallbackDto): PersistedCallbackDto {
+  return {
+    ...callback,
+    dataOrigin: 'persisted',
+    isPersisted: true,
+  }
+}
+
+function sortCallbacks(callbacks: Callback[]) {
+  return [...callbacks].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
+}
+
+function mergePersistedCallbacks(currentCallbacks: Callback[], persistedCallbacks: PersistedCallbackDto[]) {
+  const localCallbacks = currentCallbacks.filter((callback) => !callback.isPersisted)
+  return sortCallbacks([
+    ...persistedCallbacks.map(normalizePersistedCallback),
+    ...localCallbacks,
+  ])
+}
+
+const initialCallbacks = sortCallbacks(mockCallbacks.map(normalizeMockCallback))
 
 interface UpdateCallbackPayload {
   callbackId: string
@@ -94,8 +139,6 @@ interface RecordCallbackNotificationEmailSentPayload {
   providerMessageId?: string
 }
 
-// ---- Store Interface ----
-
 interface CallbackStoreState {
   callbacks: Callback[]
   employees: Employee[]
@@ -103,61 +146,98 @@ interface CallbackStoreState {
   escalationRules: EscalationRule[]
   slaConfig: SlaConfig
 
-  // Callback actions
-  updateCallbackStatus: (payload: UpdateCallbackPayload) => void
-  createCallback: (payload: CreateCallbackPayload) => Callback
+  loadPersistedCallbacks: () => Promise<void>
+  hydratePersistedCallbacks: (callbacks: PersistedCallbackDto[]) => void
+
+  updateCallbackStatus: (payload: UpdateCallbackPayload) => Promise<void>
+  createCallback: (payload: CreateCallbackPayload) => Promise<Callback>
   reassignCallback: (payload: ReassignCallbackPayload) => void
   escalateCallback: (payload: EscalateCallbackPayload) => void
   escalateCallbackToLevel: (payload: EscalateToLevelPayload) => void
   assignToEmployee: (payload: { callbackId: string; employeeId: string; assignedBy: string }) => void
 
-  // Employee actions
   addEmployee: (payload: AddEmployeePayload) => void
   updateEmployee: (id: string, updates: Partial<Employee>) => void
   removeEmployee: (id: string) => void
 
-  // Reminder actions
   addReminder: (payload: AddReminderPayload) => void
   dismissReminder: (id: string) => void
   completeReminder: (id: string) => void
 
-  // Escalation rule actions
   addEscalationRule: (rule: Omit<EscalationRule, 'id'>) => void
   updateEscalationRule: (id: string, updates: Partial<EscalationRule>) => void
   removeEscalationRule: (id: string) => void
 
-  // SLA config
   updateSlaConfig: (config: Partial<SlaConfig>) => void
-
-  // Activity log
   addActivityToCallback: (callbackId: string, activity: CallbackActivity) => void
 
-  // Email notifications
   sendEmailNotification: (callbackId: string, recipientEmployeeId: string, sentBy: string) => void
   sendMorningSummary: (sentBy: string) => void
   recordCallbackNotificationEmailSent: (payload: RecordCallbackNotificationEmailSentPayload) => void
 
-  // Auto-escalation
   checkAutoEscalations: () => void
 }
 
 export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
   callbacks: initialCallbacks,
-  employees: mockEmployees.map(e => ({ ...e })),
+  employees: mockEmployees.map((employee) => ({ ...employee })),
   reminders: [],
-  escalationRules: mockEscalationRules.map(r => ({ ...r })),
+  escalationRules: mockEscalationRules.map((rule) => ({ ...rule })),
   slaConfig: { ...defaultSlaConfig },
 
-  // ---- Callback Actions ----
+  loadPersistedCallbacks: async () => {
+    try {
+      const response = await fetch('/api/callbacks', {
+        method: 'GET',
+        cache: 'no-store',
+      })
 
-  updateCallbackStatus: ({ callbackId, status, completionNotes }) => {
+      const data = await response.json() as {
+        available?: boolean
+        callbacks?: PersistedCallbackDto[]
+      }
+
+      if (!response.ok || data.available === false) {
+        get().hydratePersistedCallbacks([])
+        return
+      }
+
+      get().hydratePersistedCallbacks(data.callbacks ?? [])
+    } catch {
+      get().hydratePersistedCallbacks([])
+    }
+  },
+
+  hydratePersistedCallbacks: (callbacks) => {
+    set((state) => ({
+      callbacks: mergePersistedCallbacks(
+        state.callbacks,
+        callbacks.map(normalizePersistedCallback),
+      ),
+    }))
+  },
+
+  updateCallbackStatus: async ({ callbackId, status, completionNotes }) => {
+    const existingCallback = get().callbacks.find((callback) => callback.id === callbackId)
+    if (!existingCallback) {
+      return
+    }
+
+    const now = new Date().toISOString()
+    const activity = status === 'erledigt'
+      ? createActivity(
+        'abgeschlossen',
+        `Rückruf abgeschlossen${completionNotes ? `: ${completionNotes.trim()}` : ''}`,
+        'Admin',
+      )
+      : createActivity('status_geaendert', `Status geändert auf "${status}"`, 'Admin')
+
     set((state) => ({
       callbacks: state.callbacks.map((callback) => {
-        if (callback.id !== callbackId) return callback
-        const now = new Date().toISOString()
-        const activity = status === 'erledigt'
-          ? createActivity('abgeschlossen', `Rückruf abgeschlossen${completionNotes ? ': ' + completionNotes.trim() : ''}`, 'Admin')
-          : createActivity('status_geaendert', `Status geändert auf "${status}"`, 'Admin')
+        if (callback.id !== callbackId) {
+          return callback
+        }
+
         if (status === 'erledigt') {
           return {
             ...callback,
@@ -168,50 +248,84 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
             activityLog: [...callback.activityLog, activity],
           }
         }
-        return { ...callback, status, updatedAt: now, activityLog: [...callback.activityLog, activity] }
+
+        return {
+          ...callback,
+          status,
+          updatedAt: now,
+          activityLog: [...callback.activityLog, activity],
+        }
       }),
     }))
+
+    if (existingCallback.isPersisted && status === 'erledigt') {
+      try {
+        const response = await fetch(`/api/callbacks/${callbackId}/complete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            completionNotes,
+            performedBy: 'Admin',
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Persistierter Rückruf konnte nicht abgeschlossen werden.')
+        }
+
+        const data = await response.json() as { callback?: PersistedCallbackDto }
+        if (data.callback) {
+          get().hydratePersistedCallbacks([data.callback])
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    }
   },
 
-  createCallback: (payload) => {
+  createCallback: async (payload) => {
     const state = get()
-    const slaMinutes = payload.slaDurationMinutes ?? state.slaConfig.perPriority[payload.priority] ?? state.slaConfig.defaultMinutes
-    const now = new Date()
-    const dueDate = new Date(now.getTime() + slaMinutes * 60 * 1000)
-    const newCallback: Callback = {
-      id: `cb-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      customerName: payload.customerName,
-      customerPhone: payload.customerPhone,
-      reason: payload.reason,
-      notes: payload.notes,
-      assignedAdvisor: payload.assignedAdvisor,
-      assignedEmployeeId: payload.assignedEmployeeId,
-      status: 'offen',
-      priority: payload.priority,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-      slaDeadline: dueDate.toISOString(),
-      slaDurationMinutes: slaMinutes,
-      dueAt: dueDate.toISOString(),
-      takenBy: payload.takenBy,
-      callTranscript: payload.callTranscript,
-      source: payload.source,
-      escalationLevel: 1,
-      escalationHistory: [],
-      reminders: [],
-      activityLog: [
-        createActivity('erstellt', `Rückruf erstellt — zugewiesen an ${payload.assignedAdvisor}`, 'System'),
-      ],
+    const slaMinutes =
+      payload.slaDurationMinutes
+      ?? state.slaConfig.perPriority[payload.priority]
+      ?? state.slaConfig.defaultMinutes
+
+    const response = await fetch('/api/callbacks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...payload,
+        slaDurationMinutes: slaMinutes,
+      }),
+    })
+
+    const data = await response.json() as { callback?: PersistedCallbackDto; error?: string }
+
+    if (!response.ok || !data.callback) {
+      throw new Error(data.error ?? 'Rückruf konnte nicht erstellt werden.')
     }
-    set((state) => ({ callbacks: [newCallback, ...state.callbacks] }))
-    return newCallback
+
+    const createdCallback = normalizePersistedCallback(data.callback)
+    set((state) => ({
+      callbacks: sortCallbacks([createdCallback, ...state.callbacks.filter((callback) => callback.id !== createdCallback.id)]),
+    }))
+
+    return createdCallback
   },
 
   reassignCallback: ({ callbackId, newAdvisor, newEmployeeId, reassignedBy }) => {
     set((state) => ({
       callbacks: state.callbacks.map((callback) => {
         if (callback.id !== callbackId) return callback
-        const activity = createActivity('zugewiesen', `Zugewiesen von ${callback.assignedAdvisor} an ${newAdvisor}`, reassignedBy)
+        const activity = createActivity(
+          'zugewiesen',
+          `Zugewiesen von ${callback.assignedAdvisor} an ${newAdvisor}`,
+          reassignedBy,
+        )
         return {
           ...callback,
           reassignedFrom: callback.assignedAdvisor,
@@ -256,7 +370,12 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
           escalatedAt: now,
           note,
         }
-        const activity = createActivity('eskaliert', `Eskaliert von Stufe ${callback.escalationLevel} auf Stufe ${toLevel} — an ${escalatedTo}`, escalatedBy, { trigger })
+        const activity = createActivity(
+          'eskaliert',
+          `Eskaliert von Stufe ${callback.escalationLevel} auf Stufe ${toLevel} — an ${escalatedTo}`,
+          escalatedBy,
+          { trigger },
+        )
         return {
           ...callback,
           escalationLevel: toLevel,
@@ -271,11 +390,13 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
   },
 
   assignToEmployee: ({ callbackId, employeeId, assignedBy }) => {
-    const state = get()
-    const employee = state.employees.find(e => e.id === employeeId)
-    if (!employee) return
-    set((s) => ({
-      callbacks: s.callbacks.map((callback) => {
+    const employee = get().employees.find((entry) => entry.id === employeeId)
+    if (!employee) {
+      return
+    }
+
+    set((state) => ({
+      callbacks: state.callbacks.map((callback) => {
         if (callback.id !== callbackId) return callback
         const activity = createActivity('zugewiesen', `Zugewiesen an ${employee.name}`, assignedBy, { employeeId })
         return {
@@ -291,8 +412,6 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
     }))
   },
 
-  // ---- Employee Actions ----
-
   addEmployee: (payload) => {
     const newEmployee: Employee = {
       id: `emp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -305,22 +424,21 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
       isSupervisor: payload.isSupervisor,
       createdAt: new Date().toISOString(),
     }
+
     set((state) => ({ employees: [...state.employees, newEmployee] }))
   },
 
   updateEmployee: (id, updates) => {
     set((state) => ({
-      employees: state.employees.map(e => e.id === id ? { ...e, ...updates } : e),
+      employees: state.employees.map((employee) => employee.id === id ? { ...employee, ...updates } : employee),
     }))
   },
 
   removeEmployee: (id) => {
     set((state) => ({
-      employees: state.employees.filter(e => e.id !== id),
+      employees: state.employees.filter((employee) => employee.id !== id),
     }))
   },
-
-  // ---- Reminder Actions ----
 
   addReminder: (payload) => {
     const newReminder: Reminder = {
@@ -333,30 +451,36 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
       createdAt: new Date().toISOString(),
       createdBy: payload.createdBy,
     }
-    const activity = createActivity('erinnerung_gesetzt', `Erinnerung gesetzt für ${new Date(payload.reminderAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`, payload.createdBy)
+    const activity = createActivity(
+      'erinnerung_gesetzt',
+      `Erinnerung gesetzt für ${new Date(payload.reminderAt).toLocaleTimeString('de-DE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`,
+      payload.createdBy,
+    )
+
     set((state) => ({
       reminders: [...state.reminders, newReminder],
-      callbacks: state.callbacks.map(cb =>
-        cb.id === payload.callbackId
-          ? { ...cb, reminders: [...cb.reminders, newReminder.id], activityLog: [...cb.activityLog, activity] }
-          : cb
+      callbacks: state.callbacks.map((callback) =>
+        callback.id === payload.callbackId
+          ? { ...callback, reminders: [...callback.reminders, newReminder.id], activityLog: [...callback.activityLog, activity] }
+          : callback,
       ),
     }))
   },
 
   dismissReminder: (id) => {
     set((state) => ({
-      reminders: state.reminders.map(r => r.id === id ? { ...r, status: 'angezeigt' as ReminderStatus } : r),
+      reminders: state.reminders.map((reminder) => reminder.id === id ? { ...reminder, status: 'angezeigt' as ReminderStatus } : reminder),
     }))
   },
 
   completeReminder: (id) => {
     set((state) => ({
-      reminders: state.reminders.map(r => r.id === id ? { ...r, status: 'erledigt' as ReminderStatus } : r),
+      reminders: state.reminders.map((reminder) => reminder.id === id ? { ...reminder, status: 'erledigt' as ReminderStatus } : reminder),
     }))
   },
-
-  // ---- Escalation Rule Actions ----
 
   addEscalationRule: (rule) => {
     const newRule: EscalationRule = {
@@ -368,17 +492,15 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
 
   updateEscalationRule: (id, updates) => {
     set((state) => ({
-      escalationRules: state.escalationRules.map(r => r.id === id ? { ...r, ...updates } : r),
+      escalationRules: state.escalationRules.map((rule) => rule.id === id ? { ...rule, ...updates } : rule),
     }))
   },
 
   removeEscalationRule: (id) => {
     set((state) => ({
-      escalationRules: state.escalationRules.filter(r => r.id !== id),
+      escalationRules: state.escalationRules.filter((rule) => rule.id !== id),
     }))
   },
-
-  // ---- SLA Config ----
 
   updateSlaConfig: (config) => {
     set((state) => ({
@@ -392,25 +514,23 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
     }))
   },
 
-  // ---- Activity Log ----
-
   addActivityToCallback: (callbackId, activity) => {
     set((state) => ({
-      callbacks: state.callbacks.map(cb =>
-        cb.id === callbackId
-          ? { ...cb, activityLog: [...cb.activityLog, activity], updatedAt: new Date().toISOString() }
-          : cb
+      callbacks: state.callbacks.map((callback) =>
+        callback.id === callbackId
+          ? { ...callback, activityLog: [...callback.activityLog, activity], updatedAt: new Date().toISOString() }
+          : callback,
       ),
     }))
   },
 
-  // ---- Email Notifications ----
-
   sendEmailNotification: (callbackId, recipientEmployeeId, sentBy) => {
     const state = get()
-    const cb = state.callbacks.find(c => c.id === callbackId)
-    const employee = state.employees.find(e => e.id === recipientEmployeeId)
-    if (!cb || !employee) return
+    const employee = state.employees.find((entry) => entry.id === recipientEmployeeId)
+    const callback = state.callbacks.find((entry) => entry.id === callbackId)
+    if (!employee || !callback) {
+      return
+    }
 
     const activity = createActivity(
       'email_gesendet',
@@ -421,25 +541,27 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
         recipientName: employee.name,
         emailKind: 'erinnerung',
         provider: 'intern',
-      }
+      },
     )
+
     get().addActivityToCallback(callbackId, activity)
   },
 
   sendMorningSummary: (sentBy) => {
     const state = get()
-    const activeCallbacks = state.callbacks.filter(cb => cb.status !== 'erledigt')
-    const overdueCallbacks = activeCallbacks.filter(cb => cb.status === 'ueberfaellig' || new Date(cb.dueAt) < new Date())
+    const activeCallbacks = state.callbacks.filter((callback) => callback.status !== 'erledigt')
+    const overdueCallbacks = activeCallbacks.filter(
+      (callback) => callback.status === 'ueberfaellig' || new Date(callback.dueAt) < new Date(),
+    )
 
-    // Log activity on each overdue callback
-    overdueCallbacks.forEach(cb => {
+    overdueCallbacks.forEach((callback) => {
       const activity = createActivity(
         'email_gesendet',
         `Morgen-Zusammenfassung versendet — ${overdueCallbacks.length} überfällig, ${activeCallbacks.length} aktiv`,
         sentBy,
-        { emailKind: 'morgen_zusammenfassung' }
+        { emailKind: 'morgen_zusammenfassung' },
       )
-      get().addActivityToCallback(cb.id, activity)
+      get().addActivityToCallback(callback.id, activity)
     })
   },
 
@@ -465,29 +587,27 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
     get().addActivityToCallback(callbackId, activity)
   },
 
-  // ---- Auto-Escalation ----
-
   checkAutoEscalations: () => {
     const state = get()
     const now = Date.now()
-    const activeRules = state.escalationRules.filter(r => r.isActive)
-    const supervisors = state.employees.filter(e => e.isSupervisor)
+    const activeRules = state.escalationRules.filter((rule) => rule.isActive)
+    const supervisors = state.employees.filter((employee) => employee.isSupervisor)
 
-    state.callbacks.forEach((cb) => {
-      if (cb.status === 'erledigt') return
+    state.callbacks.forEach((callback) => {
+      if (callback.status === 'erledigt') return
 
-      const ageMinutes = (now - new Date(cb.createdAt).getTime()) / (60 * 1000)
+      const ageMinutes = (now - new Date(callback.createdAt).getTime()) / (60 * 1000)
 
       for (const rule of activeRules) {
-        if (cb.escalationLevel === rule.fromLevel && ageMinutes >= rule.triggerAfterMinutes) {
-          const alreadyEscalated = cb.escalationHistory.some(
-            e => e.fromLevel === rule.fromLevel && e.toLevel === rule.toLevel
+        if (callback.escalationLevel === rule.fromLevel && ageMinutes >= rule.triggerAfterMinutes) {
+          const alreadyEscalated = callback.escalationHistory.some(
+            (entry) => entry.fromLevel === rule.fromLevel && entry.toLevel === rule.toLevel,
           )
           if (alreadyEscalated) continue
 
           const target = supervisors[0]?.name ?? 'Teamleitung'
           get().escalateCallbackToLevel({
-            callbackId: cb.id,
+            callbackId: callback.id,
             toLevel: rule.toLevel,
             escalatedBy: 'System',
             escalatedTo: target,

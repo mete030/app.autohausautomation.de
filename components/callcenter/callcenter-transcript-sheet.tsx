@@ -100,6 +100,7 @@ export function TranscriptSheet({
   const isVerenaCallback =
     callback?.assignedEmployeeId === VERENA_SCHWAB_EMPLOYEE_ID
     && callback?.assignedAdvisor === VERENA_SCHWAB_NAME
+    && callback?.isPersisted === true
   const {
     isAvailable: isNotificationEmailAvailable,
     isLoading: isNotificationEmailAvailabilityLoading,
@@ -149,21 +150,8 @@ export function TranscriptSheet({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          assignedEmployeeId: callback.assignedEmployeeId,
-          assignedAdvisor: callback.assignedAdvisor,
+          callbackId: callback.id,
           sentBy: currentUserName,
-          callback: {
-            id: callback.id,
-            customerName: callback.customerName,
-            customerPhone: callback.customerPhone,
-            reason: callback.reason,
-            notes: callback.notes || undefined,
-            priority: callback.priority,
-            status: callback.status,
-            dueAt: callback.dueAt,
-            slaDeadline: callback.slaDeadline,
-            takenByName: callback.takenBy.name,
-          },
         }),
       })
 

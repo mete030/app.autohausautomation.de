@@ -2,33 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE,
-  CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
-  CALLBACK_NOTIFICATION_RECIPIENT_NAME,
   VERENA_SCHWAB_EMPLOYEE_ID,
   VERENA_SCHWAB_NAME,
 } from '@/lib/email/callback-email-config'
 import { getCallbackNotificationEmailServerConfig } from '@/lib/email/callback-email-server-config'
 import { renderCallbackNotificationEmail } from '@/lib/email/render-callback-notification-email'
-
-const callbackPrioritySchema = z.enum(['niedrig', 'mittel', 'hoch', 'dringend'])
-const callbackStatusSchema = z.enum(['offen', 'in_bearbeitung', 'erledigt', 'ueberfaellig'])
+import {
+  CALLBACK_PERSISTENCE_UNAVAILABLE_MESSAGE,
+  isCallbackPersistenceConfigured,
+} from '@/lib/server/callback-persistence-config'
 
 const requestSchema = z.object({
-  assignedEmployeeId: z.string().min(1),
-  assignedAdvisor: z.string().min(1),
+  callbackId: z.string().min(1),
   sentBy: z.string().min(1),
-  callback: z.object({
-    id: z.string().min(1),
-    customerName: z.string().min(1),
-    customerPhone: z.string().min(1),
-    reason: z.string().min(1),
-    notes: z.string().optional(),
-    priority: callbackPrioritySchema,
-    status: callbackStatusSchema,
-    dueAt: z.string().min(1),
-    slaDeadline: z.string().min(1),
-    takenByName: z.string().min(1),
-  }),
 })
 
 export async function GET() {
@@ -42,12 +28,32 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isCallbackPersistenceConfigured()) {
+    return NextResponse.json(
+      { error: CALLBACK_PERSISTENCE_UNAVAILABLE_MESSAGE },
+      { status: 503 },
+    )
+  }
+
   try {
     const payload = requestSchema.parse(await req.json())
+    const {
+      appendPersistedCallbackActivity,
+      createCallbackCompletionAction,
+      getPersistedCallbackById,
+    } = await import('@/lib/server/callback-records')
+    const callback = await getPersistedCallbackById(payload.callbackId)
+
+    if (!callback) {
+      return NextResponse.json(
+        { error: 'Persistierter Rückruf nicht gefunden.' },
+        { status: 404 },
+      )
+    }
 
     if (
-      payload.assignedEmployeeId !== VERENA_SCHWAB_EMPLOYEE_ID
-      || payload.assignedAdvisor !== VERENA_SCHWAB_NAME
+      callback.assignedEmployeeId !== VERENA_SCHWAB_EMPLOYEE_ID
+      || callback.assignedAdvisor !== VERENA_SCHWAB_NAME
     ) {
       return NextResponse.json(
         { error: 'Benachrichtigungs-E-Mails können nur für Verena Schwab ausgelöst werden.' },
@@ -56,9 +62,6 @@ export async function POST(req: NextRequest) {
     }
 
     const emailConfig = getCallbackNotificationEmailServerConfig()
-    const recipientEmail = CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
-    const recipientName = CALLBACK_NOTIFICATION_RECIPIENT_NAME
-
     if (!emailConfig.isConfigured) {
       console.error('Callback notification email is not fully configured.', {
         missing: emailConfig.missing,
@@ -70,19 +73,29 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const { action, token } = await createCallbackCompletionAction({
+      callbackId: callback.id,
+      recipientEmail: emailConfig.recipientEmail,
+      recipientName: emailConfig.recipientName,
+    })
+
+    const completionUrl = new URL('/callback-actions/complete', req.nextUrl.origin)
+    completionUrl.searchParams.set('token', token)
+
     const email = renderCallbackNotificationEmail({
-      recipientName,
-      salespersonName: payload.assignedAdvisor,
-      customerName: payload.callback.customerName,
-      customerPhone: payload.callback.customerPhone,
-      reason: payload.callback.reason,
-      notes: payload.callback.notes,
-      priority: payload.callback.priority,
-      status: payload.callback.status,
-      dueAt: payload.callback.dueAt,
-      slaDeadline: payload.callback.slaDeadline,
-      takenByName: payload.callback.takenByName,
+      recipientName: emailConfig.recipientName,
+      salespersonName: callback.assignedAdvisor,
+      customerName: callback.customerName,
+      customerPhone: callback.customerPhone,
+      reason: callback.reason,
+      notes: callback.notes || undefined,
+      priority: callback.priority,
+      status: callback.status,
+      dueAt: callback.dueAt,
+      slaDeadline: callback.slaDeadline,
+      takenByName: callback.takenBy.name,
       sentBy: payload.sentBy,
+      completionUrl: completionUrl.toString(),
     })
 
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -99,8 +112,8 @@ export async function POST(req: NextRequest) {
         },
         to: [
           {
-            email: recipientEmail,
-            name: recipientName,
+            email: emailConfig.recipientEmail,
+            name: emailConfig.recipientName,
           },
         ],
         subject: email.subject,
@@ -129,14 +142,32 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const activity = await appendPersistedCallbackActivity({
+      callbackId: callback.id,
+      type: 'email_gesendet',
+      description: `Callback-Benachrichtigung gesendet an ${emailConfig.recipientName} (${emailConfig.recipientEmail})`,
+      performedBy: payload.sentBy,
+      metadata: {
+        recipientEmail: emailConfig.recipientEmail,
+        recipientName: emailConfig.recipientName,
+        provider: 'brevo',
+        emailKind: 'callback_benachrichtigung',
+        actionId: action.id,
+        providerMessageId: typeof responseJson?.messageId === 'string' ? responseJson.messageId : '',
+      },
+    })
+
     return NextResponse.json({
       ok: true,
-      recipientEmail,
-      recipientName,
+      recipientEmail: emailConfig.recipientEmail,
+      recipientName: emailConfig.recipientName,
       provider: 'brevo',
       providerMessageId: typeof responseJson?.messageId === 'string' ? responseJson.messageId : undefined,
+      activity,
     })
   } catch (error) {
+    console.error(error)
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Ungültige Callback-Benachrichtigungsdaten.' },
