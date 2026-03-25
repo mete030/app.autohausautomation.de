@@ -121,12 +121,16 @@ export function TranscriptSheet({
   const emailActivities = [...callback.activityLog]
     .filter((activity) => activity.type === 'email_gesendet')
     .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime())
+  const completionActivities = [...callback.activityLog]
+    .filter((activity) => activity.type === 'abgeschlossen')
+    .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime())
 
   const hasHistory =
     callback.reassignedFrom
     || callback.escalatedBy
     || callback.escalationHistory.length > 0
     || callbackReminders.length > 0
+    || completionActivities.length > 0
     || emailActivities.length > 0
 
   const handleSheetOpenChange = (nextOpen: boolean) => {
@@ -393,6 +397,32 @@ export function TranscriptSheet({
                               <p className="text-muted-foreground">
                                 Ausgelöst von <span className="font-medium text-foreground">{activity.performedBy}</span>
                               </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {/* Completed callbacks */}
+                      {completionActivities.map((activity) => {
+                        const noteFromMetadata = activity.metadata?.completionNotes
+                        const completionNote = noteFromMetadata || callback.completionNotes
+
+                        return (
+                          <div key={activity.id} className="relative">
+                            <div className="absolute -left-[22px] top-1 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500" />
+                            <div className="text-xs space-y-0.5">
+                              <p className="font-medium text-emerald-700 dark:text-emerald-400">Rückruf erledigt</p>
+                              <p className="text-muted-foreground">
+                                Von <span className="font-medium text-foreground">{activity.performedBy}</span>
+                                {' · '}
+                                {formatTimeAgo(activity.performedAt)}
+                              </p>
+                              <p className="text-muted-foreground">{activity.description}</p>
+                              {completionNote && (
+                                <p className="text-muted-foreground">
+                                  Notiz: <span className="font-medium text-foreground">{completionNote}</span>
+                                </p>
+                              )}
                             </div>
                           </div>
                         )

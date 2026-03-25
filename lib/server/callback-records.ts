@@ -335,6 +335,7 @@ export async function completeCallbackFromEmailAction(input: {
         metadata: toInputJson({
           completionSource: 'email_cta',
           completionNoteProvided: trimmedCompletionNotes ? 'true' : 'false',
+          completionNotes: trimmedCompletionNotes ?? '',
           recipientEmail: action.recipientEmail,
           recipientName: action.recipientName,
         }),
@@ -387,6 +388,7 @@ export async function completePersistedCallbackDirect(input: {
       metadata: toInputJson({
         completionSource: 'dashboard',
         completionNoteProvided: trimmedCompletionNotes ? 'true' : 'false',
+        completionNotes: trimmedCompletionNotes ?? '',
       }),
     },
   })

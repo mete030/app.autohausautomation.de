@@ -404,7 +404,11 @@ export default function CallcenterPageClient() {
           </TabsContent>
 
           <TabsContent value="mails" className="mt-4">
-            <CallcenterEmailInbox />
+            <CallcenterEmailInbox
+              callbacks={callbacks}
+              currentUserName={currentUser}
+              role={role}
+            />
           </TabsContent>
         </Tabs>
       )}

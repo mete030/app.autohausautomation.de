@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Mail, Send, Reply, Bot, Clock, CheckCheck, ChevronDown, ChevronRight, Search, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import type { Callback, CallbackActivity } from '@/lib/types'
 
 // ---- Types ----
 
@@ -28,6 +29,12 @@ interface EmailMessage {
   sentAt: string
   isAiProcessed?: boolean
   relatedAction?: string
+}
+
+interface CallcenterEmailInboxProps {
+  callbacks?: Callback[]
+  currentUserName?: string
+  role?: 'admin' | 'callcenter' | 'berater'
 }
 
 // ---- Mock Data ----
@@ -236,13 +243,190 @@ function getRoleBadge(role: EmailMessage['fromRole']) {
   return { label: 'Berater', class: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' }
 }
 
+function getThreadSubject(callback: Callback, emailActivities: CallbackActivity[]) {
+  const latestEmailKind = emailActivities[emailActivities.length - 1]?.metadata?.emailKind
+
+  if (latestEmailKind === 'erinnerung') {
+    return `Erinnerung: Rückruf ${callback.customerName} — ${callback.reason}`
+  }
+
+  return `Rückruf: ${callback.customerName} — ${callback.reason}`
+}
+
+function buildSentEmailBody(callback: Callback, activity: CallbackActivity, recipientName: string) {
+  const emailKind = activity.metadata?.emailKind
+  const senderName = activity.performedBy
+
+  if (emailKind === 'erinnerung') {
+    return [
+      `Hallo ${recipientName},`,
+      '',
+      `bitte rufe ${callback.customerName} (${callback.customerPhone}) zeitnah zurück.`,
+      `Anliegen: ${callback.reason}`,
+      callback.notes ? `Notizen: ${callback.notes}` : undefined,
+      `Priorität: ${callback.priority}`,
+      `Status: ${callback.status}`,
+      '',
+      `Viele Grüße`,
+      senderName,
+    ].filter(Boolean).join('\n')
+  }
+
+  return [
+    `Hallo ${recipientName},`,
+    '',
+    `für dich wurde ein neuer Rückruf angelegt.`,
+    `Kunde: ${callback.customerName} (${callback.customerPhone})`,
+    `Anliegen: ${callback.reason}`,
+    callback.notes ? `Notizen: ${callback.notes}` : undefined,
+    `Priorität: ${callback.priority}`,
+    '',
+    `Viele Grüße`,
+    senderName,
+  ].filter(Boolean).join('\n')
+}
+
+function buildCompletionReplyBody(callback: Callback, activity: CallbackActivity, replyTo: string) {
+  return [
+    `Hallo ${replyTo},`,
+    '',
+    `ich habe den Rückruf mit ${callback.customerName} abgeschlossen.`,
+    callback.completionNotes ? `Notiz: ${callback.completionNotes}` : undefined,
+    '',
+    'Rückruf erledigt.',
+    '',
+    'Viele Grüße',
+    activity.performedBy,
+  ].filter(Boolean).join('\n')
+}
+
+function buildSystemProcessedBody(callback: Callback) {
+  return [
+    '✓ Rückruf-Status aktualisiert: Erledigt',
+    callback.completionNotes ? `✓ Abschlussnotiz gespeichert: ${callback.completionNotes}` : undefined,
+    callback.completedAt ? `✓ Erledigt am: ${new Date(callback.completedAt).toLocaleString('de-DE')}` : undefined,
+    '',
+    `Der Rückruf für ${callback.customerName} wurde per CTA als erledigt markiert.`,
+  ].filter(Boolean).join('\n')
+}
+
+function buildGeneratedThreads(
+  callbacks: Callback[],
+  currentUserName: string,
+  role: 'admin' | 'callcenter' | 'berater',
+): EmailThread[] {
+  return callbacks
+    .flatMap((callback) => {
+      const emailActivities = [...callback.activityLog]
+        .filter((activity) => {
+          if (activity.type !== 'email_gesendet') {
+            return false
+          }
+
+          const emailKind = activity.metadata?.emailKind
+          const isRelevantKind = emailKind === 'erinnerung' || emailKind === 'callback_benachrichtigung'
+          if (!isRelevantKind) {
+            return false
+          }
+
+          if (role === 'callcenter') {
+            return activity.performedBy === currentUserName
+          }
+
+          return true
+        })
+        .sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime())
+
+      if (emailActivities.length === 0) {
+        return []
+      }
+
+      const completionActivity = [...callback.activityLog]
+        .filter((activity) => activity.type === 'abgeschlossen')
+        .sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime())
+        .at(-1)
+
+      const subject = getThreadSubject(callback, emailActivities)
+      const primaryRecipientName = emailActivities[0]?.metadata?.recipientName || callback.assignedAdvisor
+      const primaryRecipientEmail = emailActivities[0]?.metadata?.recipientEmail || callback.assignedAdvisor
+
+      const messages: EmailMessage[] = emailActivities.map((activity, index) => {
+        const recipientName = activity.metadata?.recipientName || callback.assignedAdvisor
+        const recipientEmail = activity.metadata?.recipientEmail || recipientName
+
+        return {
+          id: `${callback.id}-${activity.id}-sent`,
+          from: `${activity.performedBy} (Call Center)`,
+          fromRole: 'callcenter',
+          to: recipientName,
+          subject: index === 0 ? subject : `Re: ${subject}`,
+          body: buildSentEmailBody(callback, activity, recipientName),
+          sentAt: activity.performedAt,
+          relatedAction: activity.metadata?.emailKind === 'erinnerung' ? 'Erinnerung gesendet' : 'Benachrichtigung gesendet',
+          isAiProcessed: false,
+        }
+      })
+
+      if (completionActivity) {
+        messages.push({
+          id: `${callback.id}-${completionActivity.id}-reply`,
+          from: completionActivity.performedBy,
+          fromRole: 'berater',
+          to: `${emailActivities.at(-1)?.performedBy ?? currentUserName} (Call Center)`,
+          subject: `Re: ${subject}`,
+          body: buildCompletionReplyBody(callback, completionActivity, emailActivities.at(-1)?.performedBy ?? currentUserName),
+          sentAt: completionActivity.performedAt,
+        })
+
+        messages.push({
+          id: `${callback.id}-${completionActivity.id}-system`,
+          from: 'KI-Assistent',
+          fromRole: 'ki',
+          to: 'System',
+          subject: `Automatische Verarbeitung: ${callback.customerName} erledigt`,
+          body: buildSystemProcessedBody(callback),
+          sentAt: completionActivity.performedAt,
+          isAiProcessed: true,
+          relatedAction: 'Rückruf als erledigt markiert',
+        })
+      }
+
+      const sortedMessages = messages.sort(
+        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime(),
+      )
+      const lastMessage = sortedMessages[sortedMessages.length - 1]
+
+      return [{
+        id: `generated-${callback.id}`,
+        subject,
+        callbackId: callback.id,
+        customerName: callback.customerName,
+        lastMessageAt: lastMessage.sentAt,
+        isRead: Boolean(completionActivity),
+        messages: sortedMessages.map((message) => ({
+          ...message,
+          to: message.fromRole === 'ki' ? message.to : message.to || `${primaryRecipientName} (${primaryRecipientEmail})`,
+        })),
+      }]
+    })
+    .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
+}
+
 // ---- Component ----
 
-export function CallcenterEmailInbox() {
-  const [threads] = useState<EmailThread[]>(mockThreads)
+export function CallcenterEmailInbox({
+  callbacks = [],
+  currentUserName = 'Marina Schittenhelm',
+  role = 'callcenter',
+}: CallcenterEmailInboxProps) {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
+  const generatedThreads = useMemo(
+    () => buildGeneratedThreads(callbacks, currentUserName, role),
+    [callbacks, currentUserName, role],
+  )
+  const threads = generatedThreads.length > 0 ? generatedThreads : mockThreads
 
   const filteredThreads = useMemo(() => {
     if (!searchQuery.trim()) return threads
@@ -257,6 +441,19 @@ export function CallcenterEmailInbox() {
 
   const selectedThread = threads.find(t => t.id === selectedThreadId)
   const unreadCount = threads.filter(t => !t.isRead).length
+
+  useEffect(() => {
+    if (!filteredThreads.length) {
+      setSelectedThreadId(null)
+      return
+    }
+
+    if (!selectedThreadId || !filteredThreads.some((thread) => thread.id === selectedThreadId)) {
+      const firstThread = filteredThreads[0]
+      setSelectedThreadId(firstThread.id)
+      setExpandedMessages(new Set(firstThread.messages.map((message) => message.id)))
+    }
+  }, [filteredThreads, selectedThreadId])
 
   const toggleMessage = (msgId: string) => {
     setExpandedMessages(prev => {
