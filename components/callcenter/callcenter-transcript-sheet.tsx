@@ -8,16 +8,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Bot, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Shield, Bell, Mail, Send, Trash2 } from 'lucide-react'
+import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
 import { cn, formatTimeAgo } from '@/lib/utils'
 import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig, escalationLevelConfig } from '@/lib/constants'
 import {
-  CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
-  CALLBACK_NOTIFICATION_RECIPIENT_NAME,
   VERENA_SCHWAB_EMPLOYEE_ID,
   VERENA_SCHWAB_NAME,
 } from '@/lib/email/callback-email-config'
 import { useCountdown } from '@/lib/hooks/use-countdown'
-import { useCallbackNotificationEmailAvailability } from '@/lib/hooks/use-callback-notification-email-availability'
+import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import type { Callback, CallSource, EscalationLevel } from '@/lib/types'
 
@@ -106,10 +105,16 @@ export function TranscriptSheet({
   const {
     isAvailable: isNotificationEmailAvailable,
     isLoading: isNotificationEmailAvailabilityLoading,
-    recipientEmail: notificationRecipientEmail,
-    recipientName: notificationRecipientName,
+    activeRecipientEmail: notificationRecipientEmail,
+    defaultRecipientEmail,
+    draftRecipientEmail,
+    hasUnsavedRecipientEmailChanges,
+    isDraftRecipientEmailValid,
+    isActiveRecipientEmailValid,
+    setDraftRecipientEmail,
+    saveRecipientEmail,
     unavailableMessage: notificationEmailUnavailableMessage,
-  } = useCallbackNotificationEmailAvailability(open && isVerenaCallback)
+  } = useCallbackNotificationRecipientEmail(open && isVerenaCallback)
 
   if (!callback) return null
 
@@ -146,7 +151,14 @@ export function TranscriptSheet({
   }
 
   const handleSendNotificationEmail = async () => {
-    if (!isVerenaCallback || isNotificationEmailAvailable !== true) return
+    if (
+      !isVerenaCallback
+      || isNotificationEmailAvailable !== true
+      || !isActiveRecipientEmailValid
+      || hasUnsavedRecipientEmailChanges
+    ) {
+      return
+    }
 
     setEmailStatus('sending')
     setEmailStatusMessage('')
@@ -160,6 +172,7 @@ export function TranscriptSheet({
         body: JSON.stringify({
           callbackId: callback.id,
           sentBy: currentUserName,
+          recipientEmail: notificationRecipientEmail,
         }),
       })
 
@@ -178,11 +191,9 @@ export function TranscriptSheet({
       const recipientEmail =
         data.recipientEmail
         ?? notificationRecipientEmail
-        ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
       const recipientName =
         data.recipientName
-        ?? notificationRecipientName
-        ?? CALLBACK_NOTIFICATION_RECIPIENT_NAME
+        ?? callback.assignedAdvisor
 
       recordCallbackNotificationEmailSent({
         callbackId: callback.id,
@@ -459,9 +470,6 @@ export function TranscriptSheet({
                         <p>
                           Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
                         </p>
-                        <p className="truncate">
-                          Aktueller Empfänger: <span className="font-medium text-foreground">{notificationRecipientEmail || CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
-                        </p>
                       </div>
                       <Button
                         size="sm"
@@ -470,6 +478,8 @@ export function TranscriptSheet({
                           emailStatus === 'sending'
                           || isNotificationEmailAvailabilityLoading
                           || isNotificationEmailAvailable === false
+                          || !isActiveRecipientEmailValid
+                          || hasUnsavedRecipientEmailChanges
                         }
                         className="flex-shrink-0"
                       >
@@ -499,9 +509,23 @@ export function TranscriptSheet({
                         {emailStatusMessage
                           || (emailStatus === 'sending'
                             ? 'Benachrichtigungs-E-Mail wird versendet...'
-                            : notificationEmailUnavailableMessage)}
+                            : '')}
                       </p>
                     )}
+
+                    <CallbackNotificationRecipientEmailField
+                      activeRecipientEmail={notificationRecipientEmail}
+                      defaultRecipientEmail={defaultRecipientEmail}
+                      draftRecipientEmail={draftRecipientEmail}
+                      hasUnsavedRecipientEmailChanges={hasUnsavedRecipientEmailChanges}
+                      isDraftRecipientEmailValid={isDraftRecipientEmailValid}
+                      unavailableMessage={notificationEmailUnavailableMessage}
+                      label="Empfänger-E-Mail"
+                      description="Speichere eine neue Adresse, bevor du die Benachrichtigung sendest."
+                      compact
+                      onDraftRecipientEmailChange={setDraftRecipientEmail}
+                      onSave={saveRecipientEmail}
+                    />
                   </div>
                 )}
                 <div className="flex gap-2">

@@ -9,13 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Plus, Search, User, X, Check, Phone, CheckCircle2, Mail, Loader2 } from 'lucide-react'
+import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
 import { cn } from '@/lib/utils'
 import { callSourceConfig, mockCallAgents, mockCustomers, employeeRoleConfig, employeeStatusConfig } from '@/lib/constants'
-import { useCallbackNotificationEmailAvailability } from '@/lib/hooks/use-callback-notification-email-availability'
+import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import {
-  CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
-  CALLBACK_NOTIFICATION_RECIPIENT_NAME,
   VERENA_SCHWAB_EMPLOYEE_ID,
 } from '@/lib/email/callback-email-config'
 import type { Callback, CallbackPriority, CallSource, CallAgent, Employee, EmployeeRole } from '@/lib/types'
@@ -120,10 +119,16 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const {
     isAvailable: isNotificationEmailAvailable,
     isLoading: isNotificationEmailAvailabilityLoading,
-    recipientEmail: notificationRecipientEmail,
-    recipientName: notificationRecipientName,
+    activeRecipientEmail: notificationRecipientEmail,
+    defaultRecipientEmail,
+    draftRecipientEmail,
+    hasUnsavedRecipientEmailChanges,
+    isDraftRecipientEmailValid,
+    isActiveRecipientEmailValid,
+    setDraftRecipientEmail,
+    saveRecipientEmail,
     unavailableMessage: notificationEmailUnavailableMessage,
-  } = useCallbackNotificationEmailAvailability(dialogStep === 'success' && isEmailCapable)
+  } = useCallbackNotificationRecipientEmail(dialogStep === 'success' && isEmailCapable)
 
   // Group employees by role
   const groupedEmployees = useMemo(() => {
@@ -276,7 +281,15 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   }
 
   const handleSendEmail = async () => {
-    if (!createdCallback || isNotificationEmailAvailable !== true) return
+    if (
+      !createdCallback
+      || isNotificationEmailAvailable !== true
+      || !isActiveRecipientEmailValid
+      || hasUnsavedRecipientEmailChanges
+    ) {
+      return
+    }
+
     setIsSendingEmail(true)
     setEmailError(null)
 
@@ -287,6 +300,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
         body: JSON.stringify({
           callbackId: createdCallback.id,
           sentBy: currentUser ?? 'System',
+          recipientEmail: notificationRecipientEmail,
         }),
       })
 
@@ -302,11 +316,9 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
       const recipientEmail =
         data.recipientEmail
         ?? notificationRecipientEmail
-        ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
       const recipientName =
         data.recipientName
-        ?? notificationRecipientName
-        ?? CALLBACK_NOTIFICATION_RECIPIENT_NAME
+        ?? createdCallback.assignedAdvisor
       const provider = data.provider ?? 'brevo'
 
       recordCallbackNotificationEmailSent({
@@ -680,12 +692,22 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   <p className="text-sm text-muted-foreground">
                     Möchtest du jetzt direkt eine Benachrichtigungs-E-Mail senden?
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Aktueller Empfänger: {notificationRecipientEmail || CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}
-                  </p>
-                  {(emailError || notificationEmailUnavailableMessage) && (
+                  <CallbackNotificationRecipientEmailField
+                    activeRecipientEmail={notificationRecipientEmail}
+                    defaultRecipientEmail={defaultRecipientEmail}
+                    draftRecipientEmail={draftRecipientEmail}
+                    hasUnsavedRecipientEmailChanges={hasUnsavedRecipientEmailChanges}
+                    isDraftRecipientEmailValid={isDraftRecipientEmailValid}
+                    unavailableMessage={notificationEmailUnavailableMessage}
+                    label="Empfänger-E-Mail"
+                    description="Passe die Adresse bei Bedarf an und speichere sie. Erst danach wird an diese Adresse versendet."
+                    compact
+                    onDraftRecipientEmailChange={setDraftRecipientEmail}
+                    onSave={saveRecipientEmail}
+                  />
+                  {emailError && (
                     <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
-                      {emailError || notificationEmailUnavailableMessage}
+                      {emailError}
                     </p>
                   )}
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
@@ -695,6 +717,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                         isSendingEmail
                         || isNotificationEmailAvailabilityLoading
                         || isNotificationEmailAvailable === false
+                        || !isActiveRecipientEmailValid
+                        || hasUnsavedRecipientEmailChanges
                       }
                       className="gap-1.5"
                     >
@@ -746,7 +770,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   Die Benachrichtigung wurde an {sentEmailRecipient?.name ?? createdCallback?.assignedAdvisor} versendet.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Empfänger: <span className="font-medium text-foreground">{sentEmailRecipient?.email ?? notificationRecipientEmail ?? CALLBACK_NOTIFICATION_RECIPIENT_EMAIL}</span>
+                  Empfänger: <span className="font-medium text-foreground">{sentEmailRecipient?.email ?? notificationRecipientEmail}</span>
                 </p>
               </div>
               <div className="flex gap-2 pt-2">

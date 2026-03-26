@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,13 +14,15 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
-import { Plus, Trash2, Save, Clock, ShieldAlert } from 'lucide-react'
+import { Plus, Trash2, Save, Clock, ShieldAlert, Mail } from 'lucide-react'
+import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
+import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
 import { cn } from '@/lib/utils'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import {
   callbackPriorityConfig, escalationLevelConfig, slaDurationOptions,
 } from '@/lib/constants'
-import type { CallbackPriority, EscalationLevel, EscalationRule } from '@/lib/types'
+import type { CallbackPriority, EscalationLevel } from '@/lib/types'
 
 const priorityKeys: CallbackPriority[] = ['dringend', 'hoch', 'mittel', 'niedrig']
 
@@ -31,18 +33,23 @@ export function CallcenterSettingsView() {
     slaConfig, escalationRules,
     updateSlaConfig, addEscalationRule, updateEscalationRule, removeEscalationRule,
   } = useCallbackStore()
+  const {
+    activeRecipientEmail,
+    defaultRecipientEmail,
+    draftRecipientEmail,
+    hasUnsavedRecipientEmailChanges,
+    isDraftRecipientEmailValid,
+    setDraftRecipientEmail,
+    saveRecipientEmail,
+    unavailableMessage: notificationEmailUnavailableMessage,
+  } = useCallbackNotificationRecipientEmail(true)
 
   // ---- SLA local state ----
-  const [slaDraft, setSlaDraft] = useState<Record<CallbackPriority, number>>({
-    ...slaConfig.perPriority,
-  })
-  const [slaDefault, setSlaDefault] = useState(slaConfig.defaultMinutes)
+  const [slaDraft, setSlaDraft] = useState<Record<CallbackPriority, number>>(
+    () => ({ ...slaConfig.perPriority }),
+  )
+  const [slaDefault, setSlaDefault] = useState(() => slaConfig.defaultMinutes)
   const [slaSaved, setSlaSaved] = useState(false)
-
-  useEffect(() => {
-    setSlaDraft({ ...slaConfig.perPriority })
-    setSlaDefault(slaConfig.defaultMinutes)
-  }, [slaConfig])
 
   const handleSaveSla = () => {
     updateSlaConfig({
@@ -90,6 +97,29 @@ export function CallcenterSettingsView() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">Empfänger für Benachrichtigungs-E-Mail</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <CallbackNotificationRecipientEmailField
+            activeRecipientEmail={activeRecipientEmail}
+            defaultRecipientEmail={defaultRecipientEmail}
+            draftRecipientEmail={draftRecipientEmail}
+            hasUnsavedRecipientEmailChanges={hasUnsavedRecipientEmailChanges}
+            isDraftRecipientEmailValid={isDraftRecipientEmailValid}
+            unavailableMessage={notificationEmailUnavailableMessage}
+            label="Test-Empfänger E-Mail"
+            description="Diese Adresse wird für Callback-Benachrichtigungen verwendet, sobald du speicherst. Der Name des Empfängers bleibt serverseitig unverändert."
+            onDraftRecipientEmailChange={setDraftRecipientEmail}
+            onSave={saveRecipientEmail}
+          />
+        </CardContent>
+      </Card>
+
       {/* ---- SLA-Konfiguration ---- */}
       <Card>
         <CardHeader className="pb-3">

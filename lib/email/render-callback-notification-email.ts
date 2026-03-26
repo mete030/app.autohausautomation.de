@@ -49,19 +49,6 @@ function priorityLabel(priority: CallbackPriority): string {
   }
 }
 
-function priorityColors(priority: CallbackPriority): { bg: string; text: string } {
-  switch (priority) {
-    case 'dringend':
-      return { bg: '#fee2e2', text: '#b91c1c' }
-    case 'hoch':
-      return { bg: '#ffedd5', text: '#c2410c' }
-    case 'mittel':
-      return { bg: '#fef3c7', text: '#a16207' }
-    case 'niedrig':
-      return { bg: '#dcfce7', text: '#15803d' }
-  }
-}
-
 function statusLabel(status: CallbackStatus): string {
   switch (status) {
     case 'offen':
@@ -92,148 +79,80 @@ export function renderCallbackNotificationEmail(payload: CallbackNotificationEma
   const statusText = statusLabel(payload.status)
   const dueAt = formatDateTime(payload.dueAt)
   const slaDeadline = formatDateTime(payload.slaDeadline)
-  const priorityStyle = priorityColors(payload.priority)
   const completionUrl = payload.completionUrl ? escapeHtml(payload.completionUrl) : ''
 
-  const subject = `Neuer Rückruf: ${payload.customerName} — ${payload.reason}`
+  const subject = `Rückruf-Info: ${payload.customerName}`
 
   const html = `<!doctype html>
 <html lang="de">
-  <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:24px 0;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:640px;max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
-            <tr>
-              <td style="padding:28px 32px;background:#111827;color:#ffffff;">
-                <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.75;">Callcenter Wackenhut</div>
-                <h1 style="margin:12px 0 0;font-size:28px;line-height:1.2;">Neuer Rückruf aus dem Callcenter</h1>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:32px;">
-                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Hallo ${recipientName},</p>
-                <p style="margin:0 0 24px;font-size:15px;line-height:1.6;">
-                  es wurde ein neuer Rückruf angelegt. Die wichtigsten Informationen findest du unten.
-                </p>
-
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;border-collapse:separate;border-spacing:0 12px;">
-                  <tr>
-                    <td style="padding:16px 18px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;">
-                      <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin-bottom:6px;">Kunde</div>
-                      <div style="font-size:20px;font-weight:700;color:#111827;">${customerName}</div>
-                      <div style="margin-top:8px;font-size:14px;color:#4b5563;">
-                        Telefon:
-                        <a href="tel:${customerPhone}" style="color:#2563eb;text-decoration:none;">${customerPhone}</a>
-                      </div>
-                    </td>
-                  </tr>
-                </table>
-
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-                  <tr>
-                    <td style="padding:14px 18px;background:#f9fafb;border-bottom:1px solid #e5e7eb;font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;">Rückrufdetails</td>
-                  </tr>
-                  <tr>
-                    <td style="padding:18px;">
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-                        <tr>
-                          <td style="padding:0 0 14px;font-size:13px;color:#6b7280;width:160px;">Zuständig</td>
-                          <td style="padding:0 0 14px;font-size:15px;color:#111827;">${salespersonName}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding:0 0 14px;font-size:13px;color:#6b7280;width:160px;">Anliegen</td>
-                          <td style="padding:0 0 14px;font-size:15px;color:#111827;font-weight:600;">${reason}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding:0 0 14px;font-size:13px;color:#6b7280;">Priorität</td>
-                          <td style="padding:0 0 14px;">
-                            <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:${priorityStyle.bg};color:${priorityStyle.text};font-size:13px;font-weight:700;">
-                              ${priorityText}
-                            </span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding:0 0 14px;font-size:13px;color:#6b7280;">Status</td>
-                          <td style="padding:0 0 14px;font-size:15px;color:#111827;">${statusText}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding:0 0 14px;font-size:13px;color:#6b7280;">Fällig bis</td>
-                          <td style="padding:0 0 14px;font-size:15px;color:#111827;">${dueAt}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding:0 0 14px;font-size:13px;color:#6b7280;">SLA-Frist</td>
-                          <td style="padding:0 0 14px;font-size:15px;color:#111827;">${slaDeadline}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding:0 0 14px;font-size:13px;color:#6b7280;">Angenommen von</td>
-                          <td style="padding:0 0 14px;font-size:15px;color:#111827;">${takenByName}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding:0;font-size:13px;color:#6b7280;">Ausgelöst von</td>
-                          <td style="padding:0;font-size:15px;color:#111827;">${sentBy}</td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-
-                ${notes ? `
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:24px;border:1px solid #e5e7eb;border-radius:12px;background:#fff7ed;">
-                  <tr>
-                    <td style="padding:16px 18px;">
-                      <div style="font-size:13px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Notizen</div>
-                      <div style="font-size:15px;line-height:1.6;color:#7c2d12;">${notes}</div>
-                    </td>
-                  </tr>
-                </table>` : ''}
-
-                ${completionUrl ? `
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:24px;border:1px solid #dbeafe;border-radius:12px;background:#eff6ff;">
-                  <tr>
-                    <td style="padding:20px 18px;">
-                      <div style="font-size:13px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Rückruf abschließen</div>
-                      <div style="font-size:15px;line-height:1.6;color:#1e3a8a;margin-bottom:16px;">
-                        Wenn der Rückruf erledigt wurde, kannst du ihn über diesen Button bestätigen und optional eine kurze Notiz hinterlassen.
-                      </div>
-                      <a
-                        href="${completionUrl}"
-                        style="display:inline-block;border-radius:999px;background:#2563eb;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 18px;"
-                      >
-                        Rückruf als erledigt markieren
-                      </a>
-                    </td>
-                  </tr>
-                </table>` : ''}
-
-                <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#4b5563;">
-                  Viele Grüße<br />
-                  <strong style="color:#111827;">Wackenhut Callcenter</strong>
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
+  <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#333333;">
+    <div style="max-width:600px;margin:0 auto;padding:20px;">
+      <p>Hallo ${recipientName},</p>
+      <p>es wurde ein neuer Rückruf angelegt. Hier die Details:</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Kunde</td>
+          <td style="padding:6px 0;font-weight:bold;">${customerName}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Telefon</td>
+          <td style="padding:6px 0;">${customerPhone}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Anliegen</td>
+          <td style="padding:6px 0;">${reason}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Priorität</td>
+          <td style="padding:6px 0;">${priorityText}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Status</td>
+          <td style="padding:6px 0;">${statusText}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Zuständig</td>
+          <td style="padding:6px 0;">${salespersonName}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Fällig bis</td>
+          <td style="padding:6px 0;">${dueAt}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">SLA-Frist</td>
+          <td style="padding:6px 0;">${slaDeadline}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Angenommen von</td>
+          <td style="padding:6px 0;">${takenByName}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666666;vertical-align:top;">Gesendet von</td>
+          <td style="padding:6px 0;">${sentBy}</td>
+        </tr>
+      </table>${notes ? `
+      <p><strong>Notizen:</strong> ${notes}</p>` : ''}${completionUrl ? `
+      <p>Rückruf abschließen: ${completionUrl}</p>` : ''}
+      <p>Viele Grüße<br />Wackenhut Callcenter</p>
+    </div>
   </body>
 </html>`
 
   const textLines = [
     `Hallo ${payload.recipientName},`,
     '',
-    'es wurde ein neuer Rückruf angelegt.',
+    'es wurde ein neuer Rückruf angelegt. Hier die Details:',
     '',
-    `Zuständig: ${payload.salespersonName}`,
     `Kunde: ${payload.customerName}`,
     `Telefon: ${payload.customerPhone}`,
     `Anliegen: ${payload.reason}`,
     `Priorität: ${priorityText}`,
     `Status: ${statusText}`,
+    `Zuständig: ${payload.salespersonName}`,
     `Fällig bis: ${dueAt}`,
     `SLA-Frist: ${slaDeadline}`,
     `Angenommen von: ${payload.takenByName}`,
-    `Ausgelöst von: ${payload.sentBy}`,
+    `Gesendet von: ${payload.sentBy}`,
   ]
 
   if (payload.notes?.trim()) {
@@ -243,7 +162,7 @@ export function renderCallbackNotificationEmail(payload: CallbackNotificationEma
   if (payload.completionUrl?.trim()) {
     textLines.push(
       '',
-      'Zum Abschließen des Rückrufs:',
+      'Rückruf abschließen:',
       payload.completionUrl.trim(),
     )
   }

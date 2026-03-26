@@ -15,6 +15,7 @@ import {
 const requestSchema = z.object({
   callbackId: z.string().min(1),
   sentBy: z.string().min(1),
+  recipientEmail: z.string().trim().email().optional(),
 })
 
 export async function GET() {
@@ -73,17 +74,20 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const recipientEmail = payload.recipientEmail || emailConfig.recipientEmail
+    const recipientName = emailConfig.recipientName
+
     const { action, token } = await createCallbackCompletionAction({
       callbackId: callback.id,
-      recipientEmail: emailConfig.recipientEmail,
-      recipientName: emailConfig.recipientName,
+      recipientEmail,
+      recipientName,
     })
 
     const completionUrl = new URL('/callback-actions/complete', req.nextUrl.origin)
     completionUrl.searchParams.set('token', token)
 
     const email = renderCallbackNotificationEmail({
-      recipientName: emailConfig.recipientName,
+      recipientName,
       salespersonName: callback.assignedAdvisor,
       customerName: callback.customerName,
       customerPhone: callback.customerPhone,
@@ -112,13 +116,17 @@ export async function POST(req: NextRequest) {
         },
         to: [
           {
-            email: emailConfig.recipientEmail,
-            name: emailConfig.recipientName,
+            email: recipientEmail,
+            name: recipientName,
           },
         ],
         subject: email.subject,
         htmlContent: email.html,
         textContent: email.text,
+        headers: {
+          'X-Mailin-Track': '0',
+          'X-Mailin-Track-Links': '0',
+        },
       }),
     })
 
@@ -145,11 +153,11 @@ export async function POST(req: NextRequest) {
     const activity = await appendPersistedCallbackActivity({
       callbackId: callback.id,
       type: 'email_gesendet',
-      description: `Callback-Benachrichtigung gesendet an ${emailConfig.recipientName} (${emailConfig.recipientEmail})`,
+      description: `Callback-Benachrichtigung gesendet an ${recipientName} (${recipientEmail})`,
       performedBy: payload.sentBy,
       metadata: {
-        recipientEmail: emailConfig.recipientEmail,
-        recipientName: emailConfig.recipientName,
+        recipientEmail,
+        recipientName,
         provider: 'brevo',
         emailKind: 'callback_benachrichtigung',
         actionId: action.id,
@@ -159,8 +167,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      recipientEmail: emailConfig.recipientEmail,
-      recipientName: emailConfig.recipientName,
+      recipientEmail,
+      recipientName,
       provider: 'brevo',
       providerMessageId: typeof responseJson?.messageId === 'string' ? responseJson.messageId : undefined,
       activity,
