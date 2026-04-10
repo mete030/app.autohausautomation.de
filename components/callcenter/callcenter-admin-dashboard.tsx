@@ -298,10 +298,10 @@ export function CallcenterAdminDashboard() {
       {/* ================================================================ */}
       {/* 1. Hero KPI Strip                                                */}
       {/* ================================================================ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {/* Offene Rueckrufe */}
         <Card className="py-0 gap-0">
-          <div className="flex items-center gap-4 p-5">
+          <div className="flex items-center gap-3 p-4 md:gap-4 md:p-5">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/40">
               <PhoneCall className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
@@ -323,7 +323,7 @@ export function CallcenterAdminDashboard() {
 
         {/* SLA-Einhaltung */}
         <Card className="py-0 gap-0">
-          <div className="flex items-center gap-4 p-5">
+          <div className="flex items-center gap-3 p-4 md:gap-4 md:p-5">
             <SlaProgressRing percentage={slaPercentage} />
             <div>
               <p className="text-xs text-muted-foreground">SLA-Einhaltung</p>
@@ -349,7 +349,7 @@ export function CallcenterAdminDashboard() {
 
         {/* Ø Bearbeitungszeit */}
         <Card className="py-0 gap-0">
-          <div className="flex items-center gap-4 p-5">
+          <div className="flex items-center gap-3 p-4 md:gap-4 md:p-5">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/40">
               <Timer className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
@@ -369,7 +369,7 @@ export function CallcenterAdminDashboard() {
 
         {/* Eskalationen heute */}
         <Card className="py-0 gap-0">
-          <div className="flex items-center gap-4 p-5">
+          <div className="flex items-center gap-3 p-4 md:gap-4 md:p-5">
             <div
               className={cn(
                 'flex h-11 w-11 items-center justify-center rounded-full',
@@ -418,7 +418,83 @@ export function CallcenterAdminDashboard() {
               <CardTitle className="text-sm">Aktuelle Lage</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              {/* Mobile: card list */}
+              <div className="md:hidden space-y-2">
+                {employeeRows.map((row) => {
+                  const statusCfg = employeeStatusConfig[row.employee.status]
+                  return (
+                    <div
+                      key={row.employee.id}
+                      className={cn(
+                        'rounded-lg border p-3 space-y-2',
+                        row.ueberfaellig > 0 && 'border-l-4 border-l-red-500',
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-7 w-7 flex-shrink-0">
+                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
+                            {getInitials(row.employee.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium text-sm truncate flex-1">
+                          {row.employee.name}
+                        </span>
+                        <span
+                          className={cn('h-2 w-2 rounded-full flex-shrink-0', statusCfg.dot)}
+                          title={statusCfg.label}
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5 text-center">
+                        <div className="rounded-md bg-muted/40 py-1.5">
+                          <p className="text-base font-bold tabular-nums leading-none">{row.offen}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Offen</p>
+                        </div>
+                        <div
+                          className={cn(
+                            'rounded-md py-1.5',
+                            row.ueberfaellig > 0
+                              ? 'bg-red-100 dark:bg-red-950/30'
+                              : 'bg-muted/40',
+                          )}
+                        >
+                          <p
+                            className={cn(
+                              'text-base font-bold tabular-nums leading-none',
+                              row.ueberfaellig > 0 && 'text-red-600 dark:text-red-400',
+                            )}
+                          >
+                            {row.ueberfaellig}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Überf.</p>
+                        </div>
+                        <div className="rounded-md bg-muted/40 py-1.5">
+                          <p className="text-base font-bold tabular-nums leading-none">{row.inBearbeitung}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">In Bearb.</p>
+                        </div>
+                        <div className="rounded-md bg-muted/40 py-1.5">
+                          <p className="text-base font-bold tabular-nums leading-none">{row.erledigt}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Erledigt</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span>Gesamt</span>
+                    <div className="flex gap-3 tabular-nums">
+                      <span>Offen <span className="font-bold">{totals.offen}</span></span>
+                      <span className={cn(totals.ueberfaellig > 0 && 'text-red-600 dark:text-red-400')}>
+                        Überf. <span className="font-bold">{totals.ueberfaellig}</span>
+                      </span>
+                      <span>Erl. <span className="font-bold">{totals.erledigt}</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground border-b">
@@ -531,7 +607,60 @@ export function CallcenterAdminDashboard() {
                   Keine Eskalationen
                 </p>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                  {/* Mobile: card list */}
+                  <ul className="md:hidden space-y-2">
+                    {recentEscalations.map((event) => {
+                      const dotColor = escalationDotColor(event.toLevel)
+                      return (
+                        <li key={event.id} className="rounded-lg border p-3 space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={cn('h-2 w-2 rounded-full flex-shrink-0', dotColor)} />
+                              <span className="text-sm font-semibold truncate">{event.escalatedTo}</span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+                              {formatRelativeTime(event.escalatedAt)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            Rückruf von {event.customerName}
+                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1">
+                              <Badge
+                                variant="secondary"
+                                className={cn(
+                                  'text-[10px] px-1.5 py-0 h-4',
+                                  escalationLevelConfig[event.fromLevel].bg,
+                                  escalationLevelConfig[event.fromLevel].color,
+                                )}
+                              >
+                                Stufe {event.fromLevel}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">→</span>
+                              <Badge
+                                variant="secondary"
+                                className={cn(
+                                  'text-[10px] px-1.5 py-0 h-4',
+                                  escalationLevelConfig[event.toLevel].bg,
+                                  escalationLevelConfig[event.toLevel].color,
+                                )}
+                              >
+                                Stufe {event.toLevel}
+                              </Badge>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              durch {event.escalatedBy}
+                            </span>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+
+                  {/* Desktop: table */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-xs text-muted-foreground border-b">
@@ -591,6 +720,7 @@ export function CallcenterAdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>

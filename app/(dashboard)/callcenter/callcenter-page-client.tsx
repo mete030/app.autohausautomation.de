@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Shield, Headset, UserCog, MonitorPlay } from 'lucide-react'
+import { Shield, Headset, UserCog, MonitorPlay, Plus } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import { CallcenterKpiRow } from '@/components/callcenter/callcenter-kpi-row'
@@ -322,14 +322,16 @@ export default function CallcenterPageClient() {
   const header = ROLE_HEADER[role]
   const HeaderIcon = header.icon
 
+  const showFab = (role === 'admin' || role === 'callcenter') && activeTab === 'rueckrufe'
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <HeaderIcon className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-bold">
+            <HeaderIcon className="h-5 w-5 text-primary flex-shrink-0" />
+            <h1 className="text-xl md:text-2xl font-bold truncate">
               <span className="sm:hidden">Callcenter</span>
               <span className="hidden sm:inline">{header.title}</span>
             </h1>
@@ -343,7 +345,7 @@ export default function CallcenterPageClient() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 md:flex-shrink-0">
           {role === 'admin' && <CallcenterMorningSummaryDialog />}
           {role === 'admin' && <CallcenterVoiceTestDialog />}
           <CallcenterRoleSwitcher
@@ -358,12 +360,14 @@ export default function CallcenterPageClient() {
       {/* ======== ADMIN VIEW ======== */}
       {role === 'admin' && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
-            <TabsTrigger value="rueckrufe">Rückrufe</TabsTrigger>
-            <TabsTrigger value="mitarbeiter">Mitarbeiter</TabsTrigger>
-            <TabsTrigger value="einstellungen">Einstellungen</TabsTrigger>
-          </TabsList>
+          <div className="-mx-3 px-3 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsList>
+              <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+              <TabsTrigger value="rueckrufe">Rückrufe</TabsTrigger>
+              <TabsTrigger value="mitarbeiter">Mitarbeiter</TabsTrigger>
+              <TabsTrigger value="einstellungen">Einstellungen</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="uebersicht" className="mt-4">
             <CallcenterAdminDashboard />
@@ -528,6 +532,18 @@ export default function CallcenterPageClient() {
             <CallcenterTimelineView callbacks={filteredCallbacks} {...viewActions} />
           )}
         </div>
+      )}
+
+      {/* Mobile FAB: New callback */}
+      {showFab && (
+        <button
+          type="button"
+          aria-label="Neuer Rückruf"
+          onClick={() => setNewCallbackOpen(true)}
+          className="md:hidden fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
       )}
 
       {/* Headless providers */}

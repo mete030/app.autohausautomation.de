@@ -29,10 +29,14 @@ const createCallbackSchema = z.object({
 
 export async function GET() {
   if (!isCallbackPersistenceConfigured()) {
-    return NextResponse.json({
-      available: false,
-      callbacks: [],
-    })
+    return NextResponse.json(
+      {
+        available: false,
+        callbacks: [],
+        error: CALLBACK_PERSISTENCE_UNAVAILABLE_MESSAGE,
+      },
+      { status: 503 },
+    )
   }
 
   try {
@@ -50,6 +54,7 @@ export async function GET() {
         callbacks: [],
         error: CALLBACK_PERSISTENCE_UNAVAILABLE_MESSAGE,
       },
+      { status: 503 },
     )
   }
 }

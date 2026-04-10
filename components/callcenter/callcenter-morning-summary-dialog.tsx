@@ -101,9 +101,9 @@ export function CallcenterMorningSummaryDialog() {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[940px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[940px] max-h-[92dvh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* ── Header ── */}
-        <div className="px-6 pt-5 pb-4 border-b space-y-4">
+        <div className="px-5 pt-4 pb-3 md:px-6 md:pt-5 md:pb-4 border-b space-y-3 md:space-y-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-950/30">
@@ -116,9 +116,9 @@ export function CallcenterMorningSummaryDialog() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             {/* Tabs */}
-            <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-0.5">
+            <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-0.5 self-start">
               {([
                 { key: 'extern' as MailTab, icon: UserCog, label: 'Berater & Verkäufer' },
                 { key: 'intern' as MailTab, icon: Headset, label: 'Call-Center intern' },
@@ -127,7 +127,7 @@ export function CallcenterMorningSummaryDialog() {
                   key={t.key}
                   onClick={() => handleTabChange(t.key)}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                    'flex items-center gap-1.5 rounded-md px-2.5 py-2 md:px-3 md:py-1.5 text-xs font-medium transition-all',
                     mailTab === t.key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
@@ -138,17 +138,17 @@ export function CallcenterMorningSummaryDialog() {
             </div>
 
             {/* Compact KPIs */}
-            <div className="hidden sm:flex items-center gap-4 text-[11px]">
+            <div className="grid grid-cols-4 gap-2 md:flex md:items-center md:gap-4 text-[11px]">
               {[
                 { n: summaryData.overdueCallbacks.length, l: 'Überfällig', c: 'text-red-600', dot: 'bg-red-500' },
                 { n: summaryData.openCallbacks.length, l: 'Offen', c: 'text-blue-600', dot: 'bg-blue-400' },
                 { n: summaryData.inProgressCallbacks.length, l: 'In Bearb.', c: 'text-amber-600', dot: 'bg-amber-400' },
                 { n: summaryData.completedToday, l: 'Erledigt', c: 'text-emerald-600', dot: 'bg-emerald-400' },
               ].map(k => (
-                <div key={k.l} className="flex items-center gap-1.5">
-                  <span className={cn('h-1.5 w-1.5 rounded-full', k.dot)} />
-                  <span className={cn('font-bold tabular-nums', k.c)}>{k.n}</span>
-                  <span className="text-muted-foreground">{k.l}</span>
+                <div key={k.l} className="flex flex-col items-center gap-0.5 md:flex-row md:gap-1.5 rounded-md md:rounded-none border md:border-0 py-1 md:py-0">
+                  <span className={cn('hidden md:inline-block h-1.5 w-1.5 rounded-full', k.dot)} />
+                  <span className={cn('font-bold tabular-nums text-base md:text-[11px]', k.c)}>{k.n}</span>
+                  <span className="text-muted-foreground text-[10px] md:text-[11px]">{k.l}</span>
                 </div>
               ))}
             </div>

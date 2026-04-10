@@ -257,7 +257,7 @@ export function CallcenterKanbanView({
             </div>
 
             {/* Card stack */}
-            <ScrollArea className="max-h-[calc(100vh-280px)]">
+            <ScrollArea className="max-h-[60dvh] md:max-h-[calc(100vh-280px)]">
               <div className="p-2 space-y-2">
                 {items.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">

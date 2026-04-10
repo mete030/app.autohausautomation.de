@@ -413,7 +413,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-lg max-h-[92dvh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
         {dialogStep === 'form' ? (
           <>
             <DialogHeader>
@@ -648,7 +648,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Fälligkeit</label>
-                    <div className="flex items-center gap-1 h-9">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {dueTimeOptions.map(opt => {
                         const isActive = effectiveSla === opt.minutes
                         return (
@@ -658,7 +658,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                             variant="outline"
                             size="sm"
                             className={cn(
-                              'h-7 px-2.5 text-xs rounded-full',
+                              'h-9 md:h-8 px-3 text-xs rounded-full',
                               isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground border-primary',
                             )}
                             onClick={() => handleDueTimePick(opt.minutes)}
@@ -717,9 +717,9 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
             {createError && (
               <p className="text-sm text-red-700">{createError}</p>
             )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => handleClose(false)}>Abbrechen</Button>
-              <Button disabled={!isValid || isCreatingCallback} onClick={() => { void handleCreate() }}>
+            <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+              <Button variant="outline" className="h-10 w-full sm:h-9 sm:w-auto" onClick={() => handleClose(false)}>Abbrechen</Button>
+              <Button className="h-10 w-full sm:h-9 sm:w-auto" disabled={!isValid || isCreatingCallback} onClick={() => { void handleCreate() }}>
                 {isCreatingCallback ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
                 {isCreatingCallback ? 'Erstelle...' : 'Erstellen'}
               </Button>

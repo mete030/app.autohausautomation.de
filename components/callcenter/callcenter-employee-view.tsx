@@ -130,14 +130,14 @@ export function CallcenterEmployeeView() {
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
         <h2 className="text-sm font-semibold">Mitarbeiter verwalten</h2>
         <div className="flex items-center gap-2">
           <Select
             value={roleFilter}
             onValueChange={value => setRoleFilter(value as EmployeeRole | 'alle')}
           >
-            <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectTrigger className="w-full h-9 text-xs md:w-[180px] md:h-8">
               <SelectValue placeholder="Alle Abteilungen" />
             </SelectTrigger>
             <SelectContent>
@@ -149,9 +149,10 @@ export function CallcenterEmployeeView() {
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" className="h-8 text-xs" onClick={() => setShowNewDialog(true)}>
+          <Button size="sm" className="h-9 md:h-8 text-xs flex-shrink-0" onClick={() => setShowNewDialog(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" />
-            Neuer Mitarbeiter
+            <span className="hidden sm:inline">Neuer Mitarbeiter</span>
+            <span className="sm:hidden">Neu</span>
           </Button>
         </div>
       </div>
@@ -175,16 +176,16 @@ export function CallcenterEmployeeView() {
                 const metrics = employeeMetrics.get(emp.id) ?? { open: 0, completed: 0, slaPercent: 100 }
 
                 return (
-                  <div key={emp.id} className="flex items-center gap-3 px-3 py-2 bg-card hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setDetailEmployee(emp)}>
+                  <div key={emp.id} className="flex items-center gap-3 px-3 py-2.5 bg-card hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setDetailEmployee(emp)}>
                     {/* Avatar */}
-                    <Avatar className="h-7 w-7 flex-shrink-0">
+                    <Avatar className="h-8 w-8 md:h-7 md:w-7 flex-shrink-0">
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
                         {getInitials(emp.name)}
                       </AvatarFallback>
                     </Avatar>
 
                     {/* Name + Role */}
-                    <div className="min-w-0 w-[160px] flex-shrink-0">
+                    <div className="min-w-0 flex-1 md:flex-none md:w-[160px]">
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-xs truncate">{emp.name}</span>
                         <span
@@ -198,6 +199,23 @@ export function CallcenterEmployeeView() {
                       >
                         {roleCfg.label}
                       </Badge>
+                    </div>
+
+                    {/* Mobile-only: open/SLA quick stats */}
+                    <div className="md:hidden flex items-center gap-2 text-[11px] flex-shrink-0">
+                      <span className="text-muted-foreground">
+                        Offen: <span className="font-semibold text-foreground">{metrics.open}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          'font-semibold',
+                          metrics.slaPercent >= 90 ? 'text-emerald-600' :
+                          metrics.slaPercent >= 70 ? 'text-amber-600' :
+                          'text-red-600'
+                        )}
+                      >
+                        {metrics.slaPercent}%
+                      </span>
                     </div>
 
                     {/* Contact */}
@@ -241,9 +259,9 @@ export function CallcenterEmployeeView() {
 
                     {/* Actions */}
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 flex-shrink-0">
-                          <MoreHorizontal className="h-3.5 w-3.5" />
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" variant="ghost" className="h-9 w-9 md:h-6 md:w-6 p-0 flex-shrink-0">
+                          <MoreHorizontal className="h-4 w-4 md:h-3.5 md:w-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

@@ -70,11 +70,11 @@ export function CallcenterRoleSwitcher({
   }, [employees])
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 w-full md:w-auto md:flex-row md:items-center">
       {/* User selector dropdown (only for non-admin roles) */}
       {role === 'callcenter' && (
         <Select value={selectedUser} onValueChange={onSelectedUserChange}>
-          <SelectTrigger className="h-8 text-xs w-[170px]">
+          <SelectTrigger className="h-9 text-xs w-full md:h-8 md:w-[170px]">
             <SelectValue placeholder="Agent auswählen" />
           </SelectTrigger>
           <SelectContent>
@@ -89,7 +89,7 @@ export function CallcenterRoleSwitcher({
 
       {role === 'berater' && (
         <Select value={selectedUser} onValueChange={onSelectedUserChange}>
-          <SelectTrigger className="h-8 text-xs w-[170px]">
+          <SelectTrigger className="h-9 text-xs w-full md:h-8 md:w-[170px]">
             <SelectValue placeholder="Berater auswählen" />
           </SelectTrigger>
           <SelectContent>
@@ -118,7 +118,7 @@ export function CallcenterRoleSwitcher({
       )}
 
       {/* Role tabs */}
-      <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-0.5">
+      <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {roles.map((r) => {
           const Icon = r.icon
           const isActive = role === r.value
@@ -127,7 +127,7 @@ export function CallcenterRoleSwitcher({
               key={r.value}
               onClick={() => onRoleChange(r.value)}
               className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                'flex items-center gap-1.5 rounded-md px-2.5 py-2 md:px-3 md:py-1.5 text-xs font-medium transition-all whitespace-nowrap flex-shrink-0',
                 isActive && r.value === 'admin'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : isActive

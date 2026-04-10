@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { useIsDesktop } from '@/lib/hooks/use-media-query'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -66,6 +67,7 @@ function StatCard({ icon: Icon, label, value, color, bgColor, suffix }: {
 
 export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDetailSheetProps) {
   const callbacks = useCallbackStore(s => s.callbacks)
+  const isDesktop = useIsDesktop()
   const isCC = employee?.role === 'callcenter_agent'
 
   const assignedCallbacks = useMemo(() => {
@@ -98,8 +100,21 @@ export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDe
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-[480px] p-0 flex flex-col gap-0 overflow-hidden">
-        <div className="px-6 pt-6 pb-4">
+      <SheetContent
+        side={isDesktop ? 'right' : 'bottom'}
+        className={cn(
+          'p-0 flex flex-col gap-0 overflow-hidden',
+          isDesktop
+            ? 'w-full sm:max-w-[480px]'
+            : 'h-[92dvh] rounded-t-2xl border-t',
+        )}
+      >
+        {!isDesktop && (
+          <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
+            <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+          </div>
+        )}
+        <div className="px-5 pt-3 pb-4 md:px-6 md:pt-6">
           <div className="flex items-center gap-3">
             <Avatar className="h-11 w-11">
               <AvatarFallback className="text-sm bg-primary/10 text-primary font-semibold">{getInitials(employee.name)}</AvatarFallback>
@@ -127,7 +142,7 @@ export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDe
           {isCC ? (
             <>
               {/* CC Agent: current activity */}
-              <div className="px-6 py-4">
+              <div className="px-5 py-4 md:px-6">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Aktuelle Aktivität</h3>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg border p-2.5 text-center">
@@ -156,7 +171,7 @@ export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDe
                 const rate = s.callbacksCreated > 0 ? Math.round((s.callbacksAccepted / s.callbacksCreated) * 100) : 100
                 return (
                   <>
-                    <div className="px-6 py-4">
+                    <div className="px-5 py-4 md:px-6">
                       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Gesamte Performance</h3>
                       <div className="grid grid-cols-2 gap-2">
                         <StatCard icon={PhoneIncoming} label="Anrufe entgegengenommen" value={s.callsReceived} color="text-blue-600" bgColor="bg-blue-100 dark:bg-blue-900/30" />
@@ -169,7 +184,7 @@ export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDe
                     </div>
                     <Separator />
 
-                    <div className="px-6 py-4">
+                    <div className="px-5 py-4 md:px-6">
                       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Annahmequote</h3>
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-muted-foreground">Erstellte Rückrufe → angenommen</span>
@@ -183,7 +198,7 @@ export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDe
 
                     {s.topAdvisors.length > 0 && (
                       <>
-                        <div className="px-6 py-4">
+                        <div className="px-5 py-4 md:px-6">
                           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Häufigste Zuweisung an</h3>
                           <div className="space-y-2">
                             {s.topAdvisors.map((adv, i) => (
@@ -212,7 +227,7 @@ export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDe
           ) : (
             <>
               {/* Berater/Verkäufer: current callbacks */}
-              <div className="px-6 py-4">
+              <div className="px-5 py-4 md:px-6">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Aktuelle Rückrufe</h3>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg border p-2.5 text-center">
@@ -241,7 +256,7 @@ export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDe
                 const sRate = s.totalReceived > 0 ? Math.round(((s.totalReceived - s.lateResponded) / s.totalReceived) * 100) : 100
                 return (
                   <>
-                    <div className="px-6 py-4">
+                    <div className="px-5 py-4 md:px-6">
                       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Gesamte Performance</h3>
                       <div className="grid grid-cols-2 gap-2">
                         <StatCard icon={PhoneCall} label="Rückrufe erhalten" value={s.totalReceived} color="text-blue-600" bgColor="bg-blue-100 dark:bg-blue-900/30" />
@@ -253,7 +268,7 @@ export function EmployeeDetailSheet({ open, employee, onOpenChange }: EmployeeDe
                       </div>
                     </div>
                     <Separator />
-                    <div className="px-6 py-4">
+                    <div className="px-5 py-4 md:px-6">
                       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Quoten</h3>
                       <div className="space-y-3">
                         <div>

@@ -408,7 +408,6 @@ function CallbackCard({
   const isKi = cb.takenBy.type === 'ki'
   const statusCfg = callbackStatusConfig[cb.status]
   const priorityCfg = callbackPriorityConfig[cb.priority]
-  const SourceIcon = getSourceIcon(cb.source)
   const advisorInitials = cb.assignedAdvisor.split(' ').map((n) => n[0]).join('')
 
   return (
@@ -521,7 +520,7 @@ function CallbackCard({
             </AvatarFallback>
           </Avatar>
           <span className="text-xs font-medium truncate">{cb.assignedAdvisor}</span>
-          <SourceIcon className={cn('h-3 w-3 flex-shrink-0 text-muted-foreground')} />
+          <SourceIconInline source={cb.source} />
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <CountdownCell dueAt={cb.dueAt} slaDurationMinutes={cb.slaDurationMinutes} status={cb.status} />
@@ -539,4 +538,19 @@ function CallbackCard({
       </div>
     </div>
   )
+}
+
+function SourceIconInline({ source }: { source: CallSource }) {
+  switch (source) {
+    case 'telefon':
+      return <Phone className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+    case 'website':
+      return <Globe className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+    case 'whatsapp':
+      return <MessageCircle className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+    case 'ki_agent':
+      return <Bot className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+    case 'manuell':
+      return <PenLine className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+  }
 }
