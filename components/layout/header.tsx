@@ -34,12 +34,12 @@ export function Header({ onMenuToggle }: HeaderProps) {
   )
 
   return (
-    <header className="flex h-14 items-center gap-2 border-b border-border/50 bg-card px-3 sm:px-4 lg:px-6">
-      {/* Mobile Menu Button */}
+    <header className="flex h-14 md:h-16 items-center gap-2 border-b border-border/50 bg-card px-3 sm:px-4 md:px-5 lg:px-6">
+      {/* Mobile Menu Button (only when sidebar is hidden, i.e. < md) */}
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden h-8 w-8"
+        className="md:hidden h-8 w-8"
         onClick={onMenuToggle}
       >
         <Menu className="h-4 w-4" />

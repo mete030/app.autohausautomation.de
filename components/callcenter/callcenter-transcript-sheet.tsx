@@ -272,7 +272,7 @@ export function TranscriptSheet({
         className={cn(
           'p-0 flex flex-col',
           isDesktop
-            ? 'sm:max-w-lg h-full'
+            ? 'sm:max-w-lg md:max-w-xl lg:max-w-2xl h-full'
             : 'h-[92dvh] rounded-t-2xl border-t',
         )}
       >
@@ -283,11 +283,11 @@ export function TranscriptSheet({
           </div>
         )}
         {/* Header - fixed */}
-        <SheetHeader className="px-5 pt-3 pb-3 md:px-6 md:pt-6 md:pb-4 flex-shrink-0">
-          <div className="flex items-start justify-between gap-3">
+        <SheetHeader className="px-5 pt-3 pb-3 md:px-7 md:pt-7 md:pb-5 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3 md:gap-4">
             <div className="min-w-0">
-              <SheetTitle className="text-lg">{callback.customerName}</SheetTitle>
-              <p className="text-sm text-muted-foreground">{callback.customerPhone}</p>
+              <SheetTitle className="text-lg md:text-xl">{callback.customerName}</SheetTitle>
+              <p className="text-sm md:text-[15px] text-muted-foreground tabular-nums">{callback.customerPhone}</p>
             </div>
             {!isCompleted && callback.dueAt && (
               <CountdownBadge dueAt={callback.dueAt} slaDurationMinutes={callback.slaDurationMinutes} />
@@ -298,7 +298,7 @@ export function TranscriptSheet({
         {/* Scrollable content */}
         <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="space-y-4 px-5 pb-6 md:px-6">
+            <div className="space-y-4 md:space-y-5 px-5 pb-6 md:px-7 md:pb-7">
               {/* Assigned to - prominent */}
               <div className="flex items-start gap-3">
                 <Avatar className="h-9 w-9 flex-shrink-0">
@@ -548,7 +548,7 @@ export function TranscriptSheet({
 
         {/* Footer actions - fixed */}
         {(!isCompleted || onDelete) && (
-          <div className="flex-shrink-0 border-t px-5 py-3 md:px-6 space-y-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+          <div className="flex-shrink-0 border-t px-5 py-3 md:px-7 md:py-4 space-y-2 md:space-y-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
             {!isCompleted && (
               <>
                 {isEmailCapable && assignedEmployee && (
@@ -619,33 +619,33 @@ export function TranscriptSheet({
                     />
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
+                <div className="grid grid-cols-2 gap-2 md:flex md:gap-2.5">
                   {onReassign && (
-                    <Button variant="outline" size="sm" className="h-10 md:h-9 md:flex-1" onClick={() => onReassign(callback.id)}>
-                      <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                    <Button variant="outline" className="h-10 md:h-10 md:text-sm md:flex-1" onClick={() => onReassign(callback.id)}>
+                      <ArrowRightLeft className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Zuweisen
                     </Button>
                   )}
                   {onEscalateToLevel ? (
-                    <Button variant="outline" size="sm" className="h-10 md:h-9 md:flex-1" onClick={() => onEscalateToLevel(callback.id)}>
-                      <Shield className="h-3.5 w-3.5 mr-1" />
+                    <Button variant="outline" className="h-10 md:h-10 md:text-sm md:flex-1" onClick={() => onEscalateToLevel(callback.id)}>
+                      <Shield className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Eskalieren
                     </Button>
                   ) : onEscalate ? (
-                    <Button variant="outline" size="sm" className="h-10 md:h-9 md:flex-1" onClick={() => onEscalate(callback.id)}>
-                      <ChevronUp className="h-3.5 w-3.5 mr-1" />
+                    <Button variant="outline" className="h-10 md:h-10 md:text-sm md:flex-1" onClick={() => onEscalate(callback.id)}>
+                      <ChevronUp className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Eskalieren
                     </Button>
                   ) : null}
                   {onSetReminder && (
-                    <Button variant="outline" size="sm" className="h-10 md:h-9 md:flex-1" onClick={() => onSetReminder(callback.id)}>
-                      <Bell className="h-3.5 w-3.5 mr-1" />
+                    <Button variant="outline" className="h-10 md:h-10 md:text-sm md:flex-1" onClick={() => onSetReminder(callback.id)}>
+                      <Bell className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Erinnerung
                     </Button>
                   )}
                   {onComplete && (
-                    <Button size="sm" className="h-10 md:h-9 col-span-2 md:col-span-1 md:flex-1" onClick={() => onComplete(callback.id)}>
-                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                    <Button className="h-10 md:h-10 md:text-sm col-span-2 md:col-span-1 md:flex-1" onClick={() => onComplete(callback.id)}>
+                      <CheckCircle className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Erledigt
                     </Button>
                   )}
@@ -655,11 +655,10 @@ export function TranscriptSheet({
             {onDelete && (
               <Button
                 variant="outline"
-                size="sm"
-                className="h-10 md:h-9 w-full text-destructive hover:text-destructive"
+                className="h-10 md:h-10 md:text-sm w-full text-destructive hover:text-destructive"
                 onClick={() => onDelete(callback.id)}
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                 Rückruf löschen
               </Button>
             )}

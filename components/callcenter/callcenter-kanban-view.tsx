@@ -118,18 +118,18 @@ function KanbanCard({ cb, onViewTranscript }: KanbanCardProps) {
   return (
     <div
       className={cn(
-        'border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer bg-card',
+        'border rounded-lg md:rounded-xl p-3 md:p-3.5 hover:shadow-md md:active:scale-[0.98] transition-all cursor-pointer bg-card',
         isCompleted && 'opacity-50',
       )}
       onClick={() => onViewTranscript(cb.id)}
     >
       {/* Top row: status dot + priority badge + countdown */}
-      <div className="flex items-center justify-between gap-1.5 mb-1.5">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <div className={cn('w-2 h-2 rounded-full flex-shrink-0', getStatusDot(cb.status))} />
+      <div className="flex items-center justify-between gap-1.5 mb-1.5 md:mb-2">
+        <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+          <div className={cn('w-2 h-2 md:w-2.5 md:h-2.5 rounded-full flex-shrink-0', getStatusDot(cb.status))} />
           <Badge
             variant="secondary"
-            className={cn('text-[10px] font-medium px-1.5 py-0', priorityCfg.color)}
+            className={cn('text-[10px] md:text-[11px] font-medium px-1.5 md:px-2 py-0', priorityCfg.color)}
           >
             {priorityCfg.label}
           </Badge>
@@ -137,7 +137,7 @@ function KanbanCard({ cb, onViewTranscript }: KanbanCardProps) {
         {!isCompleted && (
           <span
             className={cn(
-              'flex items-center gap-1 text-[11px] tabular-nums font-medium flex-shrink-0',
+              'flex items-center gap-1 text-[11px] md:text-[12px] tabular-nums font-medium flex-shrink-0',
               isOverdue
                 ? 'text-red-600 dark:text-red-400'
                 : percentRemaining < 30
@@ -145,43 +145,43 @@ function KanbanCard({ cb, onViewTranscript }: KanbanCardProps) {
                   : 'text-muted-foreground',
             )}
           >
-            <Clock className="h-3 w-3" />
+            <Clock className="h-3 w-3 md:h-3.5 md:w-3.5" />
             {formatted}
           </span>
         )}
       </div>
 
       {/* Customer info */}
-      <p className="font-medium text-sm truncate">{cb.customerName}</p>
-      <p className="text-xs text-muted-foreground">{cb.customerPhone}</p>
+      <p className="font-medium md:font-semibold text-sm md:text-[15px] truncate">{cb.customerName}</p>
+      <p className="text-xs md:text-[13px] text-muted-foreground tabular-nums">{cb.customerPhone}</p>
 
       {/* Reason */}
-      <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{cb.reason}</p>
+      <p className="text-xs md:text-[13px] text-muted-foreground line-clamp-1 md:line-clamp-2 mt-1 md:mt-1.5">{cb.reason}</p>
 
       {/* Bottom row: avatar + advisor name + source badge */}
-      <div className="flex items-center justify-between gap-2 mt-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <Avatar className="h-5 w-5">
-            <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-semibold">
+      <div className="flex items-center justify-between gap-2 mt-2 md:mt-2.5">
+        <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+          <Avatar className="h-5 w-5 md:h-6 md:w-6">
+            <AvatarFallback className="text-[9px] md:text-[10px] bg-primary/10 text-primary font-semibold">
               {advisorInitials}
             </AvatarFallback>
           </Avatar>
-          <span className="text-xs text-muted-foreground truncate">{cb.assignedAdvisor}</span>
+          <span className="text-xs md:text-[13px] text-muted-foreground truncate">{cb.assignedAdvisor}</span>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
           {cb.escalationLevel > 1 && (
             <span
               className={cn(
-                'flex items-center gap-0.5 text-[10px] font-semibold',
+                'flex items-center gap-0.5 text-[10px] md:text-[11px] font-semibold',
                 escalationLevelConfig[cb.escalationLevel].color,
               )}
             >
-              <Shield className="h-3 w-3" />
+              <Shield className="h-3 w-3 md:h-3.5 md:w-3.5" />
               {cb.escalationLevel}
             </span>
           )}
-          <span className={cn('text-[10px] rounded-full px-1.5 py-0.5 font-medium', sourceCfg.color)}>
-            <SourceIcon className="h-3 w-3 inline-block" />
+          <span className={cn('text-[10px] md:text-[11px] rounded-full px-1.5 md:px-2 py-0.5 font-medium', sourceCfg.color)}>
+            <SourceIcon className="h-3 w-3 md:h-3.5 md:w-3.5 inline-block" />
           </span>
         </div>
       </div>
@@ -233,7 +233,7 @@ export function CallcenterKanbanView({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5">
       {COLUMNS.map((col) => {
         const items = grouped[col.status]
 
@@ -246,21 +246,21 @@ export function CallcenterKanbanView({
             )}
           >
             {/* Column header */}
-            <div className="flex items-center justify-between px-3 py-2.5 border-b">
-              <span className="text-sm font-semibold">{col.label}</span>
+            <div className="flex items-center justify-between px-3 py-2.5 md:px-4 md:py-3 border-b">
+              <span className="text-sm md:text-base font-semibold">{col.label}</span>
               <Badge
                 variant="secondary"
-                className={cn('text-[10px] font-bold tabular-nums', col.badgeColor)}
+                className={cn('text-[10px] md:text-[11px] font-bold tabular-nums', col.badgeColor)}
               >
                 {items.length}
               </Badge>
             </div>
 
             {/* Card stack */}
-            <ScrollArea className="max-h-[60dvh] md:max-h-[calc(100vh-280px)]">
-              <div className="p-2 space-y-2">
+            <ScrollArea className="max-h-[60dvh] md:max-h-[calc(100vh-320px)]">
+              <div className="p-2 md:p-2.5 space-y-2 md:space-y-2.5">
                 {items.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">
+                  <p className="text-xs md:text-[13px] text-muted-foreground text-center py-6 md:py-8">
                     Keine Einträge
                   </p>
                 ) : (

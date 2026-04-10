@@ -10,7 +10,11 @@ import { VoiceControl } from '@/components/voice/voice-control'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // On tablet (md, < lg) the sidebar starts collapsed (icon-only); on desktop expanded.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia('(max-width: 1023.98px)').matches
+  })
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const pathname = usePathname()
   const isNachrichten = pathname?.startsWith('/nachrichten')
@@ -18,8 +22,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <TooltipProvider>
       <div className="flex h-dvh min-h-dvh overflow-hidden bg-background">
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:flex">
+        {/* Desktop & Tablet Sidebar */}
+        <div className="hidden md:flex">
           <Suspense fallback={null}>
             <Sidebar
               collapsed={sidebarCollapsed}
@@ -28,7 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Suspense>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation (only < md) */}
         <Suspense fallback={null}>
           <MobileNav
             open={mobileNavOpen}
@@ -40,12 +44,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header onMenuToggle={() => setMobileNavOpen(true)} />
           {isNachrichten ? (
-            <main className="flex-1 overflow-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+            <main className="flex-1 overflow-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
               {children}
             </main>
           ) : (
             <main className="flex-1 overflow-y-auto">
-              <div className="mx-auto w-full max-w-[1600px] px-3 py-3 pb-24 sm:px-4 sm:py-4 sm:pb-28 lg:px-6 lg:py-6 lg:pb-6">
+              <div className="mx-auto w-full max-w-[1600px] px-3 py-3 pb-24 sm:px-4 sm:py-4 sm:pb-28 md:px-5 md:py-5 md:pb-6 lg:px-6 lg:py-6 lg:pb-6">
                 {children}
               </div>
             </main>

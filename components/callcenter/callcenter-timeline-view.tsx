@@ -150,22 +150,22 @@ function TimelineRow({ cb, onViewTranscript }: TimelineRowProps) {
   return (
     <div
       className={cn(
-        'flex items-center gap-3 p-2.5 border-b last:border-b-0 hover:bg-muted/30 transition-colors cursor-pointer',
+        'flex items-center gap-3 md:gap-4 p-2.5 md:px-5 md:py-3.5 border-b last:border-b-0 hover:bg-muted/30 transition-colors cursor-pointer',
         isCompleted && 'opacity-50',
       )}
       onClick={() => onViewTranscript(cb.id)}
     >
       {/* Priority dot */}
-      <div className={cn('w-2 h-2 rounded-full flex-shrink-0', getPriorityDot(cb.priority))} />
+      <div className={cn('w-2 h-2 md:w-2.5 md:h-2.5 rounded-full flex-shrink-0', getPriorityDot(cb.priority))} />
 
       {/* Customer name */}
-      <span className="font-medium text-sm whitespace-nowrap">{cb.customerName}</span>
+      <span className="font-medium md:font-semibold text-sm md:text-[15px] whitespace-nowrap">{cb.customerName}</span>
 
       {/* Reason */}
-      <span className="text-xs text-muted-foreground truncate min-w-0 flex-1">{cb.reason}</span>
+      <span className="text-xs md:text-[13px] text-muted-foreground truncate min-w-0 flex-1">{cb.reason}</span>
 
       {/* Assigned advisor */}
-      <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
+      <span className="text-xs md:text-[13px] text-muted-foreground whitespace-nowrap hidden sm:inline">
         {cb.assignedAdvisor}
       </span>
 
@@ -173,7 +173,7 @@ function TimelineRow({ cb, onViewTranscript }: TimelineRowProps) {
       {!isCompleted && (
         <span
           className={cn(
-            'flex items-center gap-1 text-[11px] tabular-nums font-medium flex-shrink-0 rounded-full px-2 py-0.5',
+            'flex items-center gap-1 md:gap-1.5 text-[11px] md:text-[12px] tabular-nums font-medium flex-shrink-0 rounded-full px-2 md:px-2.5 py-0.5 md:py-1',
             isOverdue
               ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400'
               : percentRemaining < 30
@@ -181,19 +181,19 @@ function TimelineRow({ cb, onViewTranscript }: TimelineRowProps) {
                 : 'bg-muted text-muted-foreground',
           )}
         >
-          <Clock className="h-3 w-3" />
+          <Clock className="h-3 w-3 md:h-3.5 md:w-3.5" />
           {formatted}
         </span>
       )}
 
       {isCompleted && cb.completedAt && (
-        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+        <span className="text-[11px] md:text-[12px] text-emerald-600 dark:text-emerald-400 flex-shrink-0">
           Erledigt
         </span>
       )}
 
       {/* Source icon */}
-      <SourceIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+      <SourceIcon className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
     </div>
   )
 }
@@ -263,7 +263,7 @@ export function CallcenterTimelineView({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 md:space-y-4">
       {TIME_GROUPS.map((group) => {
         const items = grouped[group.key]
         if (!items || items.length === 0) return null
@@ -274,27 +274,27 @@ export function CallcenterTimelineView({
         return (
           <div
             key={group.key}
-            className={cn('rounded-lg border overflow-hidden', group.borderColor, 'border-l-4')}
+            className={cn('rounded-lg md:rounded-xl border overflow-hidden bg-card', group.borderColor, 'border-l-4')}
           >
             {/* Group header */}
             <div
               className={cn(
-                'flex items-center justify-between px-3 py-2 bg-muted/30',
+                'flex items-center justify-between px-3 py-2 md:px-5 md:py-3 bg-muted/30',
                 isCompletedGroup && 'cursor-pointer hover:bg-muted/50 transition-colors',
               )}
               onClick={isCompletedGroup ? () => setCompletedCollapsed((v) => !v) : undefined}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 md:gap-2.5">
                 {isCompletedGroup && (
                   isCollapsed
-                    ? <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ? <ChevronRight className="h-4 w-4 md:h-[18px] md:w-[18px] text-muted-foreground" />
+                    : <ChevronDown className="h-4 w-4 md:h-[18px] md:w-[18px] text-muted-foreground" />
                 )}
-                <span className="text-sm font-semibold">{group.label}</span>
+                <span className="text-sm md:text-base font-semibold">{group.label}</span>
               </div>
               <Badge
                 variant="secondary"
-                className={cn('text-[10px] font-bold tabular-nums', group.badgeColor)}
+                className={cn('text-[10px] md:text-[11px] font-bold tabular-nums', group.badgeColor)}
               >
                 {items.length}
               </Badge>
@@ -317,7 +317,7 @@ export function CallcenterTimelineView({
       })}
 
       {/* Footer */}
-      <div className="px-3 py-2 text-xs text-muted-foreground">
+      <div className="px-3 md:px-5 py-2 md:py-2.5 text-xs md:text-[13px] text-muted-foreground">
         {callbacks.length} Rückruf{callbacks.length !== 1 ? 'e' : ''} gesamt
       </div>
     </div>

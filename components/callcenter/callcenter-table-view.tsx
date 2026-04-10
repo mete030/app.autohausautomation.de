@@ -167,35 +167,35 @@ export function CallcenterTableView({
         </p>
       </div>
 
-      {/* Desktop: table */}
-      <div className="hidden md:block border rounded-xl overflow-hidden">
+      {/* Desktop & Tablet: table */}
+      <div className="hidden md:block border rounded-xl overflow-hidden bg-card">
         <div className="overflow-x-auto">
           <Table>
           <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="w-[100px]">
+            <TableRow className="bg-muted/30 hover:bg-muted/30 [&_th]:md:py-3.5 [&_th]:md:text-[11px] [&_th]:md:uppercase [&_th]:md:tracking-wide [&_th]:md:font-semibold">
+              <TableHead className="w-[110px] md:w-[120px]">
                 <button className="text-xs font-medium hover:text-foreground" onClick={() => setSortKey('status')}>
                   Status {sortKey === 'status' && '↓'}
                 </button>
               </TableHead>
-              <TableHead className="w-[90px]">
+              <TableHead className="w-[90px] hidden lg:table-cell">
                 <button className="text-xs font-medium hover:text-foreground" onClick={() => setSortKey('priority')}>
                   Priorität {sortKey === 'priority' && '↓'}
                 </button>
               </TableHead>
               <TableHead>Kunde</TableHead>
               <TableHead className="hidden lg:table-cell">Anliegen</TableHead>
-              <TableHead className="hidden md:table-cell">Berater</TableHead>
-              <TableHead className="hidden lg:table-cell">Angenommen von</TableHead>
-              <TableHead className="hidden sm:table-cell w-[100px]">Quelle</TableHead>
-              <TableHead className="w-[90px]">SLA</TableHead>
-              <TableHead className="w-[90px]">Fällig</TableHead>
-              <TableHead className="w-[80px]">
+              <TableHead className="hidden lg:table-cell">Berater</TableHead>
+              <TableHead className="hidden xl:table-cell">Angenommen von</TableHead>
+              <TableHead className="hidden xl:table-cell w-[100px]">Quelle</TableHead>
+              <TableHead className="w-[100px]">SLA</TableHead>
+              <TableHead className="w-[100px]">Fällig</TableHead>
+              <TableHead className="w-[90px] hidden lg:table-cell">
                 <button className="text-xs font-medium hover:text-foreground" onClick={() => setSortKey('created')}>
                   Erstellt {sortKey === 'created' && '↓'}
                 </button>
               </TableHead>
-              <TableHead className="w-[50px]" />
+              <TableHead className="w-[60px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -215,7 +215,7 @@ export function CallcenterTableView({
                 <TableRow
                   key={cb.id}
                   className={cn(
-                    'cursor-pointer',
+                    'cursor-pointer transition-colors [&>td]:md:py-3.5 lg:[&>td]:py-2.5',
                     isOverdue && 'bg-red-50/40 dark:bg-red-950/10',
                     isCompleted && 'opacity-50',
                     isKi && !isCompleted && !isOverdue && 'bg-violet-50/20 dark:bg-violet-950/5',
@@ -225,7 +225,7 @@ export function CallcenterTableView({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className={cn('w-2 h-2 rounded-full flex-shrink-0', getStatusDot(cb.status))} />
-                      <Badge variant="secondary" className={cn('text-[10px] font-medium', statusCfg.color)}>
+                      <Badge variant="secondary" className={cn('text-[10px] md:text-[11px] font-medium', statusCfg.color)}>
                         {statusCfg.label}
                       </Badge>
                       {cb.escalationLevel > 1 && (
@@ -239,21 +239,64 @@ export function CallcenterTableView({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden lg:table-cell">
                     <Badge variant="secondary" className={cn('text-[10px] font-medium', priorityCfg.color)}>
                       {priorityCfg.label}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <p className="text-sm truncate max-w-[160px]">{cb.customerName}</p>
-                      <p className="text-xs text-muted-foreground">{cb.customerPhone}</p>
+                    {/* Master cell — at md (tablet) we inline priority, source, advisor; at lg+ keep slim */}
+                    <div className="space-y-1 lg:space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm md:text-[15px] lg:text-sm font-medium md:font-semibold lg:font-normal truncate max-w-[220px] md:max-w-[280px] lg:max-w-[200px]">
+                          {cb.customerName}
+                        </p>
+                        {/* Tablet-only inline priority badge */}
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            'hidden md:inline-flex lg:hidden text-[10px] font-medium',
+                            priorityCfg.color,
+                          )}
+                        >
+                          {priorityCfg.label}
+                        </Badge>
+                        {/* Tablet-only inline source pill */}
+                        <span className={cn(
+                          'hidden md:inline-flex lg:hidden items-center gap-1 text-[10px] font-medium rounded-full px-1.5 py-0.5',
+                          sourceCfg.color,
+                        )}>
+                          <SourceIcon className="h-3 w-3" />
+                          {sourceCfg.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs md:text-[13px] lg:text-xs text-muted-foreground tabular-nums">
+                          {cb.customerPhone}
+                        </p>
+                        {/* Tablet-only inline advisor */}
+                        <span className="hidden md:inline-flex lg:hidden items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className="text-muted-foreground/40">·</span>
+                          <Avatar className="h-5 w-5">
+                            <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-semibold">
+                              {advisorInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-foreground/80 truncate max-w-[180px]">{cb.assignedAdvisor}</span>
+                          {isKi && (
+                            <span className="ml-0.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400">
+                              <Bot className="h-3 w-3" />
+                              KI
+                            </span>
+                          )}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <p className="text-sm truncate max-w-[200px]">{cb.reason}</p>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden lg:table-cell">
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
@@ -263,7 +306,7 @@ export function CallcenterTableView({
                       <span className="text-sm font-semibold truncate max-w-[120px]">{cb.assignedAdvisor}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">
+                  <TableCell className="hidden xl:table-cell">
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className={cn(
@@ -283,7 +326,7 @@ export function CallcenterTableView({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">
+                  <TableCell className="hidden xl:table-cell">
                     <div className="flex items-center gap-1">
                       <SourceIcon className="h-3 w-3 text-muted-foreground" />
                       <span className={cn('text-[10px] font-medium rounded-full px-1.5 py-0.5', sourceCfg.color)}>
@@ -292,14 +335,14 @@ export function CallcenterTableView({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className={cn('text-xs tabular-nums whitespace-nowrap', sla.className)}>
+                    <span className={cn('text-xs md:text-[13px] lg:text-xs tabular-nums whitespace-nowrap', sla.className)}>
                       {sla.text}
                     </span>
                   </TableCell>
                   <TableCell>
                     <CountdownCell dueAt={cb.dueAt} slaDurationMinutes={cb.slaDurationMinutes} status={cb.status} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden lg:table-cell">
                     <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                       {formatTimeAgo(cb.createdAt)}
                     </span>
@@ -307,11 +350,11 @@ export function CallcenterTableView({
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" className="h-9 w-9 md:h-10 md:w-10 lg:h-7 lg:w-7 p-0">
+                          <MoreHorizontal className="h-4 w-4 md:h-[18px] md:w-[18px] lg:h-4 lg:w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="md:min-w-[220px] md:[&_[role=menuitem]]:py-2 md:[&_[role=menuitem]]:text-sm">
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewTranscript(cb.id) }}>
                           <FileText className="h-3.5 w-3.5 mr-2" />
                           Transkript anzeigen
@@ -370,7 +413,7 @@ export function CallcenterTableView({
           </TableBody>
         </Table>
       </div>
-        <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
+        <div className="px-4 md:px-5 py-2 md:py-2.5 border-t bg-muted/20 text-xs md:text-[13px] text-muted-foreground">
           {callbacks.length} Rückruf{callbacks.length !== 1 ? 'e' : ''}
         </div>
       </div>

@@ -324,19 +324,24 @@ export default function CallcenterPageClient() {
 
   const showFab = (role === 'admin' || role === 'callcenter') && activeTab === 'rueckrufe'
 
+  // Short title (without " — suffix") for the tablet breakpoint where the
+  // full title would crowd the role switcher.
+  const shortTitle = header.title.split(' — ')[0]
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 md:space-y-5">
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <HeaderIcon className="h-5 w-5 text-primary flex-shrink-0" />
-            <h1 className="text-xl md:text-2xl font-bold truncate">
+          <div className="flex items-center gap-2 md:gap-2.5">
+            <HeaderIcon className="h-5 w-5 md:h-[22px] md:w-[22px] text-primary flex-shrink-0" />
+            <h1 className="text-xl md:text-[22px] lg:text-2xl font-bold tracking-tight truncate">
               <span className="sm:hidden">Callcenter</span>
-              <span className="hidden sm:inline">{header.title}</span>
+              <span className="hidden sm:inline lg:hidden">{shortTitle}</span>
+              <span className="hidden lg:inline">{header.title}</span>
             </h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm md:text-[13px] lg:text-sm text-muted-foreground mt-0.5">
             {header.subtitle}
             {role !== 'admin' && role !== 'dashboard' && (
               <span className="ml-2 text-xs font-medium text-foreground/70">
@@ -345,7 +350,7 @@ export default function CallcenterPageClient() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 md:flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-2.5 md:flex-shrink-0 flex-wrap md:flex-nowrap">
           {role === 'admin' && <CallcenterMorningSummaryDialog />}
           {role === 'admin' && <CallcenterVoiceTestDialog />}
           <CallcenterRoleSwitcher
@@ -361,19 +366,19 @@ export default function CallcenterPageClient() {
       {role === 'admin' && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="-mx-3 px-3 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabsList>
-              <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
-              <TabsTrigger value="rueckrufe">Rückrufe</TabsTrigger>
-              <TabsTrigger value="mitarbeiter">Mitarbeiter</TabsTrigger>
-              <TabsTrigger value="einstellungen">Einstellungen</TabsTrigger>
+            <TabsList className="md:h-11">
+              <TabsTrigger value="uebersicht" className="md:h-9 md:px-4 md:text-sm">Übersicht</TabsTrigger>
+              <TabsTrigger value="rueckrufe" className="md:h-9 md:px-4 md:text-sm">Rückrufe</TabsTrigger>
+              <TabsTrigger value="mitarbeiter" className="md:h-9 md:px-4 md:text-sm">Mitarbeiter</TabsTrigger>
+              <TabsTrigger value="einstellungen" className="md:h-9 md:px-4 md:text-sm">Einstellungen</TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="uebersicht" className="mt-4">
+          <TabsContent value="uebersicht" className="mt-4 md:mt-5">
             <CallcenterAdminDashboard />
           </TabsContent>
 
-          <TabsContent value="rueckrufe" className="mt-4 space-y-4">
+          <TabsContent value="rueckrufe" className="mt-4 md:mt-5 space-y-4 md:space-y-5">
             <CallcenterKpiRow
               totalCallbacks={totalCallbacks}
               overdue={totalOverdue}
@@ -428,11 +433,11 @@ export default function CallcenterPageClient() {
             )}
           </TabsContent>
 
-          <TabsContent value="mitarbeiter" className="mt-4">
+          <TabsContent value="mitarbeiter" className="mt-4 md:mt-5">
             <CallcenterEmployeeView />
           </TabsContent>
 
-          <TabsContent value="einstellungen" className="mt-4">
+          <TabsContent value="einstellungen" className="mt-4 md:mt-5">
             <CallcenterSettingsView />
           </TabsContent>
         </Tabs>
@@ -441,12 +446,12 @@ export default function CallcenterPageClient() {
       {/* ======== CALL CENTER MITARBEITER VIEW ======== */}
       {role === 'callcenter' && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="rueckrufe">Rückrufe</TabsTrigger>
-            <TabsTrigger value="mails">Mails</TabsTrigger>
+          <TabsList className="md:h-11">
+            <TabsTrigger value="rueckrufe" className="md:h-9 md:px-4 md:text-sm">Rückrufe</TabsTrigger>
+            <TabsTrigger value="mails" className="md:h-9 md:px-4 md:text-sm">Mails</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="rueckrufe" className="mt-4 space-y-4">
+          <TabsContent value="rueckrufe" className="mt-4 md:mt-5 space-y-4 md:space-y-5">
             <CallcenterToolbar
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -487,7 +492,7 @@ export default function CallcenterPageClient() {
             )}
           </TabsContent>
 
-          <TabsContent value="mails" className="mt-4">
+          <TabsContent value="mails" className="mt-4 md:mt-5">
             <CallcenterEmailInbox
               callbacks={callbacks}
               currentUserName={currentUser}
@@ -502,7 +507,7 @@ export default function CallcenterPageClient() {
 
       {/* ======== SERVICEBERATER / VERKÄUFER VIEW ======== */}
       {role === 'berater' && (
-        <div className="space-y-4">
+        <div className="space-y-4 md:space-y-5">
           <CallcenterToolbar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}

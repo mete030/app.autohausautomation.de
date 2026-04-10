@@ -70,11 +70,11 @@ export function CallcenterRoleSwitcher({
   }, [employees])
 
   return (
-    <div className="flex flex-col gap-2 w-full md:w-auto md:flex-row md:items-center">
+    <div className="flex flex-col gap-2 w-full md:w-auto md:flex-row md:items-center md:gap-2.5">
       {/* User selector dropdown (only for non-admin roles) */}
       {role === 'callcenter' && (
         <Select value={selectedUser} onValueChange={onSelectedUserChange}>
-          <SelectTrigger className="h-9 text-xs w-full md:h-8 md:w-[170px]">
+          <SelectTrigger className="h-9 text-xs w-full md:h-9 md:text-sm md:w-[200px]">
             <SelectValue placeholder="Agent auswählen" />
           </SelectTrigger>
           <SelectContent>
@@ -89,7 +89,7 @@ export function CallcenterRoleSwitcher({
 
       {role === 'berater' && (
         <Select value={selectedUser} onValueChange={onSelectedUserChange}>
-          <SelectTrigger className="h-9 text-xs w-full md:h-8 md:w-[170px]">
+          <SelectTrigger className="h-9 text-xs w-full md:h-9 md:text-sm md:w-[200px]">
             <SelectValue placeholder="Berater auswählen" />
           </SelectTrigger>
           <SelectContent>
@@ -118,7 +118,7 @@ export function CallcenterRoleSwitcher({
       )}
 
       {/* Role tabs */}
-      <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-1 rounded-lg md:rounded-xl border bg-muted/50 p-0.5 md:p-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {roles.map((r) => {
           const Icon = r.icon
           const isActive = role === r.value
@@ -127,7 +127,7 @@ export function CallcenterRoleSwitcher({
               key={r.value}
               onClick={() => onRoleChange(r.value)}
               className={cn(
-                'flex items-center gap-1.5 rounded-md px-2.5 py-2 md:px-3 md:py-1.5 text-xs font-medium transition-all whitespace-nowrap flex-shrink-0',
+                'flex items-center gap-1.5 rounded-md md:rounded-lg px-2.5 py-2 md:px-3 md:py-2 lg:px-3.5 text-xs md:text-[13px] font-medium transition-all whitespace-nowrap flex-shrink-0',
                 isActive && r.value === 'admin'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : isActive
@@ -135,9 +135,10 @@ export function CallcenterRoleSwitcher({
                     : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{r.label}</span>
-              <span className="sm:hidden">{r.shortLabel}</span>
+              <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              {/* Three-stage labels: short on mobile + tablet, full on desktop */}
+              <span className="lg:hidden">{r.shortLabel}</span>
+              <span className="hidden lg:inline">{r.label}</span>
             </button>
           )
         })}

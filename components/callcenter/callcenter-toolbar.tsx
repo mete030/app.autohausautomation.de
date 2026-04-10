@@ -99,7 +99,7 @@ export function CallcenterToolbar({
     <Select value={advisorFilter} onValueChange={onAdvisorFilterChange}>
       <SelectTrigger className={cn(
         'w-full text-xs',
-        size === 'lg' ? 'h-11 text-sm' : 'h-8 md:w-[220px]',
+        size === 'lg' ? 'h-11 text-sm' : 'h-9 md:text-sm md:w-[220px] lg:w-[220px]',
       )}>
         <SelectValue placeholder="Alle Mitarbeiter" />
       </SelectTrigger>
@@ -135,7 +135,7 @@ export function CallcenterToolbar({
     <Select value={sourceFilter} onValueChange={onSourceFilterChange}>
       <SelectTrigger className={cn(
         'w-full text-xs',
-        size === 'lg' ? 'h-11 text-sm' : 'h-8 md:w-[160px]',
+        size === 'lg' ? 'h-11 text-sm' : 'h-9 md:text-sm md:w-[170px]',
       )}>
         <SelectValue placeholder="Alle Quellen" />
       </SelectTrigger>
@@ -152,7 +152,7 @@ export function CallcenterToolbar({
     <Select value={priorityFilter ?? 'alle'} onValueChange={onPriorityFilterChange}>
       <SelectTrigger className={cn(
         'w-full text-xs',
-        size === 'lg' ? 'h-11 text-sm' : 'h-8 md:w-[170px]',
+        size === 'lg' ? 'h-11 text-sm' : 'h-9 md:text-sm md:w-[170px]',
       )}>
         <SelectValue placeholder="Alle Prioritäten" />
       </SelectTrigger>
@@ -170,7 +170,7 @@ export function CallcenterToolbar({
     <Select value={customerFilter ?? 'alle'} onValueChange={onCustomerFilterChange}>
       <SelectTrigger className={cn(
         'w-full text-xs',
-        size === 'lg' ? 'h-11 text-sm' : 'h-8 md:w-[200px]',
+        size === 'lg' ? 'h-11 text-sm' : 'h-9 md:text-sm md:w-[200px]',
       )}>
         <SelectValue placeholder="Alle Kunden" />
       </SelectTrigger>
@@ -187,7 +187,7 @@ export function CallcenterToolbar({
     <Select value={callAgentFilter ?? 'alle'} onValueChange={onCallAgentFilterChange}>
       <SelectTrigger className={cn(
         'w-full text-xs',
-        size === 'lg' ? 'h-11 text-sm' : 'h-8 md:w-[220px]',
+        size === 'lg' ? 'h-11 text-sm' : 'h-9 md:text-sm md:w-[220px]',
       )}>
         <SelectValue placeholder="Alle Call-Center-Agenten" />
       </SelectTrigger>
@@ -203,14 +203,14 @@ export function CallcenterToolbar({
   return (
     <div className="space-y-2 md:space-y-3">
       {/* Row 1: Search + (mobile) Filter button + (desktop) New Callback + View Toggle */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-[18px] md:w-[18px] text-muted-foreground" />
           <Input
             placeholder="Kunde, Telefon, Berater..."
             value={searchQuery}
             onChange={e => onSearchChange(e.target.value)}
-            className="pl-9 h-10 md:h-9"
+            className="pl-9 md:pl-10 h-10 md:h-10 md:text-sm"
           />
         </div>
 
@@ -258,28 +258,27 @@ export function CallcenterToolbar({
         {/* Desktop-only: new callback + reminders + view toggle */}
         <div className="hidden md:flex items-center gap-2">
           {!hideNewCallback && (
-            <Button onClick={onNewCallback} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
+            <Button onClick={onNewCallback} className="h-10 px-4">
+              <Plus className="h-4 w-4 mr-1.5" />
               Neuer Rückruf
             </Button>
           )}
           {onShowReminders && (
             <Button
               variant="ghost"
-              size="sm"
-              className="relative px-2.5"
+              className="relative h-10 w-10 p-0"
               onClick={onShowReminders}
               title="Erinnerungen"
             >
-              <Bell className="h-4 w-4" />
+              <Bell className="h-[18px] w-[18px]" />
               {(activeReminderCount ?? 0) > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                <span className="absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                   {activeReminderCount}
                 </span>
               )}
             </Button>
           )}
-          <div className="flex border rounded-lg">
+          <div className="flex border rounded-xl overflow-hidden">
             {viewModes.map((vm, idx) => {
               const Icon = vm.icon
               const isFirst = idx === 0
@@ -288,9 +287,8 @@ export function CallcenterToolbar({
                 <Button
                   key={vm.value}
                   variant="ghost"
-                  size="sm"
                   className={cn(
-                    'px-2.5',
+                    'h-10 w-10 p-0',
                     isFirst && 'rounded-r-none',
                     isLast && 'rounded-l-none',
                     !isFirst && !isLast && 'rounded-none',
@@ -299,7 +297,7 @@ export function CallcenterToolbar({
                   onClick={() => onViewModeChange(vm.value)}
                   title={vm.label}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-[18px] w-[18px]" />
                 </Button>
               )
             })}
@@ -308,14 +306,14 @@ export function CallcenterToolbar({
       </div>
 
       {/* Row 2: Status pills (always visible, scrollable on mobile) + desktop filters */}
-      <div className="flex items-center gap-2">
-        <div className="flex gap-1.5 overflow-x-auto -mx-3 px-3 pb-1 md:mx-0 md:px-0 md:pb-0 md:flex-wrap md:overflow-visible flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex gap-1.5 md:gap-2 overflow-x-auto -mx-3 px-3 pb-1 md:mx-0 md:px-0 md:pb-0 md:flex-wrap md:overflow-visible md:flex-shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {filterPills.map(f => (
             <button
               key={f.value}
               onClick={() => onStatusFilterChange(f.value)}
               className={cn(
-                'h-9 md:h-7 px-3.5 md:px-3 text-xs rounded-full border font-medium transition-colors whitespace-nowrap flex-shrink-0',
+                'h-9 md:h-9 px-3.5 md:px-4 text-xs md:text-[13px] rounded-full border font-medium transition-colors whitespace-nowrap flex-shrink-0',
                 statusFilter === f.value
                   ? 'bg-foreground text-background border-foreground'
                   : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/50',
@@ -327,10 +325,10 @@ export function CallcenterToolbar({
         </div>
 
         {/* Desktop filters inline */}
-        <div className="hidden md:flex md:items-center md:gap-2 md:flex-wrap">
+        <div className="hidden md:flex md:items-center md:gap-2 md:flex-wrap md:flex-1">
           {!hideAdvisorFilter && (
             <>
-              <div className="h-4 w-px bg-border" />
+              <div className="h-6 w-px bg-border" />
               {advisorSelect('sm')}
             </>
           )}

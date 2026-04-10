@@ -455,29 +455,29 @@ export function CallcenterEmailInbox({
   }
 
   return (
-    <div className="flex h-[calc(100vh-320px)] min-h-[500px] rounded-xl border bg-card overflow-hidden">
+    <div className="flex h-[calc(100vh-320px)] md:h-[calc(100vh-340px)] min-h-[500px] rounded-xl border bg-card overflow-hidden">
       {/* Thread List */}
       <div className={cn(
-        'flex flex-col border-r w-full md:w-[380px] md:min-w-[380px]',
+        'flex flex-col border-r w-full md:w-[340px] md:min-w-[340px] lg:w-[400px] lg:min-w-[400px]',
         selectedThreadId && 'hidden md:flex'
       )}>
-        <div className="flex items-center gap-2 border-b px-4 py-3">
-          <Inbox className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Posteingang</span>
+        <div className="flex items-center gap-2 border-b px-4 py-3 md:px-5 md:py-4">
+          <Inbox className="h-4 w-4 md:h-[18px] md:w-[18px] text-muted-foreground" />
+          <span className="text-sm md:text-base font-semibold">Posteingang</span>
           {unreadCount > 0 && (
             <Badge variant="secondary" className="h-5 min-w-[20px] justify-center rounded-full px-1.5 text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
               {unreadCount}
             </Badge>
           )}
         </div>
-        <div className="px-3 py-2 border-b">
+        <div className="px-3 py-2 md:px-4 md:py-2.5 border-b">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             <Input
               placeholder="Suche in E-Mails..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-xs"
+              className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm"
             />
           </div>
         </div>
@@ -493,33 +493,33 @@ export function CallcenterEmailInbox({
                   setExpandedMessages(new Set(thread.messages.map(m => m.id)))
                 }}
                 className={cn(
-                  'w-full text-left px-4 py-3 border-b transition-colors hover:bg-muted/50',
+                  'w-full text-left px-4 py-3 md:px-5 md:py-3.5 border-b transition-colors hover:bg-muted/50',
                   selectedThreadId === thread.id && 'bg-muted/80',
                   !thread.isRead && 'bg-blue-50/50 dark:bg-blue-950/10'
                 )}
               >
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-2 md:gap-2.5">
                   {!thread.isRead && (
-                    <div className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                    <div className="mt-1.5 md:mt-2 h-2 w-2 md:h-2.5 md:w-2.5 rounded-full bg-blue-500 flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className={cn('text-xs truncate', !thread.isRead && 'font-semibold')}>
+                      <p className={cn('text-xs md:text-[13px] truncate', !thread.isRead && 'font-semibold')}>
                         {lastMsg.from}
                       </p>
-                      <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                      <span className="text-[10px] md:text-[11px] text-muted-foreground flex-shrink-0">
                         {formatTime(thread.lastMessageAt)}
                       </span>
                     </div>
-                    <p className={cn('text-xs mt-0.5 truncate', !thread.isRead ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+                    <p className={cn('text-xs md:text-[13px] mt-0.5 truncate', !thread.isRead ? 'font-medium text-foreground' : 'text-muted-foreground')}>
                       {thread.subject}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-[10px] text-muted-foreground truncate">
+                      <span className="text-[10px] md:text-[11px] text-muted-foreground truncate">
                         {lastMsg.body.slice(0, 60).replace(/\n/g, ' ')}...
                       </span>
                       {hasAi && (
-                        <Bot className="h-3 w-3 text-violet-500 flex-shrink-0" />
+                        <Bot className="h-3 w-3 md:h-3.5 md:w-3.5 text-violet-500 flex-shrink-0" />
                       )}
                     </div>
                   </div>
@@ -543,21 +543,21 @@ export function CallcenterEmailInbox({
       )}>
         {selectedThread ? (
           <>
-            <div className="flex items-center gap-2 border-b px-4 py-3">
+            <div className="flex items-center gap-2 md:gap-3 border-b px-4 py-3 md:px-6 md:py-4">
               <button
-                className="md:hidden text-muted-foreground hover:text-foreground"
+                className="md:hidden text-muted-foreground hover:text-foreground h-8 w-8 -ml-1 flex items-center justify-center"
                 onClick={() => setSelectedThreadId(null)}
               >
                 ←
               </button>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{selectedThread.subject}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-sm md:text-base font-semibold truncate">{selectedThread.subject}</p>
+                <p className="text-[10px] md:text-[12px] text-muted-foreground mt-0.5">
                   {selectedThread.messages.length} Nachrichten · {selectedThread.customerName && `Kunde: ${selectedThread.customerName}`}
                 </p>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-4">
               {selectedThread.messages.map((msg, idx) => {
                 const RoleIcon = getRoleIcon(msg.fromRole)
                 const badge = getRoleBadge(msg.fromRole)

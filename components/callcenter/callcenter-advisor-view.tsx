@@ -104,22 +104,22 @@ export function CallcenterAdvisorView({
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5 md:space-y-3">
       {groups.map(group => {
         const initials = group.name.split(' ').map(n => n[0]).join('')
         return (
           <Card key={group.name} className={cn('overflow-hidden', group.overdueCount > 0 && 'border-red-200 dark:border-red-900/40')}>
             {/* Advisor header */}
-            <div className="flex flex-col gap-2 px-4 py-2.5 bg-muted/30 border-b sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2.5">
-                <Avatar className="h-7 w-7">
-                  <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-semibold">
+            <div className="flex flex-col gap-2 px-4 py-2.5 md:px-5 md:py-3.5 bg-muted/30 border-b sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2.5 md:gap-3">
+                <Avatar className="h-7 w-7 md:h-9 md:w-9">
+                  <AvatarFallback className="text-[11px] md:text-xs bg-primary/10 text-primary font-semibold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="font-semibold text-sm">{group.name}</span>
+                <span className="font-semibold text-sm md:text-base">{group.name}</span>
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs md:text-[13px]">
                 {group.overdueCount > 0 && (
                   <span className="flex items-center gap-1 font-semibold text-red-600">
                     <AlertTriangle className="h-3 w-3" />
@@ -154,7 +154,7 @@ export function CallcenterAdvisorView({
                   <div
                     key={cb.id}
                     className={cn(
-                      'flex items-start gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors group cursor-pointer',
+                      'flex items-start gap-3 md:gap-4 px-4 py-2.5 md:px-5 md:py-3.5 hover:bg-muted/20 transition-colors group cursor-pointer',
                       isOverdue && 'bg-red-50/40 dark:bg-red-950/10',
                       isCompleted && 'opacity-50',
                       isKi && !isCompleted && !isOverdue && 'bg-violet-50/20 dark:bg-violet-950/5',
@@ -162,54 +162,54 @@ export function CallcenterAdvisorView({
                     onClick={() => onViewTranscript(cb.id)}
                   >
                     {/* Status dot */}
-                    <div className="flex-shrink-0 mt-[7px]">
-                      <div className={cn('w-2 h-2 rounded-full', getStatusDot(cb.status))} />
+                    <div className="flex-shrink-0 mt-[7px] md:mt-[9px]">
+                      <div className={cn('w-2 h-2 md:w-2.5 md:h-2.5 rounded-full', getStatusDot(cb.status))} />
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-semibold">{cb.customerName}</span>
+                      <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                        <span className="text-sm md:text-[15px] font-semibold">{cb.customerName}</span>
                         {(cb.priority === 'dringend' || cb.priority === 'hoch') && !isCompleted && (
-                          <Badge variant="secondary" className={cn('text-[10px] font-bold uppercase tracking-wide px-1 py-0', priorityCfg.color)}>
+                          <Badge variant="secondary" className={cn('text-[10px] md:text-[11px] font-bold uppercase tracking-wide px-1 md:px-1.5 py-0', priorityCfg.color)}>
                             {priorityCfg.label}
                           </Badge>
                         )}
-                        <span className="text-xs text-muted-foreground">{cb.customerPhone}</span>
+                        <span className="text-xs md:text-[13px] text-muted-foreground tabular-nums">{cb.customerPhone}</span>
                       </div>
 
-                      <p className={cn('text-sm', isCompleted && 'line-through decoration-muted-foreground/30')}>
+                      <p className={cn('text-sm md:text-[15px] mt-0.5', isCompleted && 'line-through decoration-muted-foreground/30')}>
                         {cb.reason}
                       </p>
 
                       {/* Agent + transcript preview */}
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          {isKi ? <Bot className="h-3 w-3 text-violet-500" /> : null}
+                      <div className="flex items-center gap-2 md:gap-2.5 mt-1 flex-wrap">
+                        <span className="flex items-center gap-1 text-xs md:text-[13px] text-muted-foreground">
+                          {isKi ? <Bot className="h-3 w-3 md:h-3.5 md:w-3.5 text-violet-500" /> : null}
                           <span className={isKi ? 'text-violet-600 dark:text-violet-400' : ''}>
                             {cb.takenBy.name}
                           </span>
                         </span>
-                        <span className={cn('text-[10px] rounded-full px-1.5 py-0.5', sourceCfg.color)}>
+                        <span className={cn('text-[10px] md:text-[11px] rounded-full px-1.5 md:px-2 py-0.5', sourceCfg.color)}>
                           {sourceCfg.label}
                         </span>
                         {cb.callTranscript && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[200px] hidden sm:inline">
+                          <span className="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-[320px] hidden sm:inline italic">
                             &quot;{cb.callTranscript.slice(0, 60)}...&quot;
                           </span>
                         )}
                       </div>
 
                       {isCompleted && cb.completionNotes && (
-                        <p className="text-xs text-emerald-700 dark:text-emerald-400 truncate mt-0.5">
+                        <p className="text-xs md:text-[13px] text-emerald-700 dark:text-emerald-400 truncate mt-0.5">
                           ✓ {cb.completionNotes}
                         </p>
                       )}
                     </div>
 
                     {/* Time + actions */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
-                      <span className={cn('text-xs tabular-nums whitespace-nowrap', getTimeClass(cb))}>
+                    <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0 pt-0.5">
+                      <span className={cn('text-xs md:text-[13px] tabular-nums whitespace-nowrap', getTimeClass(cb))}>
                         {formatTimeAgo(cb.createdAt)}
                       </span>
                       <DropdownMenu>
@@ -217,9 +217,9 @@ export function CallcenterAdvisorView({
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 w-6 p-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+                            className="h-9 w-9 md:h-9 md:w-9 lg:h-7 lg:w-7 p-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
                           >
-                            <MoreHorizontal className="h-3.5 w-3.5" />
+                            <MoreHorizontal className="h-4 w-4 md:h-[18px] md:w-[18px] lg:h-3.5 lg:w-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
