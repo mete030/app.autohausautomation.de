@@ -77,7 +77,7 @@ export function DocumentInboxTable({
   return (
     <div className="rounded-xl border border-border/60">
       <div className="max-h-[620px] overflow-auto">
-        <Table className="text-xs">
+        <Table className="min-w-[920px] text-xs">
           <TableHeader className="sticky top-0 bg-card z-10">
             <TableRow className="hover:bg-transparent">
               <TableHead>Datum</TableHead>

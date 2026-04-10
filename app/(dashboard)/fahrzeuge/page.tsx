@@ -19,7 +19,7 @@ import type { VehicleStatus } from '@/lib/types'
 const VehicleMap = dynamic(() => import('@/components/fahrzeuge/VehicleMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-[calc(100dvh-220px)] min-h-[560px] rounded-xl border border-border/60 bg-muted/30 animate-pulse xl:h-[calc(100vh-260px)]" />
+    <div className="h-[calc(100dvh-240px)] min-h-[420px] rounded-xl border border-border/60 bg-muted/30 animate-pulse sm:min-h-[560px] xl:h-[calc(100vh-260px)]" />
   ),
 })
 

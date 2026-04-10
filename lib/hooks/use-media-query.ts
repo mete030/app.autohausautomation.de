@@ -42,3 +42,13 @@ function getSnapshot(query: string): boolean {
 export function useIsDesktop(): boolean {
   return useMediaQuery('(min-width: 768px)')
 }
+
+/** Tablet range used for adaptive shell/layout decisions. */
+export function useIsTablet(): boolean {
+  return useMediaQuery('(min-width: 768px) and (max-width: 1279.98px)')
+}
+
+/** Large desktop range where the full navigation/sidebar should expand. */
+export function useIsLargeDesktop(): boolean {
+  return useMediaQuery('(min-width: 1280px)')
+}

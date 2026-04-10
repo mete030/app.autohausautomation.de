@@ -53,6 +53,8 @@
    ============================================= */
 :root {
   --radius: 0.625rem;
+  --mobile-dock-offset: calc(5rem + env(safe-area-inset-bottom));
+  --mobile-float-offset: calc(var(--mobile-dock-offset) + 0.85rem);
 
   /* Warm off-white base — no cold blue tint */
   --background: oklch(0.985 0.001 80);
@@ -152,5 +154,12 @@
   }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-padding-top: 5rem;
   }
 }

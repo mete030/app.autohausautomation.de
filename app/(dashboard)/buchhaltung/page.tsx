@@ -541,7 +541,7 @@ function BuchhaltungPageContent() {
             </Select>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
             <DocumentInboxTable
               documents={filteredIncoming}
               selectedDocumentId={effectiveIncomingSelectedId}
@@ -598,7 +598,7 @@ function BuchhaltungPageContent() {
             </Select>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
             <DocumentInboxTable
               documents={filteredOutgoing}
               selectedDocumentId={effectiveOutgoingSelectedId}

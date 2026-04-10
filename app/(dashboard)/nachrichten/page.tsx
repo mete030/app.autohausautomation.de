@@ -7,7 +7,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useHydrated } from '@/hooks/useHydrated'
+import { useIsDesktop, useIsLargeDesktop, useIsTablet } from '@/lib/hooks/use-media-query'
 import { useConversationStore, type ConversationInboxView } from '@/lib/stores/conversation-store'
 import { cn } from '@/lib/utils'
 import { mockCallAgents, type NachrichtenPerspective } from '@/lib/constants'
@@ -281,7 +283,7 @@ function ConversationList({
   }
 
   return (
-    <div className="w-full border-r border-border/50 flex flex-col h-full bg-background lg:w-[288px] lg:shrink-0 xl:w-[336px]">
+    <div className="flex h-full w-full flex-col border-r border-border/50 bg-background">
 
       {/* ── Top header ── */}
       <div className="border-b border-border/40 bg-white px-3.5 pt-3.5 pb-3">
@@ -730,10 +732,12 @@ function ChatView({
 function ContactPanel({
   conv,
   onBack,
+  onClose,
   isAdmin,
 }: {
   conv: Conversation | null
   onBack?: () => void
+  onClose?: () => void
   isAdmin?: boolean
 }) {
   const [attrsOpen, setAttrsOpen] = useState(true)
@@ -751,7 +755,7 @@ function ContactPanel({
   const lc = conv.label ? labelCls[conv.label] : null
 
   return (
-    <div className="w-full border-t flex flex-col h-full bg-background lg:w-[280px] lg:shrink-0 lg:border-l lg:border-t-0 border-border/40">
+    <div className="flex h-full w-full flex-col border-border/40 border-t bg-background xl:w-[320px] xl:shrink-0 xl:border-l xl:border-t-0">
 
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-border/40 flex items-center justify-between min-h-[52px]">
@@ -832,8 +836,11 @@ function ContactPanel({
               <UserPlus className="w-3.5 h-3.5" />
             </button>
           )}
-          <button title="Schließen"
-            className="p-1.5 rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors">
+          <button
+            title="Schließen"
+            onClick={onClose}
+            className="rounded-md p-1.5 text-muted-foreground/50 transition-colors hover:bg-muted/50 hover:text-foreground"
+          >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -1156,6 +1163,10 @@ export default function NachrichtenPage() {
   const perspective = useConversationStore((state) => state.perspective)
   const setPerspective = useConversationStore((state) => state.setPerspective)
   const [mobilePanel, setMobilePanel] = useState<'list' | 'chat' | 'contact'>('list')
+  const [tabletContactOpen, setTabletContactOpen] = useState(false)
+  const isDesktop = useIsDesktop()
+  const isTablet = useIsTablet()
+  const isLargeDesktop = useIsLargeDesktop()
 
   const isAdmin = perspective.type === 'admin'
 
@@ -1184,11 +1195,28 @@ export default function NachrichtenPage() {
 
   const selected = conversations.find((conversation) => conversation.id === selectedConversationId) ?? null
 
+  useEffect(() => {
+    if (isDesktop && mobilePanel === 'contact') {
+      setMobilePanel('chat')
+    }
+  }, [isDesktop, mobilePanel])
+
+  useEffect(() => {
+    if (!isTablet || !selected) {
+      setTabletContactOpen(false)
+    }
+  }, [isTablet, selected])
+
+  const showListPane = isDesktop || mobilePanel === 'list'
+  const showChatPane = isDesktop || mobilePanel === 'chat'
+  const showMobileContactPane = !isDesktop && mobilePanel === 'contact'
+  const showInlineContactPane = isLargeDesktop && Boolean(selected)
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <PerspectiveSelector perspective={perspective} onChange={setPerspective} />
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className={cn('h-full w-full lg:w-[288px] lg:shrink-0 xl:w-[336px]', mobilePanel === 'list' ? 'flex' : 'hidden lg:flex')}>
+        <div className={cn('h-full w-full md:w-[320px] md:shrink-0 xl:w-[336px]', showListPane ? 'flex' : 'hidden')}>
           <ConversationList
             allConversations={perspectiveFiltered}
             conversations={visible}
@@ -1204,23 +1232,56 @@ export default function NachrichtenPage() {
           />
         </div>
 
-        <div className={cn('h-full min-w-0 flex-1', mobilePanel === 'chat' ? 'flex' : 'hidden lg:flex')}>
+        <div className={cn('h-full min-w-0 flex-1', showChatPane ? 'flex' : 'hidden')}>
           <ChatView
             conv={selected}
             onBack={() => setMobilePanel('list')}
-            onOpenContact={() => setMobilePanel('contact')}
+            onOpenContact={() => {
+              if (isTablet) {
+                setTabletContactOpen(true)
+                return
+              }
+              setMobilePanel('contact')
+            }}
           />
         </div>
 
-        {(selected || mobilePanel === 'contact') && (
-          <div className={cn('h-full w-full lg:w-[280px] lg:shrink-0', mobilePanel === 'contact' ? 'flex' : 'hidden lg:flex')}>
+        {showInlineContactPane && (
+          <div className="hidden h-full xl:flex xl:w-[320px] xl:shrink-0">
             <ContactPanel
               conv={selected}
               onBack={() => setMobilePanel('chat')}
+              onClose={() => setSelectedConversation(null)}
               isAdmin={isAdmin}
             />
           </div>
         )}
+
+        {showMobileContactPane && (
+          <div className="flex h-full w-full md:hidden">
+            <ContactPanel
+              conv={selected}
+              onBack={() => setMobilePanel('chat')}
+              onClose={() => setMobilePanel('chat')}
+              isAdmin={isAdmin}
+            />
+          </div>
+        )}
+
+        <Sheet open={tabletContactOpen} onOpenChange={setTabletContactOpen}>
+          <SheetContent
+            side="right"
+            showCloseButton={false}
+            className="w-[min(88vw,24rem)] p-0 md:max-w-[24rem] xl:hidden"
+          >
+            <SheetTitle className="sr-only">Kontaktdetails</SheetTitle>
+            <ContactPanel
+              conv={selected}
+              onClose={() => setTabletContactOpen(false)}
+              isAdmin={isAdmin}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   )

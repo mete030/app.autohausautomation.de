@@ -9,10 +9,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface MobileNavProps {
   open: boolean
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
 }
 
-export function MobileNav({ open, onClose }: MobileNavProps) {
+export function MobileNav({ open, onOpenChange }: MobileNavProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -38,7 +38,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
   }
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-[88vw] max-w-xs p-0 sm:max-w-sm">
         <SheetHeader className="border-b px-4 py-4">
           <SheetTitle className="flex items-center">
@@ -56,7 +56,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                 <div key={item.title}>
                   <Link
                     href={item.href}
-                    onClick={onClose}
+                    onClick={() => onOpenChange(false)}
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                       active
@@ -73,7 +73,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                         <Link
                           key={child.href}
                           href={child.href}
-                          onClick={onClose}
+                          onClick={() => onOpenChange(false)}
                           className={cn(
                             'rounded-lg px-3 py-1.5 text-sm transition-colors',
                             isChildActive(child.href)

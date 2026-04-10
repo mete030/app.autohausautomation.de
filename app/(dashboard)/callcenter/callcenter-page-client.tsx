@@ -446,10 +446,12 @@ export default function CallcenterPageClient() {
       {/* ======== CALL CENTER MITARBEITER VIEW ======== */}
       {role === 'callcenter' && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="md:h-11">
-            <TabsTrigger value="rueckrufe" className="md:h-9 md:px-4 md:text-sm">Rückrufe</TabsTrigger>
-            <TabsTrigger value="mails" className="md:h-9 md:px-4 md:text-sm">Mails</TabsTrigger>
-          </TabsList>
+          <div className="-mx-3 px-3 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsList className="md:h-11">
+              <TabsTrigger value="rueckrufe" className="md:h-9 md:px-4 md:text-sm">Rückrufe</TabsTrigger>
+              <TabsTrigger value="mails" className="md:h-9 md:px-4 md:text-sm">Mails</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="rueckrufe" className="mt-4 md:mt-5 space-y-4 md:space-y-5">
             <CallcenterToolbar
@@ -545,7 +547,7 @@ export default function CallcenterPageClient() {
           type="button"
           aria-label="Neuer Rückruf"
           onClick={() => setNewCallbackOpen(true)}
-          className="md:hidden fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
+          className="md:hidden fixed right-4 bottom-[var(--mobile-float-offset)] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
         >
           <Plus className="h-6 w-6" />
         </button>

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { AlertCircle, RotateCcw, Save } from 'lucide-react'
+import { AlertCircle, ChevronDown, ChevronUp, RotateCcw, Save } from 'lucide-react'
 import { mockVehicleListRowsLegacy } from '@/lib/mock-data'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import type { Vehicle, VehicleAuctionStatus, VehicleListRowLegacy, VehicleStatus } from '@/lib/types'
@@ -121,9 +121,14 @@ function shortText(value: string, max = 40) {
   return `${value.slice(0, max - 1)}…`
 }
 
+function getDaysInStock(intakeDate: string) {
+  return Math.floor((Date.now() - new Date(intakeDate).getTime()) / 86400000)
+}
+
 export default function VehicleListExcelTable({ vehicles }: { vehicles: Vehicle[] }) {
   const [savedRows, setSavedRows] = useState<Record<string, VehicleListRowLegacy>>(() => buildInitialRows(vehicles))
   const [draftRows, setDraftRows] = useState<Record<string, VehicleListRowLegacy>>(() => buildInitialRows(vehicles))
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(() => vehicles[0]?.id ?? null)
 
   const vehicleById = useMemo(() => new Map(vehicles.map((vehicle) => [vehicle.id, vehicle])), [vehicles])
 
@@ -186,7 +191,311 @@ export default function VehicleListExcelTable({ vehicles }: { vehicles: Vehicle[
   return (
     <div className="rounded-xl border border-border/60 bg-card">
       <TooltipProvider delayDuration={150}>
-        <div className="max-h-[calc(100vh-260px)] overflow-auto">
+        <div className="space-y-3 p-3 md:p-4 lg:hidden">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Fahrzeuge</p>
+              <p className="mt-1 text-2xl font-semibold tracking-tight">{rows.length}</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Verkauft</p>
+              <p className="mt-1 text-2xl font-semibold tracking-tight">{soldCount}</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mindestpreis</p>
+              <p className="mt-1 text-sm font-semibold">{formatCurrency(minimumTotal)}</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Gebote</p>
+              <p className="mt-1 text-sm font-semibold">{formatCurrency(bidTotal)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {rows.map(({ vehicle, row, dirty }) => {
+              const diff = vehicle.price - vehicle.purchasePrice
+              const diffPositive = diff >= 0
+              const statusConfig = auctionStatusConfig[row.auctionStatus]
+              const daysInStock = getDaysInStock(vehicle.intakeDate)
+              const isExpanded = expandedRowId === vehicle.id
+
+              return (
+                <section
+                  key={vehicle.id}
+                  className={cn(
+                    'overflow-hidden rounded-[24px] border border-border/60 bg-card shadow-[0_10px_28px_-22px_rgba(15,23,42,0.45)]',
+                    dirty && 'border-amber-300/70 bg-amber-50/30 dark:border-amber-700/50 dark:bg-amber-950/10',
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setExpandedRowId((current) => (current === vehicle.id ? null : vehicle.id))}
+                    className="flex w-full items-start gap-3 px-4 py-4 text-left"
+                  >
+                    <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-2xl border border-border/70 bg-muted">
+                      <Image
+                        src={vehicle.imageUrl}
+                        alt={`${vehicle.make} ${vehicle.model}`}
+                        fill
+                        className="object-cover"
+                        sizes="96px"
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-base font-semibold leading-tight">
+                            {vehicle.make} {vehicle.model}
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <span>{vehicle.licensePlate}</span>
+                            <span className="font-mono text-muted-foreground/80">#{row.autoId}</span>
+                          </div>
+                        </div>
+                        <div className="pt-0.5 text-muted-foreground">
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className={cn('h-5 px-2 text-[10px]', statusConfig.className)}>
+                          {statusConfig.label}
+                        </Badge>
+                        <Badge variant="secondary" className="h-5 px-2 text-[10px]">
+                          {vehicleStatusLabels[vehicle.status]}
+                        </Badge>
+                        {dirty && (
+                          <Badge variant="secondary" className="h-5 bg-amber-100 px-2 text-[10px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                            Ungespeichert
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="rounded-2xl bg-muted/40 px-3 py-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Preis</p>
+                          <p className="mt-1 font-semibold">{formatCurrency(vehicle.price)}</p>
+                        </div>
+                        <div className="rounded-2xl bg-muted/40 px-3 py-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Standtage</p>
+                          <p className={cn('mt-1 font-semibold', daysInStock > 30 ? 'text-red-600 dark:text-red-400' : daysInStock > 14 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400')}>
+                            {daysInStock} Tage
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="space-y-4 border-t border-border/60 px-4 py-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-2xl border border-border/60 bg-background px-3 py-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Differenz</p>
+                          <p className={cn('mt-1 text-sm font-semibold', diffPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+                            {diffPositive ? '+' : '-'}{formatCurrency(Math.abs(diff))}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/60 bg-background px-3 py-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Standort</p>
+                          <p className="mt-1 text-sm font-semibold">{vehicle.location}</p>
+                        </div>
+                        <div className="rounded-2xl border border-border/60 bg-background px-3 py-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Getriebe</p>
+                          <p className="mt-1 text-sm font-semibold">{vehicle.transmission}</p>
+                        </div>
+                        <div className="rounded-2xl border border-border/60 bg-background px-3 py-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">FIN</p>
+                          <p className="mt-1 truncate font-mono text-xs">{vehicle.vin}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 rounded-[22px] border border-border/60 bg-muted/20 p-3">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Verkaufsaktion</p>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <p className="text-[11px] font-medium text-muted-foreground">Verkaufspreis</p>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={row.minimumPrice}
+                                onChange={(event) => {
+                                  const value = Number.isNaN(event.target.valueAsNumber) ? 0 : Math.max(0, event.target.valueAsNumber)
+                                  updateRow(vehicle.id, 'minimumPrice', value)
+                                }}
+                                disabled={row.rowLocked}
+                                className="h-10 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <p className="text-[11px] font-medium text-muted-foreground">Verhandlungsbasis</p>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={row.currentBid}
+                                onChange={(event) => {
+                                  const value = Number.isNaN(event.target.valueAsNumber) ? 0 : Math.max(0, event.target.valueAsNumber)
+                                  updateRow(vehicle.id, 'currentBid', value)
+                                }}
+                                disabled={row.rowLocked}
+                                className="h-10 text-sm"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <p className="text-[11px] font-medium text-muted-foreground">Status</p>
+                              <Select
+                                value={row.auctionStatus}
+                                onValueChange={(value: VehicleAuctionStatus) => updateRow(vehicle.id, 'auctionStatus', value)}
+                                disabled={row.rowLocked}
+                              >
+                                <SelectTrigger className={cn('h-10 w-full text-sm', statusConfig.className)}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="aktiv">Aktiv</SelectItem>
+                                  <SelectItem value="verkauft">Verkauft</SelectItem>
+                                  <SelectItem value="reserviert">Reserviert</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <p className="text-[11px] font-medium text-muted-foreground">Bilder</p>
+                              <Select
+                                value={row.imagesAvailable ? 'ja' : 'nein'}
+                                onValueChange={(value) => updateRow(vehicle.id, 'imagesAvailable', value === 'ja')}
+                                disabled={row.rowLocked}
+                              >
+                                <SelectTrigger className="h-10 w-full text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="ja">ja</SelectItem>
+                                  <SelectItem value="nein">nein</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <p className="text-[11px] font-medium text-muted-foreground">Verkaufsdatum</p>
+                            <Input
+                              type="date"
+                              value={row.auctionDate}
+                              onChange={(event) => updateRow(vehicle.id, 'auctionDate', event.target.value)}
+                              disabled={row.rowLocked}
+                              className="h-10 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 rounded-[22px] border border-border/60 bg-muted/20 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Dokumente</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          <label className="flex items-center justify-between rounded-2xl border border-border/60 bg-background px-3 py-2.5 text-sm">
+                            <span>COC</span>
+                            <input
+                              type="checkbox"
+                              checked={row.docsCoc}
+                              onChange={(event) => updateRow(vehicle.id, 'docsCoc', event.target.checked)}
+                              disabled={row.rowLocked}
+                              className="h-4 w-4 accent-primary"
+                            />
+                          </label>
+                          <label className="flex items-center justify-between rounded-2xl border border-border/60 bg-background px-3 py-2.5 text-sm">
+                            <span>Serviceheft</span>
+                            <input
+                              type="checkbox"
+                              checked={row.docsServiceHistory}
+                              onChange={(event) => updateRow(vehicle.id, 'docsServiceHistory', event.target.checked)}
+                              disabled={row.rowLocked}
+                              className="h-4 w-4 accent-primary"
+                            />
+                          </label>
+                          <label className="flex items-center justify-between rounded-2xl border border-border/60 bg-background px-3 py-2.5 text-sm">
+                            <span>Ersatzschlüssel</span>
+                            <input
+                              type="checkbox"
+                              checked={row.docsSpareKey}
+                              onChange={(event) => updateRow(vehicle.id, 'docsSpareKey', event.target.checked)}
+                              disabled={row.rowLocked}
+                              className="h-4 w-4 accent-primary"
+                            />
+                          </label>
+                        </div>
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-medium text-muted-foreground">HU gültig bis</p>
+                          <Input
+                            type="date"
+                            value={row.huValidUntil}
+                            onChange={(event) => updateRow(vehicle.id, 'huValidUntil', event.target.value)}
+                            disabled={row.rowLocked}
+                            className="h-10 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 rounded-[22px] border border-border/60 bg-muted/20 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Schäden & Hinweise</p>
+                        <Textarea
+                          value={row.damageNote}
+                          onChange={(event) => updateRow(vehicle.id, 'damageNote', event.target.value)}
+                          disabled={row.rowLocked}
+                          className="min-h-24 text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">{saleActionLabel(row.lastAuction)}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="h-11 flex-1"
+                        >
+                          <Link href={`/fahrzeuge/${vehicle.id}`}>
+                            Fahrzeug öffnen
+                          </Link>
+                        </Button>
+                        <Button
+                          type="button"
+                          className="h-11 flex-1 gap-1.5"
+                          onClick={() => saveRow(vehicle.id)}
+                          disabled={!dirty || row.rowLocked}
+                        >
+                          <Save className="h-4 w-4" />
+                          Speichern
+                        </Button>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-10 w-full gap-1.5"
+                        onClick={() => resetRow(vehicle.id)}
+                        disabled={!dirty}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Änderungen zurücksetzen
+                      </Button>
+                    </div>
+                  )}
+                </section>
+              )
+            })}
+          </div>
+
+          <p className="px-1 text-xs text-muted-foreground md:col-span-2">
+            Aktualisiert: {formatDate(new Date())}
+          </p>
+        </div>
+
+        <div className="hidden max-h-[calc(100vh-260px)] overflow-auto lg:block">
           <Table className="w-full min-w-[1000px] table-fixed text-[12px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">

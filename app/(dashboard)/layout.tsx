@@ -1,23 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Suspense } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { MobileDock } from '@/components/layout/mobile-dock'
 import { MobileNav } from '@/components/layout/mobile-nav'
 import { VoiceControl } from '@/components/voice/voice-control'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { useIsLargeDesktop, useIsTablet } from '@/lib/hooks/use-media-query'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // On tablet (md, < lg) the sidebar starts collapsed (icon-only); on desktop expanded.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.matchMedia('(max-width: 1023.98px)').matches
-  })
+  const isTablet = useIsTablet()
+  const isLargeDesktop = useIsLargeDesktop()
+  const previousShellMode = useRef<'tablet' | 'desktop' | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const pathname = usePathname()
   const isNachrichten = pathname?.startsWith('/nachrichten')
+
+  useEffect(() => {
+    const nextMode = isTablet ? 'tablet' : isLargeDesktop ? 'desktop' : null
+
+    if (!nextMode || previousShellMode.current === nextMode) {
+      return
+    }
+
+    setSidebarCollapsed(nextMode === 'tablet')
+    previousShellMode.current = nextMode
+  }, [isLargeDesktop, isTablet])
 
   return (
     <TooltipProvider>
@@ -36,20 +48,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Suspense fallback={null}>
           <MobileNav
             open={mobileNavOpen}
-            onClose={() => setMobileNavOpen(false)}
+            onOpenChange={setMobileNavOpen}
           />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <MobileDock onMenuOpen={() => setMobileNavOpen(true)} />
         </Suspense>
 
         {/* Main Content */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          <Header onMenuToggle={() => setMobileNavOpen(true)} />
+          <Header
+            onMenuToggle={() => setMobileNavOpen(true)}
+            onSidebarToggle={() => setSidebarCollapsed((current) => !current)}
+            sidebarCollapsed={sidebarCollapsed}
+          />
           {isNachrichten ? (
-            <main className="flex-1 overflow-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+            <main className="flex-1 overflow-hidden pb-[var(--mobile-dock-offset)] md:pb-0">
               {children}
             </main>
           ) : (
             <main className="flex-1 overflow-y-auto">
-              <div className="mx-auto w-full max-w-[1600px] px-3 py-3 pb-24 sm:px-4 sm:py-4 sm:pb-28 md:px-5 md:py-5 md:pb-6 lg:px-6 lg:py-6 lg:pb-6">
+              <div className="mx-auto w-full max-w-[1600px] px-3 py-3 pb-[calc(var(--mobile-dock-offset)+1.1rem)] sm:px-4 sm:py-4 md:px-5 md:py-5 md:pb-6 lg:px-6 lg:py-6 lg:pb-6">
                 {children}
               </div>
             </main>

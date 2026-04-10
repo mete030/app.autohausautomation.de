@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react'
+import { useIsTablet } from '@/lib/hooks/use-media-query'
 
 interface SidebarProps {
   collapsed: boolean
@@ -18,6 +19,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const isTablet = useIsTablet()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
 
   const toggleExpand = (title: string) => {
@@ -51,7 +53,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <aside
       className={cn(
         'flex flex-col border-r border-border/50 bg-card transition-all duration-300 ease-in-out',
-        collapsed ? 'w-[60px]' : 'w-[240px]'
+        collapsed ? 'w-[84px]' : 'w-[248px]'
       )}
     >
       {/* Logo */}
@@ -61,8 +63,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-auto max-w-[180px] invert dark:invert-0" />
           </Link>
         ) : (
-          <Link href="/callcenter" className="mx-auto">
+          <Link href="/callcenter" className="mx-auto flex flex-col items-center gap-1.5">
             <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-7 w-7 object-contain invert dark:invert-0" />
+            <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              Menu
+            </span>
           </Link>
         )}
       </div>
@@ -83,16 +88,27 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     <Link
                       href={item.href}
                       className={cn(
-                        'flex h-9 w-9 mx-auto items-center justify-center rounded-lg transition-colors',
+                        'mx-auto flex w-full flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-center transition-colors',
                         active
                           ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
-                      <Icon className="h-[18px] w-[18px]" />
+                      <span className={cn(
+                        'flex h-10 w-10 items-center justify-center rounded-2xl transition-colors',
+                        active ? 'bg-primary/12' : 'bg-muted/50',
+                      )}>
+                        <Icon className="h-[18px] w-[18px]" />
+                      </span>
+                      <span className={cn(
+                        'line-clamp-2 text-[10px] font-medium leading-tight',
+                        isTablet ? 'max-w-[64px]' : 'max-w-[52px]',
+                      )}>
+                        {item.title}
+                      </span>
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">{item.title}</TooltipContent>
+                  {!isTablet && <TooltipContent side="right" className="text-xs">{item.title}</TooltipContent>}
                 </Tooltip>
               )
             }
@@ -156,7 +172,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="w-full h-8 text-muted-foreground hover:text-foreground"
+          className="h-9 w-full text-muted-foreground hover:text-foreground"
           onClick={onToggle}
         >
           <ChevronLeft className={cn('h-4 w-4 transition-transform duration-200', collapsed && 'rotate-180')} />

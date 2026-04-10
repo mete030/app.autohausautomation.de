@@ -386,7 +386,7 @@ export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
 
   return (
     <div
-      className="flex h-[calc(100dvh-220px)] min-h-[560px] flex-col overflow-hidden rounded-xl border border-border/60 bg-background shadow-sm xl:h-[calc(100vh-260px)] xl:flex-row"
+      className="flex h-[calc(100dvh-240px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-border/60 bg-background shadow-sm sm:min-h-[560px] xl:h-[calc(100vh-260px)] xl:flex-row"
     >
       {/* ── Map panel ─────────────────────────────────────────────────── */}
       <div className="relative min-h-[300px] min-w-0 flex-[1.1]">
@@ -601,7 +601,7 @@ export default function VehicleMap({ vehicles }: { vehicles: Vehicle[] }) {
       </div>
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="h-[44%] min-h-[260px] w-full flex flex-col border-t bg-background shrink-0 xl:h-auto xl:w-[380px] xl:border-l xl:border-t-0">
+      <div className="h-[46%] min-h-[240px] w-full shrink-0 flex flex-col border-t bg-background xl:h-auto xl:w-[380px] xl:border-l xl:border-t-0">
 
         {/* ── Assignment mode ── */}
         {mode.type === 'assign-spot' && (

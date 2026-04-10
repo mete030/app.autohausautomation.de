@@ -232,7 +232,7 @@ export function TranscriptFeedback({ intent, onConfirm, onCancel }: TranscriptFe
   if (!intent) return null
 
   return (
-    <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-50 w-[min(430px,calc(100vw-1.25rem))] animate-in fade-in slide-in-from-bottom-4 duration-300 sm:right-6 sm:w-[min(430px,calc(100vw-3rem))]">
+    <div className="fixed bottom-[var(--mobile-float-offset)] right-3 z-50 w-[min(430px,calc(100vw-1.25rem))] animate-in fade-in slide-in-from-bottom-4 duration-300 sm:right-6 sm:bottom-24 sm:w-[min(430px,calc(100vw-3rem))]">
       <Card className="border-border/60 shadow-xl backdrop-blur-sm">
         <CardHeader className="space-y-2 pb-3">
           <CardTitle className="text-base flex items-center gap-2">
