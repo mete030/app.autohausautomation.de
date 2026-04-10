@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
-import type { CallbackCompletionLinkViewModel } from '@/lib/types'
+import { CallbackAttachmentUploader } from '@/components/callcenter/callback-attachment-uploader'
+import { MIN_CALLBACK_COMPLETION_NOTE_LENGTH } from '@/lib/email/callback-email-config'
+import { cn } from '@/lib/utils'
+import type { CallbackAttachment, CallbackCompletionLinkViewModel } from '@/lib/types'
 
 interface CallbackCompletionPageProps {
   token: string
@@ -19,6 +22,7 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
   const [completionNotes, setCompletionNotes] = useState('')
   const [submitState, setSubmitState] = useState<SubmitState>('idle')
   const [errorMessage, setErrorMessage] = useState('')
+  const [uploadedAttachments, setUploadedAttachments] = useState<CallbackAttachment[]>([])
 
   const isInvalidLink =
     !viewModel
@@ -27,8 +31,21 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
     || viewModel.isLinkUsed
     || viewModel.isAlreadyCompleted
 
+  const trimmedNotes = completionNotes.trim()
+  const trimmedNotesLength = trimmedNotes.length
+  const isNotesValid = trimmedNotesLength >= MIN_CALLBACK_COMPLETION_NOTE_LENGTH
+  const remainingChars = Math.max(0, MIN_CALLBACK_COMPLETION_NOTE_LENGTH - trimmedNotesLength)
+
   const handleComplete = async () => {
     if (!viewModel || isInvalidLink || submitState === 'submitting') {
+      return
+    }
+
+    if (!isNotesValid) {
+      setSubmitState('error')
+      setErrorMessage(
+        `Bitte mindestens ${MIN_CALLBACK_COMPLETION_NOTE_LENGTH} Zeichen in die Notiz eintragen.`,
+      )
       return
     }
 
@@ -43,7 +60,7 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
         },
         body: JSON.stringify({
           token,
-          completionNotes: completionNotes.trim() || undefined,
+          completionNotes: trimmedNotes,
         }),
       })
 
@@ -82,7 +99,7 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
               <CardDescription>
                 {isInvalidLink
                   ? invalidDescription
-                  : 'Prüfe den Rückruf und markiere ihn anschließend als erledigt.'}
+                  : 'Dokumentiere den Rückruf — eine Notiz ist Pflicht, Anhänge sind optional.'}
               </CardDescription>
             </div>
           </CardHeader>
@@ -100,19 +117,58 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
             {submitState === 'success' ? (
               <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
                 <p className="font-medium">Der Rückruf wurde als erledigt markiert.</p>
-                {completionNotes.trim() && <p>Deine Notiz wurde gespeichert.</p>}
+                <p>Deine Notiz wurde gespeichert.</p>
+                {uploadedAttachments.length > 0 && (
+                  <p>{uploadedAttachments.length} Anhang{uploadedAttachments.length === 1 ? '' : 'änge'} hochgeladen.</p>
+                )}
               </div>
             ) : !isInvalidLink ? (
               <>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Notiz zum Abschluss (optional)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      Notiz zum Abschluss
+                      <span className="ml-1 text-destructive">*</span>
+                    </label>
+                    <span
+                      className={cn(
+                        'text-[11px] tabular-nums',
+                        isNotesValid ? 'text-muted-foreground' : 'text-destructive',
+                      )}
+                    >
+                      {trimmedNotesLength} / {MIN_CALLBACK_COMPLETION_NOTE_LENGTH}
+                    </span>
+                  </div>
                   <Textarea
                     rows={4}
                     value={completionNotes}
-                    onChange={(event) => setCompletionNotes(event.target.value)}
-                    placeholder="z. B. Kunde erreicht, Termin bestätigt"
+                    onChange={(event) => {
+                      setCompletionNotes(event.target.value)
+                      if (submitState === 'error' && errorMessage) {
+                        setErrorMessage('')
+                        setSubmitState('idle')
+                      }
+                    }}
+                    placeholder="z. B. Kunde erreicht, Termin am Donnerstag 10:00 vereinbart."
                   />
+                  {!isNotesValid && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Bitte beschreibe in mindestens {MIN_CALLBACK_COMPLETION_NOTE_LENGTH} Zeichen, was passiert ist
+                      ({remainingChars} fehlen).
+                    </p>
+                  )}
                 </div>
+
+                <CallbackAttachmentUploader
+                  mode="token"
+                  token={token}
+                  stage="completion"
+                  existing={uploadedAttachments}
+                  onAttachmentUploaded={(att) =>
+                    setUploadedAttachments((prev) => [...prev, att])
+                  }
+                  description="Optional: PDFs oder Bilder mit den Ergebnissen, max. 10 MB / 5 Dateien."
+                />
 
                 {submitState === 'error' && (
                   <p className="text-sm text-red-700">{errorMessage}</p>
@@ -121,7 +177,7 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
                 <div className="flex gap-2">
                   <Button
                     onClick={handleComplete}
-                    disabled={submitState === 'submitting'}
+                    disabled={submitState === 'submitting' || !isNotesValid}
                     className="flex-1"
                   >
                     {submitState === 'submitting' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

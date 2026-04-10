@@ -7,18 +7,15 @@ import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Bot, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Shield, Bell, Mail, Send, Trash2 } from 'lucide-react'
+import { Bot, FileText, Image as ImageIcon, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Paperclip, Shield, Bell, Mail, Send, Trash2 } from 'lucide-react'
 import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
 import { cn, formatTimeAgo } from '@/lib/utils'
 import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig, escalationLevelConfig } from '@/lib/constants'
-import {
-  VERENA_SCHWAB_EMPLOYEE_ID,
-  VERENA_SCHWAB_NAME,
-} from '@/lib/email/callback-email-config'
 import { useCountdown } from '@/lib/hooks/use-countdown'
+import { useIsDesktop } from '@/lib/hooks/use-media-query'
 import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
 import { useCallbackStore } from '@/lib/stores/callback-store'
-import type { Callback, CallSource, EscalationLevel } from '@/lib/types'
+import type { Callback, CallbackAttachment, CallSource, EscalationLevel } from '@/lib/types'
 
 interface TranscriptSheetProps {
   open: boolean
@@ -63,6 +60,52 @@ function formatDuration(seconds?: number): string {
   return m > 0 ? `${m} min ${s} sek` : `${s} sek`
 }
 
+function fileTypeIcon(mime: string) {
+  if (mime.startsWith('image/')) return ImageIcon
+  return FileText
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function AttachmentsList({ title, attachments }: { title: string; attachments: CallbackAttachment[] }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{title}</p>
+      <ul className="space-y-1">
+        {attachments.map((att) => {
+          const Icon = fileTypeIcon(att.mimeType)
+          return (
+            <li
+              key={att.id}
+              className="flex items-center gap-2 rounded-md border bg-muted/30 px-2.5 py-1.5"
+            >
+              <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <a
+                href={att.downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 truncate text-xs hover:underline"
+              >
+                {att.fileName}
+              </a>
+              <span className="text-[10px] text-muted-foreground">
+                {formatFileSize(att.fileSizeBytes)}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                · {formatTimeAgo(att.createdAt)}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 function CountdownBadge({ dueAt, slaDurationMinutes }: { dueAt: string; slaDurationMinutes?: number }) {
   const { formatted, isOverdue } = useCountdown(dueAt, slaDurationMinutes)
   return (
@@ -96,25 +139,31 @@ export function TranscriptSheet({
   const reminders = useCallbackStore((s) => s.reminders)
   const employees = useCallbackStore((s) => s.employees)
   const recordCallbackNotificationEmailSent = useCallbackStore((s) => s.recordCallbackNotificationEmailSent)
+  const isDesktop = useIsDesktop()
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
   const [emailStatusMessage, setEmailStatusMessage] = useState('')
-  const isVerenaCallback =
-    callback?.assignedEmployeeId === VERENA_SCHWAB_EMPLOYEE_ID
-    && callback?.assignedAdvisor === VERENA_SCHWAB_NAME
-    && callback?.isPersisted === true
+
+  const assignedEmployeeRecord = callback?.assignedEmployeeId
+    ? employees.find((e) => e.id === callback.assignedEmployeeId)
+    : undefined
+  const advisorEmail = assignedEmployeeRecord?.email ?? null
+  const isEmailCapable = Boolean(callback?.isPersisted && advisorEmail)
+
   const {
     isAvailable: isNotificationEmailAvailable,
     isLoading: isNotificationEmailAvailabilityLoading,
-    activeRecipientEmail: notificationRecipientEmail,
     defaultRecipientEmail,
     draftRecipientEmail,
+    normalizedDraftRecipientEmail,
     hasUnsavedRecipientEmailChanges,
     isDraftRecipientEmailValid,
-    isActiveRecipientEmailValid,
     setDraftRecipientEmail,
-    saveRecipientEmail,
     unavailableMessage: notificationEmailUnavailableMessage,
-  } = useCallbackNotificationRecipientEmail(open && isVerenaCallback)
+  } = useCallbackNotificationRecipientEmail({
+    enabled: open && isEmailCapable,
+    advisorDefaultEmail: advisorEmail,
+    advisorName: callback?.assignedAdvisor ?? null,
+  })
 
   if (!callback) return null
 
@@ -126,7 +175,10 @@ export function TranscriptSheet({
   const priorityCfg = callbackPriorityConfig[callback.priority]
   const sourceCfg = callSourceConfig[callback.source]
   const initials = callback.takenBy.name.split(' ').map(n => n[0]).join('')
-  const assignedEmployee = employees.find(e => e.id === callback.assignedEmployeeId)
+  const assignedEmployee = assignedEmployeeRecord
+  const callbackAttachments = callback.attachments ?? []
+  const creationAttachments = callbackAttachments.filter((a) => a.stage === 'creation')
+  const completionAttachments = callbackAttachments.filter((a) => a.stage === 'completion')
   const emailActivities = [...callback.activityLog]
     .filter((activity) => activity.type === 'email_gesendet')
     .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime())
@@ -152,10 +204,10 @@ export function TranscriptSheet({
 
   const handleSendNotificationEmail = async () => {
     if (
-      !isVerenaCallback
+      !callback
+      || !isEmailCapable
       || isNotificationEmailAvailable !== true
-      || !isActiveRecipientEmailValid
-      || hasUnsavedRecipientEmailChanges
+      || !isDraftRecipientEmailValid
     ) {
       return
     }
@@ -172,7 +224,8 @@ export function TranscriptSheet({
         body: JSON.stringify({
           callbackId: callback.id,
           sentBy: currentUserName,
-          recipientEmail: notificationRecipientEmail,
+          recipientEmail: normalizedDraftRecipientEmail,
+          recipientName: callback.assignedAdvisor,
         }),
       })
 
@@ -190,7 +243,7 @@ export function TranscriptSheet({
 
       const recipientEmail =
         data.recipientEmail
-        ?? notificationRecipientEmail
+        ?? normalizedDraftRecipientEmail
       const recipientName =
         data.recipientName
         ?? callback.assignedAdvisor
@@ -214,9 +267,23 @@ export function TranscriptSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleSheetOpenChange}>
-      <SheetContent className="sm:max-w-lg p-0 flex flex-col h-full">
+      <SheetContent
+        side={isDesktop ? 'right' : 'bottom'}
+        className={cn(
+          'p-0 flex flex-col',
+          isDesktop
+            ? 'sm:max-w-lg h-full'
+            : 'h-[92dvh] rounded-t-2xl border-t',
+        )}
+      >
+        {/* Mobile drag-handle */}
+        {!isDesktop && (
+          <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
+            <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+          </div>
+        )}
         {/* Header - fixed */}
-        <SheetHeader className="px-6 pt-6 pb-4 flex-shrink-0">
+        <SheetHeader className="px-5 pt-3 pb-3 md:px-6 md:pt-6 md:pb-4 flex-shrink-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <SheetTitle className="text-lg">{callback.customerName}</SheetTitle>
@@ -231,10 +298,10 @@ export function TranscriptSheet({
         {/* Scrollable content */}
         <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="space-y-4 px-6 pb-6">
+            <div className="space-y-4 px-5 pb-6 md:px-6">
               {/* Assigned to - prominent */}
-              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-9 w-9 flex-shrink-0">
                   <AvatarFallback className={cn(
                     'text-xs font-semibold',
                     isKi
@@ -245,19 +312,19 @@ export function TranscriptSheet({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{callback.assignedAdvisor}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm font-semibold truncate">{callback.assignedAdvisor}</p>
+                  <p className="text-xs text-muted-foreground truncate">
                     Aufgenommen von {callback.takenBy.name}
                     {isKi && ' (KI)'}
                   </p>
-                </div>
-                <div className="flex gap-1.5 flex-shrink-0">
-                  <Badge variant="secondary" className={cn('text-[10px]', statusCfg.color)}>
-                    {statusCfg.label}
-                  </Badge>
-                  <Badge variant="secondary" className={cn('text-[10px]', priorityCfg.color)}>
-                    {priorityCfg.label}
-                  </Badge>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <Badge variant="secondary" className={cn('text-[10px]', statusCfg.color)}>
+                      {statusCfg.label}
+                    </Badge>
+                    <Badge variant="secondary" className={cn('text-[10px]', priorityCfg.color)}>
+                      {priorityCfg.label}
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
@@ -296,6 +363,29 @@ export function TranscriptSheet({
                   <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
                   <span>{callback.completionNotes}</span>
                 </div>
+              )}
+
+              {/* Attachments */}
+              {callbackAttachments.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                      <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                      Anhänge
+                      <span className="text-xs font-normal text-muted-foreground">
+                        ({callbackAttachments.length})
+                      </span>
+                    </h4>
+
+                    {creationAttachments.length > 0 && (
+                      <AttachmentsList title="Bei Erstellung" attachments={creationAttachments} />
+                    )}
+                    {completionAttachments.length > 0 && (
+                      <AttachmentsList title="Bei Abschluss" attachments={completionAttachments} />
+                    )}
+                  </div>
+                </>
               )}
 
               <Separator />
@@ -458,18 +548,20 @@ export function TranscriptSheet({
 
         {/* Footer actions - fixed */}
         {(!isCompleted || onDelete) && (
-          <div className="flex-shrink-0 border-t px-6 py-3 space-y-2">
+          <div className="flex-shrink-0 border-t px-5 py-3 md:px-6 space-y-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
             {!isCompleted && (
               <>
-                {isVerenaCallback && assignedEmployee && (
+                {isEmailCapable && assignedEmployee && (
                   <div className="space-y-2 rounded-lg border border-dashed px-3 py-2.5">
-                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-foreground">Benachrichtigungs-E-Mail senden</p>
-                        <p>
-                          Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
-                        </p>
+                    <div className="flex flex-col gap-2 text-xs text-muted-foreground md:flex-row md:items-start">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-foreground">Erinnerungs-E-Mail senden</p>
+                          <p className="truncate">
+                            Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
+                          </p>
+                        </div>
                       </div>
                       <Button
                         size="sm"
@@ -478,19 +570,20 @@ export function TranscriptSheet({
                           emailStatus === 'sending'
                           || isNotificationEmailAvailabilityLoading
                           || isNotificationEmailAvailable === false
-                          || !isActiveRecipientEmailValid
-                          || hasUnsavedRecipientEmailChanges
+                          || !isDraftRecipientEmailValid
                         }
-                        className="flex-shrink-0"
+                        className="h-9 w-full md:w-auto md:flex-shrink-0"
                       >
                         <Send className={cn('mr-1 h-3.5 w-3.5', emailStatus === 'sending' && 'animate-pulse')} />
                         {emailStatus === 'sending'
                           ? 'Sende...'
                           : isNotificationEmailAvailabilityLoading
-                            ? 'Pruefe...'
+                            ? 'Prüfe...'
                             : isNotificationEmailAvailable === false
-                              ? 'Nicht verfuegbar'
-                              : 'Senden'}
+                              ? 'Nicht verfügbar'
+                              : hasUnsavedRecipientEmailChanges
+                                ? 'Speichern & Senden'
+                                : 'Senden'}
                       </Button>
                     </div>
 
@@ -508,52 +601,50 @@ export function TranscriptSheet({
                       >
                         {emailStatusMessage
                           || (emailStatus === 'sending'
-                            ? 'Benachrichtigungs-E-Mail wird versendet...'
+                            ? 'Erinnerungs-E-Mail wird versendet...'
                             : '')}
                       </p>
                     )}
 
                     <CallbackNotificationRecipientEmailField
-                      activeRecipientEmail={notificationRecipientEmail}
                       defaultRecipientEmail={defaultRecipientEmail}
                       draftRecipientEmail={draftRecipientEmail}
                       hasUnsavedRecipientEmailChanges={hasUnsavedRecipientEmailChanges}
                       isDraftRecipientEmailValid={isDraftRecipientEmailValid}
                       unavailableMessage={notificationEmailUnavailableMessage}
                       label="Empfänger-E-Mail"
-                      description="Speichere eine neue Adresse, bevor du die Benachrichtigung sendest."
-                      compact
+                      description="Passe die Adresse bei Bedarf an — sie wird mit einem Klick aktualisiert und die Erinnerung verschickt."
                       onDraftRecipientEmailChange={setDraftRecipientEmail}
-                      onSave={saveRecipientEmail}
+                      disabled={emailStatus === 'sending'}
                     />
                   </div>
                 )}
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
                   {onReassign && (
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onReassign(callback.id)}>
+                    <Button variant="outline" size="sm" className="h-10 md:h-9 md:flex-1" onClick={() => onReassign(callback.id)}>
                       <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
                       Zuweisen
                     </Button>
                   )}
                   {onEscalateToLevel ? (
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalateToLevel(callback.id)}>
+                    <Button variant="outline" size="sm" className="h-10 md:h-9 md:flex-1" onClick={() => onEscalateToLevel(callback.id)}>
                       <Shield className="h-3.5 w-3.5 mr-1" />
                       Eskalieren
                     </Button>
                   ) : onEscalate ? (
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onEscalate(callback.id)}>
+                    <Button variant="outline" size="sm" className="h-10 md:h-9 md:flex-1" onClick={() => onEscalate(callback.id)}>
                       <ChevronUp className="h-3.5 w-3.5 mr-1" />
                       Eskalieren
                     </Button>
                   ) : null}
                   {onSetReminder && (
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onSetReminder(callback.id)}>
+                    <Button variant="outline" size="sm" className="h-10 md:h-9 md:flex-1" onClick={() => onSetReminder(callback.id)}>
                       <Bell className="h-3.5 w-3.5 mr-1" />
                       Erinnerung
                     </Button>
                   )}
                   {onComplete && (
-                    <Button size="sm" className="flex-1" onClick={() => onComplete(callback.id)}>
+                    <Button size="sm" className="h-10 md:h-9 col-span-2 md:col-span-1 md:flex-1" onClick={() => onComplete(callback.id)}>
                       <CheckCircle className="h-3.5 w-3.5 mr-1" />
                       Erledigt
                     </Button>
@@ -565,7 +656,7 @@ export function TranscriptSheet({
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full text-destructive hover:text-destructive"
+                className="h-10 md:h-9 w-full text-destructive hover:text-destructive"
                 onClick={() => onDelete(callback.id)}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />

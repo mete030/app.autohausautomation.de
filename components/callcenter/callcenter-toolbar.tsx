@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Search, Plus, LayoutList, Users, Columns3, Clock, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { callSourceConfig } from '@/lib/constants'
-import type { CallSource } from '@/lib/types'
 
 type FilterMode = 'aktiv' | 'alle' | 'erledigt'
 type ViewMode = 'tabelle' | 'berater' | 'kanban' | 'zeitleiste'
@@ -15,6 +14,11 @@ export interface AdvisorEntry {
   name: string
   role: string
   roleLabel: string
+}
+
+export interface CallAgentFilterEntry {
+  id: string
+  name: string
 }
 
 interface CallcenterToolbarProps {
@@ -37,6 +41,12 @@ interface CallcenterToolbarProps {
   onShowReminders?: () => void
   hideAdvisorFilter?: boolean
   hideNewCallback?: boolean
+  customerFilter?: string
+  customerOptions?: string[]
+  onCustomerFilterChange?: (value: string) => void
+  callAgentFilter?: string
+  callAgentOptions?: CallAgentFilterEntry[]
+  onCallAgentFilterChange?: (value: string) => void
 }
 
 const filterPills: { value: FilterMode; label: string }[] = [
@@ -57,7 +67,15 @@ export function CallcenterToolbar({
   priorityFilter, onPriorityFilterChange,
   activeReminderCount, onShowReminders,
   hideAdvisorFilter, hideNewCallback,
+  customerFilter,
+  customerOptions,
+  onCustomerFilterChange,
+  callAgentFilter,
+  callAgentOptions,
+  onCallAgentFilterChange,
 }: CallcenterToolbarProps) {
+  const showCustomerFilter = !!onCustomerFilterChange && !!customerOptions
+  const showCallAgentFilter = !!onCallAgentFilterChange && !!callAgentOptions
   return (
     <div className="space-y-3">
       {/* Row 1: Search + New Callback + View Toggle */}
@@ -222,6 +240,43 @@ export function CallcenterToolbar({
           </Select>
         )}
       </div>
+
+      {/* Row 3: Admin-only refined filters (Kunde, Call-Center-Agent, Berater) */}
+      {(showCustomerFilter || showCallAgentFilter) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed bg-muted/20 px-2.5 py-2">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+            Admin-Filter
+          </span>
+
+          {showCustomerFilter && (
+            <Select value={customerFilter ?? 'alle'} onValueChange={onCustomerFilterChange}>
+              <SelectTrigger className="w-full h-8 text-xs sm:w-[200px]">
+                <SelectValue placeholder="Alle Kunden" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle Kunden</SelectItem>
+                {customerOptions!.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {showCallAgentFilter && (
+            <Select value={callAgentFilter ?? 'alle'} onValueChange={onCallAgentFilterChange}>
+              <SelectTrigger className="w-full h-8 text-xs sm:w-[220px]">
+                <SelectValue placeholder="Alle Call-Center-Agenten" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle Call-Center-Agenten</SelectItem>
+                {callAgentOptions!.map((agent) => (
+                  <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
     </div>
   )
 }

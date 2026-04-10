@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Shield, Headset, UserCog } from 'lucide-react'
+import { Shield, Headset, UserCog, MonitorPlay } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import { CallcenterKpiRow } from '@/components/callcenter/callcenter-kpi-row'
@@ -23,6 +23,7 @@ import { CallcenterReminderDialog } from '@/components/callcenter/callcenter-rem
 import { CallcenterReminderToast } from '@/components/callcenter/callcenter-reminder-toast'
 import { CallcenterAutoEscalationProvider } from '@/components/callcenter/callcenter-auto-escalation-provider'
 import { CallcenterRoleSwitcher, type CallcenterRole } from '@/components/callcenter/callcenter-role-switcher'
+import { CallcenterLiveDashboard } from '@/components/callcenter/callcenter-live-dashboard'
 import { CallcenterVoiceTestDialog } from '@/components/callcenter/callcenter-voice-test-dialog'
 import { CallcenterMorningSummaryDialog } from '@/components/callcenter/callcenter-morning-summary-dialog'
 import { employeeRoleConfig, mockCallAgents } from '@/lib/constants'
@@ -41,6 +42,7 @@ const ROLE_HEADER: Record<CallcenterRole, { icon: typeof Shield; title: string; 
   admin: { icon: Shield, title: 'Callcenter — Administration', subtitle: 'Rückruf-Management & Mitarbeiter-Tracking' },
   callcenter: { icon: Headset, title: 'Callcenter — Mein Arbeitsplatz', subtitle: 'Rückrufe erstellen & verfolgen' },
   berater: { icon: UserCog, title: 'Callcenter — Meine Rückrufe', subtitle: 'Zugewiesene Rückrufe bearbeiten' },
+  dashboard: { icon: MonitorPlay, title: 'Callcenter — Live-Dashboard', subtitle: 'Echtzeit-Übersicht für die Wandmonitore' },
 }
 
 export default function CallcenterPageClient() {
@@ -86,7 +88,7 @@ export default function CallcenterPageClient() {
   const [selectedUser, setSelectedUser] = useState('Marina Schittenhelm')
 
   // Derive current user from role + selection
-  const currentUser = role === 'admin' ? 'Admin' : selectedUser
+  const currentUser = role === 'admin' || role === 'dashboard' ? 'Admin' : selectedUser
 
   // UI state
   const [activeTab, setActiveTab] = useState('rueckrufe')
@@ -96,6 +98,8 @@ export default function CallcenterPageClient() {
   const [advisorFilter, setAdvisorFilter] = useState('alle')
   const [sourceFilter, setSourceFilter] = useState('alle')
   const [priorityFilter, setPriorityFilter] = useState('alle')
+  const [customerFilter, setCustomerFilter] = useState('alle')
+  const [callAgentFilter, setCallAgentFilter] = useState('alle')
 
   // Dialog/sheet states
   const [newCallbackOpen, setNewCallbackOpen] = useState(false)
@@ -111,6 +115,8 @@ export default function CallcenterPageClient() {
     setActiveTab('rueckrufe')
     setViewMode('tabelle')
     setAdvisorFilter('alle')
+    setCustomerFilter('alle')
+    setCallAgentFilter('alle')
 
     if (newRole === 'callcenter') {
       const firstAgent = mockCallAgents.find(a => a.type === 'mensch')
@@ -140,6 +146,8 @@ export default function CallcenterPageClient() {
     if (advisorFilter !== 'alle') result = result.filter(cb => cb.assignedAdvisor === advisorFilter)
     if (sourceFilter !== 'alle') result = result.filter(cb => cb.source === sourceFilter)
     if (priorityFilter !== 'alle') result = result.filter(cb => cb.priority === priorityFilter)
+    if (customerFilter !== 'alle') result = result.filter(cb => cb.customerName === customerFilter)
+    if (callAgentFilter !== 'alle') result = result.filter(cb => cb.takenBy.id === callAgentFilter)
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
@@ -152,7 +160,40 @@ export default function CallcenterPageClient() {
     }
 
     return result
-  }, [roleCallbacks, statusFilter, advisorFilter, sourceFilter, priorityFilter, searchQuery])
+  }, [
+    roleCallbacks,
+    statusFilter,
+    advisorFilter,
+    sourceFilter,
+    priorityFilter,
+    customerFilter,
+    callAgentFilter,
+    searchQuery,
+  ])
+
+  // Customer + agent options for the admin filter row.
+  const customerOptions = useMemo(
+    () => Array.from(new Set(callbacks.map((cb) => cb.customerName))).sort((a, b) => a.localeCompare(b, 'de')),
+    [callbacks],
+  )
+
+  const callAgentOptions = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const cb of callbacks) {
+      if (cb.takenBy.type === 'mensch' && !seen.has(cb.takenBy.id)) {
+        seen.set(cb.takenBy.id, cb.takenBy.name)
+      }
+    }
+    // Always include the master list of human call agents from constants so
+    // the filter is usable even before the first callback for an agent exists.
+    for (const agent of mockCallAgents) {
+      if (agent.type === 'mensch' && !seen.has(agent.id)) {
+        seen.set(agent.id, agent.name)
+      }
+    }
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+  }, [callbacks])
 
   // KPIs (admin only, from all callbacks)
   const totalCallbacks = callbacks.filter(cb => cb.status !== 'erledigt').length
@@ -295,7 +336,7 @@ export default function CallcenterPageClient() {
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             {header.subtitle}
-            {role !== 'admin' && (
+            {role !== 'admin' && role !== 'dashboard' && (
               <span className="ml-2 text-xs font-medium text-foreground/70">
                 — {currentUser}
               </span>
@@ -353,6 +394,12 @@ export default function CallcenterPageClient() {
               priorityFilter={priorityFilter}
               onPriorityFilterChange={setPriorityFilter}
               activeReminderCount={activeReminderCount}
+              customerFilter={customerFilter}
+              customerOptions={customerOptions}
+              onCustomerFilterChange={setCustomerFilter}
+              callAgentFilter={callAgentFilter}
+              callAgentOptions={callAgentOptions}
+              onCallAgentFilterChange={setCallAgentFilter}
             />
 
             {viewMode === 'tabelle' && (
@@ -445,6 +492,9 @@ export default function CallcenterPageClient() {
           </TabsContent>
         </Tabs>
       )}
+
+      {/* ======== LIVE DASHBOARD VIEW ======== */}
+      {role === 'dashboard' && <CallcenterLiveDashboard />}
 
       {/* ======== SERVICEBERATER / VERKÄUFER VIEW ======== */}
       {role === 'berater' && (

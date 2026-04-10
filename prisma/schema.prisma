@@ -64,9 +64,26 @@ model CallbackRecord {
   updatedAt          DateTime                  @updatedAt
   activities         CallbackActivityRecord[]
   emailActions       CallbackEmailActionRecord[]
+  attachments        CallbackAttachmentRecord[]
 
   @@index([status, createdAt])
   @@index([assignedEmployeeId])
+}
+
+model CallbackAttachmentRecord {
+  id             String         @id @default(cuid())
+  callbackId     String
+  fileName       String
+  mimeType       String
+  fileSizeBytes  Int
+  storagePath    String
+  stage          String
+  uploadedByName String
+  uploadedByRole String
+  createdAt      DateTime       @default(now())
+  callback       CallbackRecord @relation(fields: [callbackId], references: [id], onDelete: Cascade)
+
+  @@index([callbackId, stage])
 }
 
 model CallbackActivityRecord {

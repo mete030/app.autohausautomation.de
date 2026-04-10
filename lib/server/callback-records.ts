@@ -20,11 +20,17 @@ import type {
   PersistedCallbackDto,
   CallbackCompletionLinkViewModel,
 } from '@/lib/types'
+import { mapAttachmentRecord } from '@/lib/server/callback-attachments'
 
 const persistedCallbackInclude = {
   activities: {
     orderBy: {
       performedAt: 'asc',
+    },
+  },
+  attachments: {
+    orderBy: {
+      createdAt: 'asc',
     },
   },
 } satisfies Prisma.CallbackRecordInclude
@@ -116,6 +122,7 @@ export function mapCallbackRecordToDto(record: CallbackRecordWithRelations): Per
     escalationHistory: [],
     reminders: [],
     activityLog: record.activities.map(mapActivityRecord),
+    attachments: record.attachments?.map(mapAttachmentRecord) ?? [],
     dataOrigin: 'persisted',
     isPersisted: true,
   }
@@ -245,6 +252,29 @@ export async function createCallbackCompletionAction(input: {
 
 export function hashCallbackActionToken(token: string) {
   return createHash('sha256').update(token).digest('hex')
+}
+
+export async function resolveActiveCompletionActionForUpload(token: string): Promise<
+  | { ok: true; callbackId: string; recipientName: string; recipientEmail: string }
+  | { ok: false; reason: 'invalid' | 'used' | 'expired' | 'already_completed' }
+> {
+  const prisma = getPrismaClient()
+  const action = await prisma.callbackEmailActionRecord.findUnique({
+    where: { tokenHash: hashCallbackActionToken(token) },
+    include: { callback: true },
+  })
+
+  if (!action) return { ok: false, reason: 'invalid' }
+  if (action.invalidatedAt || action.usedAt) return { ok: false, reason: 'used' }
+  if (action.expiresAt.getTime() < Date.now()) return { ok: false, reason: 'expired' }
+  if (action.callback.status === 'erledigt') return { ok: false, reason: 'already_completed' }
+
+  return {
+    ok: true,
+    callbackId: action.callbackId,
+    recipientName: action.recipientName,
+    recipientEmail: action.recipientEmail,
+  }
 }
 
 export async function getCallbackCompletionLinkModel(token: string): Promise<CallbackCompletionLinkViewModel | null> {

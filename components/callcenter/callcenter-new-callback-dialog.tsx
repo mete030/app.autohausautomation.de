@@ -10,14 +10,27 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Separator } from '@/components/ui/separator'
 import { Plus, Search, User, X, Check, Phone, CheckCircle2, Mail, Loader2 } from 'lucide-react'
 import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
+import { CallbackAttachmentUploader, type LocalAttachment } from '@/components/callcenter/callback-attachment-uploader'
 import { cn } from '@/lib/utils'
-import { callSourceConfig, mockCallAgents, mockCustomers, employeeRoleConfig, employeeStatusConfig } from '@/lib/constants'
+import {
+  callSourceConfig,
+  mockCallAgents,
+  mockCustomers,
+  mockEmployees,
+  employeeRoleConfig,
+  employeeStatusConfig,
+} from '@/lib/constants'
 import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
 import { useCallbackStore } from '@/lib/stores/callback-store'
-import {
-  VERENA_SCHWAB_EMPLOYEE_ID,
-} from '@/lib/email/callback-email-config'
-import type { Callback, CallbackPriority, CallSource, CallAgent, Employee, EmployeeRole } from '@/lib/types'
+import type {
+  Callback,
+  CallbackAttachment,
+  CallbackPriority,
+  CallSource,
+  CallAgent,
+  Employee,
+  EmployeeRole,
+} from '@/lib/types'
 
 interface CreateCallbackPayload {
   customerName: string
@@ -96,6 +109,11 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const [isSendingEmail, setIsSendingEmail] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
 
+  // Pending attachments selected before the callback is persisted.
+  const [pendingAttachments, setPendingAttachments] = useState<LocalAttachment[]>([])
+  // Attachments uploaded after the callback was persisted, used for display.
+  const [uploadedCreationAttachments, setUploadedCreationAttachments] = useState<CallbackAttachment[]>([])
+
   // Store data
   const employees = useCallbackStore((s) => s.employees)
   const slaConfig = useCallbackStore((s) => s.slaConfig)
@@ -112,23 +130,32 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   // Compute effective SLA duration
   const effectiveSla = slaDurationMinutes ?? slaConfig.perPriority[priority] ?? slaConfig.defaultMinutes
 
-  // Check if assigned employee can receive email notifications
-  const isEmailCapable =
-    createdCallback?.assignedEmployeeId === VERENA_SCHWAB_EMPLOYEE_ID
-    && createdCallback?.isPersisted === true
+  // Determine the assigned employee and their default email — the dialog can
+  // send a reminder email to ANY advisor that has an email on record (no more
+  // hard-coded gating to a single recipient).
+  const assignedEmployeeRecord = useMemo(() => {
+    if (!createdCallback?.assignedEmployeeId) return null
+    return mockEmployees.find((e) => e.id === createdCallback.assignedEmployeeId) ?? null
+  }, [createdCallback?.assignedEmployeeId])
+
+  const advisorDefaultEmail = assignedEmployeeRecord?.email ?? null
+  const isEmailCapable = Boolean(createdCallback?.isPersisted && advisorDefaultEmail)
+
   const {
     isAvailable: isNotificationEmailAvailable,
     isLoading: isNotificationEmailAvailabilityLoading,
-    activeRecipientEmail: notificationRecipientEmail,
     defaultRecipientEmail,
     draftRecipientEmail,
+    normalizedDraftRecipientEmail,
     hasUnsavedRecipientEmailChanges,
     isDraftRecipientEmailValid,
-    isActiveRecipientEmailValid,
     setDraftRecipientEmail,
-    saveRecipientEmail,
     unavailableMessage: notificationEmailUnavailableMessage,
-  } = useCallbackNotificationRecipientEmail(dialogStep === 'success' && isEmailCapable)
+  } = useCallbackNotificationRecipientEmail({
+    enabled: dialogStep === 'success' && isEmailCapable,
+    advisorDefaultEmail,
+    advisorName: createdCallback?.assignedAdvisor ?? null,
+  })
 
   // Group employees by role
   const groupedEmployees = useMemo(() => {
@@ -219,6 +246,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     setIsCreatingCallback(false)
     setEmailError(null)
     setIsSendingEmail(false)
+    setPendingAttachments([])
+    setUploadedCreationAttachments([])
   }
 
   const handleClose = (val: boolean) => {
@@ -249,6 +278,32 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     }
   }
 
+  const uploadPendingAttachments = useCallback(
+    async (callbackId: string, uploaderName: string): Promise<CallbackAttachment[]> => {
+      if (pendingAttachments.length === 0) return []
+      const uploaded: CallbackAttachment[] = []
+      for (const attachment of pendingAttachments) {
+        const formData = new FormData()
+        formData.set('file', attachment.file)
+        formData.set('stage', 'creation')
+        formData.set('uploadedByName', uploaderName)
+        formData.set('uploadedByRole', 'callcenter')
+        const res = await fetch(`/api/callbacks/${callbackId}/attachments`, {
+          method: 'POST',
+          body: formData,
+        })
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string }
+          throw new Error(data.error || `Anhang "${attachment.file.name}" konnte nicht hochgeladen werden.`)
+        }
+        const data = (await res.json()) as { attachment: CallbackAttachment }
+        uploaded.push(data.attachment)
+      }
+      return uploaded
+    },
+    [pendingAttachments],
+  )
+
   const handleCreate = async () => {
     const agent = mockCallAgents.find(a => a.id === agentId)
     if (!customerName.trim() || !reason.trim() || !assignedAdvisor || !agent) return
@@ -270,8 +325,20 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
         slaDurationMinutes: effectiveSla,
       })
 
+      // Upload any attachments collected before persistence so they exist on
+      // the callback by the time the email is offered.
+      let uploaded: CallbackAttachment[] = []
+      if (pendingAttachments.length > 0) {
+        uploaded = await uploadPendingAttachments(cb.id, currentUser ?? agent.name)
+      }
+      setUploadedCreationAttachments(uploaded)
+
       resetForm()
-      setCreatedCallback(cb)
+      setPendingAttachments([])
+      setCreatedCallback({
+        ...cb,
+        attachments: [...(cb.attachments ?? []), ...uploaded],
+      })
       setDialogStep('success')
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'Rückruf konnte nicht erstellt werden.')
@@ -284,8 +351,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     if (
       !createdCallback
       || isNotificationEmailAvailable !== true
-      || !isActiveRecipientEmailValid
-      || hasUnsavedRecipientEmailChanges
+      || !isDraftRecipientEmailValid
     ) {
       return
     }
@@ -300,7 +366,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
         body: JSON.stringify({
           callbackId: createdCallback.id,
           sentBy: currentUser ?? 'System',
-          recipientEmail: notificationRecipientEmail,
+          recipientEmail: normalizedDraftRecipientEmail,
+          recipientName: createdCallback.assignedAdvisor,
         }),
       })
 
@@ -315,7 +382,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
 
       const recipientEmail =
         data.recipientEmail
-        ?? notificationRecipientEmail
+        ?? normalizedDraftRecipientEmail
       const recipientName =
         data.recipientName
         ?? createdCallback.assignedAdvisor
@@ -634,6 +701,18 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   </div>
                 </div>
               </div>
+
+              <Separator />
+
+              {/* === Section 4: Anhänge === */}
+              <CallbackAttachmentUploader
+                mode="deferred"
+                stage="creation"
+                pending={pendingAttachments}
+                onPendingChange={setPendingAttachments}
+                disabled={isCreatingCallback}
+                description="Optional. PDFs oder Bilder bis 10 MB werden direkt mit der Erinnerungs-E-Mail versendet."
+              />
             </div>
             {createError && (
               <p className="text-sm text-red-700">{createError}</p>
@@ -686,24 +765,36 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                 </div>
               </div>
 
+              {/* Attachments uploaded with the callback */}
+              {uploadedCreationAttachments.length > 0 && (
+                <div className="w-full text-left rounded-lg border border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20 p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    {uploadedCreationAttachments.length} Anhang{uploadedCreationAttachments.length === 1 ? '' : 'änge'} hochgeladen
+                  </p>
+                  <ul className="text-xs text-muted-foreground space-y-0.5">
+                    {uploadedCreationAttachments.map((att) => (
+                      <li key={att.id} className="truncate">• {att.fileName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Email action area */}
               {isEmailCapable ? (
                 <div className="w-full space-y-3 pt-1">
                   <p className="text-sm text-muted-foreground">
-                    Möchtest du jetzt direkt eine Benachrichtigungs-E-Mail senden?
+                    Möchtest du jetzt direkt eine Erinnerungs-E-Mail senden?
                   </p>
                   <CallbackNotificationRecipientEmailField
-                    activeRecipientEmail={notificationRecipientEmail}
                     defaultRecipientEmail={defaultRecipientEmail}
                     draftRecipientEmail={draftRecipientEmail}
                     hasUnsavedRecipientEmailChanges={hasUnsavedRecipientEmailChanges}
                     isDraftRecipientEmailValid={isDraftRecipientEmailValid}
                     unavailableMessage={notificationEmailUnavailableMessage}
                     label="Empfänger-E-Mail"
-                    description="Passe die Adresse bei Bedarf an und speichere sie. Erst danach wird an diese Adresse versendet."
-                    compact
+                    description="Passe die Adresse bei Bedarf an — sie wird mit einem einzigen Klick aktualisiert und die Erinnerung verschickt."
                     onDraftRecipientEmailChange={setDraftRecipientEmail}
-                    onSave={saveRecipientEmail}
+                    disabled={isSendingEmail}
                   />
                   {emailError && (
                     <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
@@ -717,25 +808,24 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                         isSendingEmail
                         || isNotificationEmailAvailabilityLoading
                         || isNotificationEmailAvailable === false
-                        || !isActiveRecipientEmailValid
-                        || hasUnsavedRecipientEmailChanges
+                        || !isDraftRecipientEmailValid
                       }
                       className="gap-1.5"
                     >
-                      {isSendingEmail ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isNotificationEmailAvailabilityLoading ? (
+                      {isSendingEmail || isNotificationEmailAvailabilityLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Mail className="h-4 w-4" />
                       )}
                       {isSendingEmail
-                        ? 'Benachrichtigungs-E-Mail wird gesendet...'
+                        ? 'Erinnerungs-E-Mail wird gesendet...'
                         : isNotificationEmailAvailabilityLoading
-                          ? 'E-Mail-Verfuegbarkeit wird geprueft...'
+                          ? 'E-Mail-Verfügbarkeit wird geprüft...'
                           : isNotificationEmailAvailable === false
-                            ? 'E-Mail-Versand nicht verfuegbar'
-                            : 'Benachrichtigungs-E-Mail senden'}
+                            ? 'E-Mail-Versand nicht verfügbar'
+                            : hasUnsavedRecipientEmailChanges
+                              ? 'Speichern & Erinnerung senden'
+                              : 'Erinnerungs-E-Mail senden'}
                     </Button>
                     <Button variant="outline" onClick={() => handleClose(false)} disabled={isSendingEmail}>
                       Später
@@ -745,7 +835,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
               ) : (
                 <div className="w-full space-y-3 pt-1">
                   <p className="text-xs text-muted-foreground">
-                    Für diese Zuweisung ist kein E-Mail-Versand verfügbar.
+                    Für diese Zuweisung ist keine E-Mail-Adresse hinterlegt — bitte im Mitarbeiter-Profil ergänzen.
                   </p>
                   <Button variant="outline" onClick={() => handleClose(false)}>
                     Schließen
@@ -770,7 +860,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   Die Benachrichtigung wurde an {sentEmailRecipient?.name ?? createdCallback?.assignedAdvisor} versendet.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Empfänger: <span className="font-medium text-foreground">{sentEmailRecipient?.email ?? notificationRecipientEmail}</span>
+                  Empfänger: <span className="font-medium text-foreground">{sentEmailRecipient?.email ?? normalizedDraftRecipientEmail}</span>
                 </p>
               </div>
               <div className="flex gap-2 pt-2">

@@ -1,101 +1,58 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE,
-  CALLBACK_NOTIFICATION_RECIPIENT_EMAIL,
-  CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_KEY,
-  CALLBACK_NOTIFICATION_RECIPIENT_NAME,
-} from '@/lib/email/callback-email-config'
-
-const CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_EVENT =
-  'callback-notification-recipient-email-updated'
+import { useEffect, useMemo, useState } from 'react'
+import { CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE } from '@/lib/email/callback-email-config'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 interface CallbackNotificationEmailAvailabilityResponse {
   available?: boolean
+  defaultRecipientEmail?: string
   recipientEmail?: string
   recipientName?: string
-}
-
-interface SaveRecipientEmailResult {
-  ok: boolean
-  error?: string
-  recipientEmail?: string
 }
 
 function normalizeRecipientEmail(value: string) {
   return value.trim()
 }
 
-function readStoredRecipientEmail() {
-  if (typeof window === 'undefined') {
-    return ''
-  }
-
-  return normalizeRecipientEmail(
-    window.localStorage.getItem(CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_KEY) ?? '',
-  )
-}
-
 export function isValidCallbackNotificationRecipientEmail(value: string) {
   return EMAIL_PATTERN.test(normalizeRecipientEmail(value))
 }
 
-export function useCallbackNotificationRecipientEmail(enabled: boolean) {
+export interface UseCallbackNotificationRecipientEmailOptions {
+  /**
+   * Whether the hook should perform work (fetch availability, manage state).
+   */
+  enabled: boolean
+  /**
+   * The preferred default recipient email — typically the assigned advisor's
+   * email. When supplied, it takes precedence over the server fallback.
+   */
+  advisorDefaultEmail?: string | null
+  /**
+   * The advisor's name (used as the recipient name in the mail header if
+   * nothing else is available).
+   */
+  advisorName?: string | null
+}
+
+export function useCallbackNotificationRecipientEmail({
+  enabled,
+  advisorDefaultEmail,
+  advisorName,
+}: UseCallbackNotificationRecipientEmailOptions) {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
-  const [serverRecipientEmail, setServerRecipientEmail] = useState('')
+  const [serverDefaultEmail, setServerDefaultEmail] = useState('')
   const [serverRecipientName, setServerRecipientName] = useState('')
-  const [storedRecipientEmail, setStoredRecipientEmail] = useState('')
-  const [draftRecipientEmail, setDraftRecipientEmail] = useState('')
-  const lastSyncedRecipientEmailRef = useRef('')
+  // `null` means "user has not edited the field" → render the default; once
+  // they type something it becomes a string (possibly empty).
+  const [draftOverride, setDraftOverride] = useState<string | null>(null)
+
+  const normalizedAdvisorDefault = normalizeRecipientEmail(advisorDefaultEmail ?? '')
 
   useEffect(() => {
-    if (!enabled) {
-      return
-    }
-
-    const syncStoredRecipientEmail = () => {
-      setStoredRecipientEmail(readStoredRecipientEmail())
-    }
-
-    syncStoredRecipientEmail()
-
-    const handleStorage = (event: StorageEvent) => {
-      if (
-        event.key
-        && event.key !== CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_KEY
-      ) {
-        return
-      }
-
-      syncStoredRecipientEmail()
-    }
-
-    const handleLocalUpdate = () => {
-      syncStoredRecipientEmail()
-    }
-
-    window.addEventListener('storage', handleStorage)
-    window.addEventListener(
-      CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_EVENT,
-      handleLocalUpdate,
-    )
-
-    return () => {
-      window.removeEventListener('storage', handleStorage)
-      window.removeEventListener(
-        CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_EVENT,
-        handleLocalUpdate,
-      )
-    }
-  }, [enabled])
-
-  useEffect(() => {
-    if (!enabled) {
-      return
-    }
+    if (!enabled) return
 
     let cancelled = false
 
@@ -106,19 +63,19 @@ export function useCallbackNotificationRecipientEmail(enabled: boolean) {
           cache: 'no-store',
         })
 
-        const data = await response.json() as CallbackNotificationEmailAvailabilityResponse
+        const data = (await response.json()) as CallbackNotificationEmailAvailabilityResponse
 
-        if (cancelled) {
-          return
-        }
+        if (cancelled) return
 
         setIsAvailable(Boolean(response.ok && data.available))
-        setServerRecipientEmail(data.recipientEmail ?? '')
+        setServerDefaultEmail(
+          normalizeRecipientEmail(data.defaultRecipientEmail ?? data.recipientEmail ?? ''),
+        )
         setServerRecipientName(data.recipientName ?? '')
       } catch {
         if (!cancelled) {
           setIsAvailable(false)
-          setServerRecipientEmail('')
+          setServerDefaultEmail('')
           setServerRecipientName('')
         }
       }
@@ -131,106 +88,42 @@ export function useCallbackNotificationRecipientEmail(enabled: boolean) {
     }
   }, [enabled])
 
-  const defaultRecipientEmail =
-    serverRecipientEmail || CALLBACK_NOTIFICATION_RECIPIENT_EMAIL
-  const recipientName =
-    serverRecipientName || CALLBACK_NOTIFICATION_RECIPIENT_NAME
-  const activeRecipientEmail = useMemo(() => {
-    if (!enabled) {
-      return ''
-    }
+  // The effective default is the advisor's email (if any), otherwise the
+  // server-configured fallback.
+  const defaultRecipientEmail = normalizedAdvisorDefault || serverDefaultEmail
 
-    return storedRecipientEmail || defaultRecipientEmail
-  }, [defaultRecipientEmail, enabled, storedRecipientEmail])
-
-  useEffect(() => {
-    if (!enabled) {
-      return
-    }
-
-    setDraftRecipientEmail((current) => {
-      if (
-        current === ''
-        || current === lastSyncedRecipientEmailRef.current
-      ) {
-        return activeRecipientEmail
-      }
-
-      return current
-    })
-
-    lastSyncedRecipientEmailRef.current = activeRecipientEmail
-  }, [activeRecipientEmail, enabled])
+  // Until the user edits the field, the draft mirrors the default.
+  const draftRecipientEmail = draftOverride ?? defaultRecipientEmail
+  const setDraftRecipientEmail = (value: string) => setDraftOverride(value)
 
   const normalizedDraftRecipientEmail = normalizeRecipientEmail(draftRecipientEmail)
-  const normalizedActiveRecipientEmail = normalizeRecipientEmail(activeRecipientEmail)
-  const hasUnsavedRecipientEmailChanges =
-    enabled
-    && normalizedDraftRecipientEmail !== normalizedActiveRecipientEmail
-  const isDraftRecipientEmailValid =
-    normalizedDraftRecipientEmail.length > 0
-    && isValidCallbackNotificationRecipientEmail(normalizedDraftRecipientEmail)
-  const isActiveRecipientEmailValid =
-    normalizedActiveRecipientEmail.length > 0
-    && isValidCallbackNotificationRecipientEmail(normalizedActiveRecipientEmail)
 
-  const saveRecipientEmail = (): SaveRecipientEmailResult => {
-    if (!enabled || typeof window === 'undefined') {
-      return {
-        ok: false,
-        error: 'Empfänger-E-Mail konnte nicht gespeichert werden.',
-      }
-    }
+  const isDraftRecipientEmailValid = useMemo(
+    () =>
+      normalizedDraftRecipientEmail.length > 0 &&
+      isValidCallbackNotificationRecipientEmail(normalizedDraftRecipientEmail),
+    [normalizedDraftRecipientEmail],
+  )
 
-    if (!isDraftRecipientEmailValid) {
-      return {
-        ok: false,
-        error: 'Bitte eine gültige E-Mail-Adresse eingeben.',
-      }
-    }
-
-    const nextRecipientEmail = normalizedDraftRecipientEmail
-
-    if (nextRecipientEmail === defaultRecipientEmail) {
-      window.localStorage.removeItem(
-        CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_KEY,
-      )
-      setStoredRecipientEmail('')
-      lastSyncedRecipientEmailRef.current = defaultRecipientEmail
-    } else {
-      window.localStorage.setItem(
-        CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_KEY,
-        nextRecipientEmail,
-      )
-      setStoredRecipientEmail(nextRecipientEmail)
-      lastSyncedRecipientEmailRef.current = nextRecipientEmail
-    }
-
-    window.dispatchEvent(
-      new Event(CALLBACK_NOTIFICATION_RECIPIENT_EMAIL_STORAGE_EVENT),
+  const hasUnsavedRecipientEmailChanges = useMemo(() => {
+    if (!enabled) return false
+    return (
+      normalizedDraftRecipientEmail.toLowerCase() !== defaultRecipientEmail.toLowerCase()
     )
+  }, [defaultRecipientEmail, enabled, normalizedDraftRecipientEmail])
 
-    return {
-      ok: true,
-      recipientEmail:
-        nextRecipientEmail === defaultRecipientEmail
-          ? defaultRecipientEmail
-          : nextRecipientEmail,
-    }
-  }
+  const recipientName = advisorName?.trim() || serverRecipientName || ''
 
   return {
     isAvailable: enabled ? isAvailable : null,
     isLoading: enabled && isAvailable === null,
-    recipientName: enabled ? recipientName : '',
+    recipientName,
     defaultRecipientEmail: enabled ? defaultRecipientEmail : '',
-    activeRecipientEmail: enabled ? activeRecipientEmail : '',
     draftRecipientEmail: enabled ? draftRecipientEmail : '',
+    normalizedDraftRecipientEmail,
     hasUnsavedRecipientEmailChanges,
     isDraftRecipientEmailValid,
-    isActiveRecipientEmailValid,
     setDraftRecipientEmail,
-    saveRecipientEmail,
     unavailableMessage:
       enabled && isAvailable === false
         ? CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE

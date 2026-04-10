@@ -1,6 +1,6 @@
 'use client'
 
-import { Shield, Headset, UserCog, ChevronDown } from 'lucide-react'
+import { Shield, Headset, UserCog, MonitorPlay } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   Select, SelectContent, SelectItem, SelectGroup, SelectLabel,
@@ -10,7 +10,7 @@ import { useCallbackStore } from '@/lib/stores/callback-store'
 import { useMemo } from 'react'
 import { mockCallAgents } from '@/lib/constants'
 
-export type CallcenterRole = 'admin' | 'callcenter' | 'berater'
+export type CallcenterRole = 'admin' | 'callcenter' | 'berater' | 'dashboard'
 
 interface RoleOption {
   value: CallcenterRole
@@ -37,6 +37,12 @@ const roles: RoleOption[] = [
     label: 'Serviceberater / Verkäufer',
     shortLabel: 'Berater',
     icon: UserCog,
+  },
+  {
+    value: 'dashboard',
+    label: 'Live-Dashboard',
+    shortLabel: 'Live',
+    icon: MonitorPlay,
   },
 ]
 

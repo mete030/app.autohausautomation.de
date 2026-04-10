@@ -198,6 +198,24 @@ export interface CallbackActivity {
   metadata?: Record<string, string>
 }
 
+// ---- Callback Attachments ----
+
+export type CallbackAttachmentStage = 'creation' | 'completion'
+export type CallbackAttachmentUploaderRole = 'callcenter' | 'admin' | 'advisor'
+
+export interface CallbackAttachment {
+  id: string
+  callbackId: string
+  fileName: string
+  mimeType: string
+  fileSizeBytes: number
+  stage: CallbackAttachmentStage
+  uploadedByName: string
+  uploadedByRole: CallbackAttachmentUploaderRole
+  createdAt: string
+  downloadUrl: string
+}
+
 export interface Callback {
   id: string
   customerName: string
@@ -227,6 +245,7 @@ export interface Callback {
   escalationHistory: EscalationEvent[]
   reminders: string[]
   activityLog: CallbackActivity[]
+  attachments?: CallbackAttachment[]
   dataOrigin?: 'mock' | 'persisted'
   isPersisted?: boolean
 }

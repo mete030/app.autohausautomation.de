@@ -118,9 +118,59 @@ export function CallcenterTableView({
   }
 
   return (
-    <div className="border rounded-xl overflow-hidden">
-      <div className="overflow-x-auto">
-        <Table>
+    <>
+      {/* Mobile: card stack */}
+      <div className="md:hidden space-y-3">
+        {/* Mobile sort pills */}
+        <div className="flex items-center gap-1.5 -mx-3 px-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <span className="text-[11px] font-medium text-muted-foreground flex-shrink-0">Sortieren:</span>
+          {(['status', 'priority', 'created'] as const).map((key) => {
+            const labels = { status: 'Status', priority: 'Priorität', created: 'Neueste' }
+            const isActive = sortKey === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSortKey(key)}
+                className={cn(
+                  'px-3 h-8 rounded-full border text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0',
+                  isActive
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'border-border text-muted-foreground',
+                )}
+              >
+                {labels[key]}
+              </button>
+            )
+          })}
+        </div>
+
+        <ul className="space-y-2">
+          {sorted.map((cb) => (
+            <li key={cb.id}>
+              <CallbackCard
+                callback={cb}
+                onComplete={onComplete}
+                onReassign={onReassign}
+                onEscalate={onEscalate}
+                onViewTranscript={onViewTranscript}
+                onSetReminder={onSetReminder}
+                onEscalateToLevel={onEscalateToLevel}
+                onDelete={onDelete}
+              />
+            </li>
+          ))}
+        </ul>
+
+        <p className="text-xs text-muted-foreground pt-1 px-1">
+          {callbacks.length} Rückruf{callbacks.length !== 1 ? 'e' : ''}
+        </p>
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead className="w-[100px]">
@@ -320,8 +370,172 @@ export function CallcenterTableView({
           </TableBody>
         </Table>
       </div>
-      <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
-        {callbacks.length} Rückruf{callbacks.length !== 1 ? 'e' : ''}
+        <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
+          {callbacks.length} Rückruf{callbacks.length !== 1 ? 'e' : ''}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Mobile callback card
+// ---------------------------------------------------------------------------
+
+interface CallbackCardProps {
+  callback: Callback
+  onComplete?: (id: string) => void
+  onReassign?: (id: string) => void
+  onEscalate?: (id: string) => void
+  onViewTranscript: (id: string) => void
+  onSetReminder?: (id: string) => void
+  onEscalateToLevel?: (id: string) => void
+  onDelete?: (id: string) => void
+}
+
+function CallbackCard({
+  callback: cb,
+  onComplete,
+  onReassign,
+  onEscalate,
+  onViewTranscript,
+  onSetReminder,
+  onEscalateToLevel,
+  onDelete,
+}: CallbackCardProps) {
+  const isCompleted = cb.status === 'erledigt'
+  const isOverdue = cb.status === 'ueberfaellig'
+  const isKi = cb.takenBy.type === 'ki'
+  const statusCfg = callbackStatusConfig[cb.status]
+  const priorityCfg = callbackPriorityConfig[cb.priority]
+  const SourceIcon = getSourceIcon(cb.source)
+  const advisorInitials = cb.assignedAdvisor.split(' ').map((n) => n[0]).join('')
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onViewTranscript(cb.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onViewTranscript(cb.id)
+        }
+      }}
+      className={cn(
+        'group relative flex flex-col gap-2 rounded-xl border bg-card p-3 transition active:scale-[0.99]',
+        isOverdue && 'border-l-4 border-l-red-500',
+        isKi && !isOverdue && !isCompleted && 'border-l-4 border-l-violet-400',
+        isCompleted && 'opacity-60',
+      )}
+    >
+      {/* Top row: status dot, name, kebab */}
+      <div className="flex items-start gap-2">
+        <div className={cn('mt-1.5 h-2 w-2 rounded-full flex-shrink-0', getStatusDot(cb.status))} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-semibold truncate">{cb.customerName}</p>
+            {cb.escalationLevel > 1 && (
+              <span className={cn('inline-flex items-center gap-0.5 flex-shrink-0', escalationLevelConfig[cb.escalationLevel].color)}>
+                <Shield className="h-3 w-3" />
+                <span className="text-[10px] font-semibold">{cb.escalationLevel}</span>
+              </span>
+            )}
+            {cb.reminders.length > 0 && (
+              <Bell className="h-3 w-3 text-amber-500 flex-shrink-0" />
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground tabular-nums">{cb.customerPhone}</p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-9 w-9 -mt-1 -mr-1 flex-shrink-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewTranscript(cb.id) }}>
+              <FileText className="h-3.5 w-3.5 mr-2" />
+              Transkript anzeigen
+            </DropdownMenuItem>
+            {onReassign && (
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onReassign(cb.id) }}>
+                <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                Neu zuweisen
+              </DropdownMenuItem>
+            )}
+            {onEscalate && cb.priority !== 'dringend' && !isCompleted && (
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEscalate(cb.id) }}>
+                <ChevronUp className="h-3.5 w-3.5 mr-2" />
+                Priorität erhöhen
+              </DropdownMenuItem>
+            )}
+            {onSetReminder && (
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSetReminder(cb.id) }}>
+                <Bell className="h-3.5 w-3.5 mr-2" />
+                Erinnerung setzen
+              </DropdownMenuItem>
+            )}
+            {onEscalateToLevel && !isCompleted && (
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEscalateToLevel(cb.id) }}>
+                <Shield className="h-3.5 w-3.5 mr-2" />
+                Eskalieren an...
+              </DropdownMenuItem>
+            )}
+            {onComplete && !isCompleted && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onComplete(cb.id) }}>
+                  <CheckCircle className="h-3.5 w-3.5 mr-2" />
+                  Als erledigt markieren
+                </DropdownMenuItem>
+              </>
+            )}
+            {onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={(e) => { e.stopPropagation(); onDelete(cb.id) }}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                  Rückruf löschen
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Reason */}
+      {cb.reason && (
+        <p className="text-xs text-foreground/80 line-clamp-2 pl-4">{cb.reason}</p>
+      )}
+
+      {/* Bottom row: advisor + meta */}
+      <div className="flex items-center justify-between gap-2 pl-4">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <Avatar className="h-5 w-5 flex-shrink-0">
+            <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-semibold">
+              {advisorInitials}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs font-medium truncate">{cb.assignedAdvisor}</span>
+          <SourceIcon className={cn('h-3 w-3 flex-shrink-0 text-muted-foreground')} />
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <CountdownCell dueAt={cb.dueAt} slaDurationMinutes={cb.slaDurationMinutes} status={cb.status} />
+          <Badge variant="secondary" className={cn('text-[9px] px-1.5 py-0 h-4', priorityCfg.color)}>
+            {priorityCfg.label}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Status pill (small, bottom-left) */}
+      <div className="flex items-center gap-1.5 pl-4">
+        <Badge variant="secondary" className={cn('text-[9px] px-1.5 py-0 h-4', statusCfg.color)}>
+          {statusCfg.label}
+        </Badge>
       </div>
     </div>
   )

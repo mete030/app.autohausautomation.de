@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { CheckCircle } from 'lucide-react'
+import { MIN_CALLBACK_COMPLETION_NOTE_LENGTH } from '@/lib/email/callback-email-config'
+import { cn } from '@/lib/utils'
 
 interface CompletionDialogProps {
   open: boolean
@@ -16,9 +18,12 @@ interface CompletionDialogProps {
 export function CompletionDialog({ open, callbackId, onOpenChange, onComplete }: CompletionDialogProps) {
   const [notes, setNotes] = useState('')
 
+  const trimmedLength = notes.trim().length
+  const isValid = trimmedLength >= MIN_CALLBACK_COMPLETION_NOTE_LENGTH
+
   const handleComplete = () => {
-    if (callbackId && notes.trim()) {
-      onComplete(callbackId, notes)
+    if (callbackId && isValid) {
+      onComplete(callbackId, notes.trim())
       setNotes('')
     }
   }
@@ -34,15 +39,36 @@ export function CompletionDialog({ open, callbackId, onOpenChange, onComplete }:
         <DialogHeader>
           <DialogTitle>Rückruf als erledigt markieren</DialogTitle>
         </DialogHeader>
-        <Textarea
-          placeholder="Notiz zum Abschluss (Pflichtfeld)..."
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          rows={3}
-        />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">
+              Notiz zum Abschluss
+              <span className="ml-1 text-destructive">*</span>
+            </label>
+            <span
+              className={cn(
+                'text-[11px] tabular-nums',
+                isValid ? 'text-muted-foreground' : 'text-destructive',
+              )}
+            >
+              {trimmedLength} / {MIN_CALLBACK_COMPLETION_NOTE_LENGTH}
+            </span>
+          </div>
+          <Textarea
+            placeholder={`Pflichtfeld — beschreibe in mindestens ${MIN_CALLBACK_COMPLETION_NOTE_LENGTH} Zeichen, wie der Rückruf erledigt wurde.`}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={4}
+          />
+          {!isValid && (
+            <p className="text-[11px] text-muted-foreground">
+              Mindestens {MIN_CALLBACK_COMPLETION_NOTE_LENGTH} Zeichen erforderlich.
+            </p>
+          )}
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => handleClose(false)}>Abbrechen</Button>
-          <Button disabled={!notes.trim()} onClick={handleComplete}>
+          <Button disabled={!isValid} onClick={handleComplete}>
             <CheckCircle className="h-4 w-4 mr-1" />
             Erledigt
           </Button>

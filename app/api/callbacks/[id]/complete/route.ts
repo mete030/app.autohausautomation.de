@@ -4,9 +4,20 @@ import {
   CALLBACK_PERSISTENCE_UNAVAILABLE_MESSAGE,
   isCallbackPersistenceConfigured,
 } from '@/lib/server/callback-persistence-config'
+import { MIN_CALLBACK_COMPLETION_NOTE_LENGTH } from '@/lib/email/callback-email-config'
 
 const requestSchema = z.object({
-  completionNotes: z.string().optional(),
+  completionNotes: z
+    .string()
+    .transform((value) => value.trim())
+    .pipe(
+      z
+        .string()
+        .min(
+          MIN_CALLBACK_COMPLETION_NOTE_LENGTH,
+          `Die Abschluss-Notiz muss mindestens ${MIN_CALLBACK_COMPLETION_NOTE_LENGTH} Zeichen enthalten.`,
+        ),
+    ),
   performedBy: z.string().min(1),
 })
 
@@ -43,8 +54,9 @@ export async function POST(
     console.error(error)
 
     if (error instanceof z.ZodError) {
+      const firstIssue = error.issues[0]
       return NextResponse.json(
-        { error: 'Ungültige Abschlussdaten.' },
+        { error: firstIssue?.message ?? 'Ungültige Abschlussdaten.' },
         { status: 400 },
       )
     }

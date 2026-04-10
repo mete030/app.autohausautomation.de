@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,8 +15,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Save, Clock, ShieldAlert, Mail } from 'lucide-react'
-import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
-import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
 import { cn } from '@/lib/utils'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import {
@@ -33,16 +31,36 @@ export function CallcenterSettingsView() {
     slaConfig, escalationRules,
     updateSlaConfig, addEscalationRule, updateEscalationRule, removeEscalationRule,
   } = useCallbackStore()
-  const {
-    activeRecipientEmail,
-    defaultRecipientEmail,
-    draftRecipientEmail,
-    hasUnsavedRecipientEmailChanges,
-    isDraftRecipientEmailValid,
-    setDraftRecipientEmail,
-    saveRecipientEmail,
-    unavailableMessage: notificationEmailUnavailableMessage,
-  } = useCallbackNotificationRecipientEmail(true)
+
+  const [serverFallbackEmail, setServerFallbackEmail] = useState<string>('')
+  const [serverFallbackName, setServerFallbackName] = useState<string>('')
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/email/send-callback-notification', {
+          method: 'GET',
+          cache: 'no-store',
+        })
+        const data = (await res.json()) as {
+          available?: boolean
+          defaultRecipientEmail?: string
+          recipientName?: string
+        }
+        if (cancelled) return
+        setEmailAvailable(Boolean(res.ok && data.available))
+        setServerFallbackEmail(data.defaultRecipientEmail ?? '')
+        setServerFallbackName(data.recipientName ?? '')
+      } catch {
+        if (!cancelled) setEmailAvailable(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // ---- SLA local state ----
   const [slaDraft, setSlaDraft] = useState<Record<CallbackPriority, number>>(
@@ -101,22 +119,34 @@ export function CallcenterSettingsView() {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-base">Empfänger für Benachrichtigungs-E-Mail</CardTitle>
+            <CardTitle className="text-base">E-Mail-Versand</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
-          <CallbackNotificationRecipientEmailField
-            activeRecipientEmail={activeRecipientEmail}
-            defaultRecipientEmail={defaultRecipientEmail}
-            draftRecipientEmail={draftRecipientEmail}
-            hasUnsavedRecipientEmailChanges={hasUnsavedRecipientEmailChanges}
-            isDraftRecipientEmailValid={isDraftRecipientEmailValid}
-            unavailableMessage={notificationEmailUnavailableMessage}
-            label="Test-Empfänger E-Mail"
-            description="Diese Adresse wird für Callback-Benachrichtigungen verwendet, sobald du speicherst. Der Name des Empfängers bleibt serverseitig unverändert."
-            onDraftRecipientEmailChange={setDraftRecipientEmail}
-            onSave={saveRecipientEmail}
-          />
+        <CardContent className="space-y-2 text-sm">
+          <p className="text-muted-foreground">
+            Erinnerungs-E-Mails werden automatisch an die im Mitarbeiter-Profil
+            hinterlegte Adresse des zugewiesenen Serviceberaters bzw. Verkäufers
+            versendet. Die Adresse kann beim Erstellen eines Rückrufs überschrieben
+            werden — der Klick auf <span className="font-medium text-foreground">Senden</span> speichert
+            die Änderung und verschickt die Erinnerung in einem Schritt.
+          </p>
+          <Separator />
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <p>
+              <span className="font-medium text-foreground">Status:</span>{' '}
+              {emailAvailable === null
+                ? 'Wird geprüft…'
+                : emailAvailable
+                  ? 'Verfügbar (Brevo)'
+                  : 'Nicht konfiguriert — bitte BREVO_API_KEY setzen.'}
+            </p>
+            {serverFallbackEmail && (
+              <p>
+                <span className="font-medium text-foreground">Fallback-Empfänger:</span>{' '}
+                {serverFallbackName ? `${serverFallbackName} <${serverFallbackEmail}>` : serverFallbackEmail}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
