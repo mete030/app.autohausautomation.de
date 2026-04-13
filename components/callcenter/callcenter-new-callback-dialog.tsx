@@ -413,7 +413,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[92dvh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[92dvh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
         {dialogStep === 'form' ? (
           <>
             <DialogHeader>
@@ -533,6 +533,9 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                 {/* Phone field only for manually-entered customers without phone */}
                 {customerName && !customerDropdownOpen && !customerPhone && (
                   <Input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     placeholder="Telefonnummer eingeben..."
                     value={customerPhone}
                     onChange={e => setCustomerPhone(e.target.value)}

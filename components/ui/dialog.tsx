@@ -61,11 +61,21 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-2xl border bg-background p-4 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg sm:rounded-xl sm:p-6",
+          // Mobile: bottom-sheet style
+          "fixed z-50 grid w-full gap-4 overflow-y-auto border bg-background shadow-lg duration-200 outline-none",
+          "bottom-0 left-0 right-0 max-h-[92dvh] rounded-t-2xl p-4 pb-[max(env(safe-area-inset-bottom),1rem)]",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom",
+          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom",
+          // Desktop: centered modal style
+          "sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg md:max-w-xl sm:max-h-[calc(100dvh-1rem)] sm:rounded-xl sm:p-6 md:p-7 sm:pb-6 md:pb-7",
+          "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=closed]:zoom-out-95",
+          "sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95",
           className
         )}
         {...props}
       >
+        {/* Mobile drag handle indicator */}
+        <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-muted-foreground/20 sm:hidden" />
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close

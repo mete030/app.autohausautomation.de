@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </main>
           ) : (
             <main className="flex-1 overflow-y-auto">
-              <div className="mx-auto w-full max-w-[1600px] px-3 py-3 pb-[calc(var(--mobile-dock-offset)+1.1rem)] sm:px-4 sm:py-4 md:px-5 md:py-5 md:pb-6 lg:px-6 lg:py-6 lg:pb-6">
+              <div className="mx-auto w-full max-w-[1600px] px-3 py-3 pb-[calc(var(--mobile-dock-offset)+1.1rem)] sm:px-4 sm:py-4 md:px-6 md:py-5 md:pb-6 lg:px-6 lg:py-6 lg:pb-6">
                 {children}
               </div>
             </main>

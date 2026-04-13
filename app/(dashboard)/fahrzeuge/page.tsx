@@ -186,7 +186,7 @@ export default function FahrzeugePage() {
                     </div>
 
                     {/* Specs row */}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Gauge className="h-3.5 w-3.5" />
                         {formatMileage(vehicle.mileage)}
@@ -195,7 +195,7 @@ export default function FahrzeugePage() {
                         <Fuel className="h-3.5 w-3.5" />
                         {vehicle.fuelType}
                       </span>
-                      <span className="flex items-center gap-1">
+                      <span className="hidden sm:flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5" />
                         {vehicle.location}
                       </span>

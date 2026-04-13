@@ -72,7 +72,7 @@ export function ReassignDialog({ open, callback, onOpenChange, onReassign, advis
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="sm:!max-w-md md:!max-w-lg">
         <DialogHeader>
           <DialogTitle>Rückruf neu zuweisen</DialogTitle>
         </DialogHeader>

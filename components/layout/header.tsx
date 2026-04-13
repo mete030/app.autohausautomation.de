@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -16,7 +16,7 @@ import { useHydrated } from '@/hooks/useHydrated'
 import { useIsTablet } from '@/lib/hooks/use-media-query'
 import { navigation } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import { Search, Bell, Moon, Sun, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Search, Bell, Moon, Sun, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -30,6 +30,8 @@ export function Header({
   sidebarCollapsed = false,
 }: HeaderProps) {
   const [darkMode, setDarkMode] = useState(false)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const mobileSearchRef = useRef<HTMLInputElement>(null)
   const mounted = useHydrated()
   const pathname = usePathname() ?? '/'
   const isTablet = useIsTablet()
@@ -48,12 +50,13 @@ export function Header({
   const SidebarToggleIcon = sidebarCollapsed ? PanelLeftOpen : PanelLeftClose
 
   return (
+    <>
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/60 bg-card/92 px-3 backdrop-blur-xl sm:px-4 md:h-16 md:px-5 lg:px-6">
       {/* Mobile Menu Button (only when sidebar is hidden, i.e. < md) */}
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden h-8 w-8"
+        className="md:hidden h-9 w-9"
         onClick={onMenuToggle}
       >
         <Menu className="h-4 w-4" />
@@ -99,17 +102,27 @@ export function Header({
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="hidden h-8 w-8 md:inline-flex lg:hidden">
-          <Search className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 md:h-9 md:w-9 lg:hidden"
+          onClick={() => {
+            setMobileSearchOpen((v) => {
+              if (!v) setTimeout(() => mobileSearchRef.current?.focus(), 50)
+              return !v
+            })
+          }}
+        >
+          {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
         </Button>
 
         {/* Dark Mode Toggle */}
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleDarkMode}>
+        <Button variant="ghost" size="icon" className="h-9 w-9 md:h-9 md:w-9" onClick={toggleDarkMode}>
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 relative">
+        <Button variant="ghost" size="icon" className="h-9 w-9 md:h-9 md:w-9 relative">
           <Bell className="h-4 w-4" />
           <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
         </Button>
@@ -123,7 +136,7 @@ export function Header({
                     TM
                   </AvatarFallback>
                 </Avatar>
-              <span className="hidden xl:inline text-sm">Thomas M.</span>
+              <span className="hidden lg:inline text-sm">Thomas M.</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem className="text-sm">Profil</DropdownMenuItem>
@@ -139,11 +152,29 @@ export function Header({
                 TM
               </AvatarFallback>
             </Avatar>
-            <span className="hidden xl:inline text-sm">Thomas M.</span>
+            <span className="hidden lg:inline text-sm">Thomas M.</span>
           </button>
         )}
       </div>
     </header>
+
+    {/* Mobile expandable search bar */}
+    {mobileSearchOpen && (
+      <div className="sticky top-14 z-30 border-b border-border/60 bg-card/95 px-3 py-2 backdrop-blur-xl lg:hidden md:top-16">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            ref={mobileSearchRef}
+            placeholder="Suchen..."
+            className="pl-9 h-10 bg-muted/40 border-transparent focus:bg-background focus:border-input text-sm"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setMobileSearchOpen(false)
+            }}
+          />
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 

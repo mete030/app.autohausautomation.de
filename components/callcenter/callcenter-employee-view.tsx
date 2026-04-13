@@ -164,7 +164,7 @@ export function CallcenterEmployeeView() {
             <div className="flex items-center gap-2 mb-1.5">
               <Users className="h-3.5 w-3.5 text-muted-foreground" />
               <h3 className="text-xs font-semibold">{config.label}</h3>
-              <Badge variant="secondary" className={cn('text-[9px] px-1.5 py-0 h-4', config.color)}>
+              <Badge variant="secondary" className={cn('text-[10px] px-1.5 py-0 h-4', config.color)}>
                 {deptEmployees.length}
               </Badge>
             </div>
@@ -178,14 +178,14 @@ export function CallcenterEmployeeView() {
                 return (
                   <div key={emp.id} className="flex items-center gap-3 px-3 py-2.5 bg-card hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setDetailEmployee(emp)}>
                     {/* Avatar */}
-                    <Avatar className="h-8 w-8 md:h-7 md:w-7 flex-shrink-0">
+                    <Avatar className="h-8 w-8 lg:h-7 lg:w-7 flex-shrink-0">
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
                         {getInitials(emp.name)}
                       </AvatarFallback>
                     </Avatar>
 
                     {/* Name + Role */}
-                    <div className="min-w-0 flex-1 md:flex-none md:w-[160px]">
+                    <div className="min-w-0 flex-1 md:flex-none md:w-[180px] lg:w-[160px]">
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-xs truncate">{emp.name}</span>
                         <span
@@ -195,14 +195,14 @@ export function CallcenterEmployeeView() {
                       </div>
                       <Badge
                         variant="secondary"
-                        className={cn('text-[9px] px-1 py-0 h-3.5', roleCfg.color)}
+                        className={cn('text-[10px] px-1 py-0 h-3.5', roleCfg.color)}
                       >
                         {roleCfg.label}
                       </Badge>
                     </div>
 
                     {/* Mobile-only: open/SLA quick stats */}
-                    <div className="md:hidden flex items-center gap-2 text-[11px] flex-shrink-0">
+                    <div className="lg:hidden flex items-center gap-2 text-[11px] flex-shrink-0">
                       <span className="text-muted-foreground">
                         Offen: <span className="font-semibold text-foreground">{metrics.open}</span>
                       </span>
@@ -235,7 +235,7 @@ export function CallcenterEmployeeView() {
                     </div>
 
                     {/* Metrics */}
-                    <div className="hidden md:flex items-center gap-4 text-[11px] flex-shrink-0">
+                    <div className="hidden lg:flex items-center gap-4 text-[11px] flex-shrink-0">
                       <span className="text-muted-foreground">
                         Offen: <span className="font-semibold text-foreground">{metrics.open}</span>
                       </span>

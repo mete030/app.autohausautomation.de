@@ -419,7 +419,7 @@ export function CallcenterAdminDashboard() {
             </CardHeader>
             <CardContent>
               {/* Mobile: card list */}
-              <div className="md:hidden space-y-2">
+              <div className="lg:hidden space-y-2">
                 {employeeRows.map((row) => {
                   const statusCfg = employeeStatusConfig[row.employee.status]
                   return (
@@ -494,7 +494,7 @@ export function CallcenterAdminDashboard() {
               </div>
 
               {/* Desktop: table */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground border-b">
@@ -609,7 +609,7 @@ export function CallcenterAdminDashboard() {
               ) : (
                 <>
                   {/* Mobile: card list */}
-                  <ul className="md:hidden space-y-2">
+                  <ul className="lg:hidden space-y-2">
                     {recentEscalations.map((event) => {
                       const dotColor = escalationDotColor(event.toLevel)
                       return (
@@ -660,7 +660,7 @@ export function CallcenterAdminDashboard() {
                   </ul>
 
                   {/* Desktop: table */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden lg:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-xs text-muted-foreground border-b">
@@ -690,7 +690,7 @@ export function CallcenterAdminDashboard() {
                                 <Badge
                                   variant="secondary"
                                   className={cn(
-                                    'text-[9px] px-1 py-0 h-4',
+                                    'text-[10px] px-1 py-0 h-4',
                                     escalationLevelConfig[event.fromLevel].bg,
                                     escalationLevelConfig[event.fromLevel].color,
                                   )}
@@ -701,7 +701,7 @@ export function CallcenterAdminDashboard() {
                                 <Badge
                                   variant="secondary"
                                   className={cn(
-                                    'text-[9px] px-1 py-0 h-4',
+                                    'text-[10px] px-1 py-0 h-4',
                                     escalationLevelConfig[event.toLevel].bg,
                                     escalationLevelConfig[event.toLevel].color,
                                   )}

@@ -46,6 +46,7 @@ export function CallbackNotificationRecipientEmailField({
       <Input
         id={inputId}
         type="email"
+        inputMode="email"
         value={draftRecipientEmail}
         placeholder={defaultRecipientEmail || 'name@example.com'}
         disabled={disabled}

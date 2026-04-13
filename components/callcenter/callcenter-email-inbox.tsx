@@ -458,7 +458,7 @@ export function CallcenterEmailInbox({
     <div className="flex h-[calc(100vh-320px)] md:h-[calc(100vh-340px)] min-h-[500px] rounded-xl border bg-card overflow-hidden">
       {/* Thread List */}
       <div className={cn(
-        'flex flex-col border-r w-full md:w-[340px] md:min-w-[340px] lg:w-[400px] lg:min-w-[400px]',
+        'flex flex-col border-r w-full md:w-[280px] md:min-w-[280px] lg:w-[340px] lg:min-w-[340px] xl:w-[400px] xl:min-w-[400px]',
         selectedThreadId && 'hidden md:flex'
       )}>
         <div className="flex items-center gap-2 border-b px-4 py-3 md:px-5 md:py-4">
@@ -593,7 +593,7 @@ export function CallcenterEmailInbox({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium truncate">{msg.from}</span>
-                          <Badge variant="secondary" className={cn('text-[9px] px-1.5 py-0 h-4', badge.class)}>
+                          <Badge variant="secondary" className={cn('text-[10px] px-1.5 py-0 h-4', badge.class)}>
                             {badge.label}
                           </Badge>
                         </div>
@@ -603,7 +603,7 @@ export function CallcenterEmailInbox({
                         </div>
                       </div>
                       {msg.isAiProcessed && msg.relatedAction && (
-                        <Badge variant="secondary" className="text-[9px] bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 flex-shrink-0">
+                        <Badge variant="secondary" className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 flex-shrink-0">
                           <CheckCheck className="h-2.5 w-2.5 mr-1" />
                           {msg.relatedAction}
                         </Badge>

@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, getEscalationLevel, getDaysRemaining } from '@/lib/utils'
 import { escalationColors } from '@/lib/constants'
 import { useVehicleStore } from '@/lib/stores/vehicle-store'
-import { ArrowLeft, AlertTriangle, GripVertical, Car } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, GripVertical, Car, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import type { VehicleStatus } from '@/lib/types'
 
@@ -84,13 +85,13 @@ export default function WerkstattPage() {
       </div>
 
       {/* Kanban Board */}
-      <div className="flex gap-4 overflow-x-auto pb-2 sm:pb-4">
+      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 sm:snap-none sm:pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {kanbanColumns.map((column) => {
           const columnVehicles = getColumnVehicles(column.id)
           return (
             <div
               key={column.id}
-              className="w-[84vw] max-w-[300px] flex-shrink-0 sm:w-72"
+              className="w-[84vw] max-w-[300px] flex-shrink-0 snap-center sm:w-72 sm:snap-align-none"
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, column.id)}
             >
@@ -119,7 +120,7 @@ export default function WerkstattPage() {
                       }`}
                     >
                       <div className="flex items-start gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground/50 mt-0.5 shrink-0" />
+                        <GripVertical className="hidden sm:block h-4 w-4 text-muted-foreground/50 mt-0.5 shrink-0" />
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <div>
@@ -146,6 +147,27 @@ export default function WerkstattPage() {
                             <span className="text-xs text-muted-foreground">{vehicle.location}</span>
                             <span className="text-xs font-medium">{formatCurrency(vehicle.price)}</span>
                           </div>
+                          {/* Mobile: tap-to-move status selector (drag doesn't work on touch) */}
+                          <div className="sm:hidden">
+                            <Select
+                              value={vehicle.status}
+                              onValueChange={(value: VehicleStatus) => updateVehicleStatus(vehicle.id, value)}
+                            >
+                              <SelectTrigger className="h-8 w-full text-xs">
+                                <div className="flex items-center gap-1.5">
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                  <SelectValue placeholder="Verschieben..." />
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {kanbanColumns.map((col) => (
+                                  <SelectItem key={col.id} value={col.id} disabled={col.id === vehicle.status}>
+                                    {col.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
                     </Card>
@@ -161,6 +183,16 @@ export default function WerkstattPage() {
             </div>
           )
         })}
+      </div>
+
+      {/* Mobile scroll indicator */}
+      <div className="flex justify-center gap-1.5 sm:hidden">
+        {kanbanColumns.map((column) => (
+          <div
+            key={column.id}
+            className="h-1.5 w-1.5 rounded-full bg-muted-foreground/25"
+          />
+        ))}
       </div>
     </div>
   )

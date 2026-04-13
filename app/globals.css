@@ -163,3 +163,22 @@
     scroll-padding-top: 5rem;
   }
 }
+
+/* Tablet touch-target enhancements — applies only on real touch devices
+   (pointer: coarse) in the tablet range, not desktop windows at 768-1279px. */
+@media (min-width: 768px) and (max-width: 1279px) and (pointer: coarse) {
+  [data-slot="select-trigger"] {
+    min-height: 2.5rem;
+  }
+  [data-slot="dropdown-menu-item"],
+  [role="menuitem"] {
+    min-height: 2.5rem;
+  }
+  /* Keep scrollbars subtly visible on touch tablets so users see affordance */
+  [data-slot="scroll-area-scrollbar"] {
+    opacity: 0.4;
+  }
+  [data-slot="scroll-area-scrollbar"]:hover {
+    opacity: 0.7;
+  }
+}

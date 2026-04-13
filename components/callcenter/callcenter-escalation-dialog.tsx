@@ -82,7 +82,7 @@ export function CallcenterEscalationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="sm:!max-w-md md:!max-w-lg">
         <DialogHeader>
           <DialogTitle>Rückruf eskalieren</DialogTitle>
           <DialogDescription>

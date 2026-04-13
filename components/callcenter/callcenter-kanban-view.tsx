@@ -162,7 +162,7 @@ function KanbanCard({ cb, onViewTranscript }: KanbanCardProps) {
       <div className="flex items-center justify-between gap-2 mt-2 md:mt-2.5">
         <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
           <Avatar className="h-5 w-5 md:h-6 md:w-6">
-            <AvatarFallback className="text-[9px] md:text-[10px] bg-primary/10 text-primary font-semibold">
+            <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
               {advisorInitials}
             </AvatarFallback>
           </Avatar>
@@ -233,7 +233,7 @@ export function CallcenterKanbanView({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
       {COLUMNS.map((col) => {
         const items = grouped[col.status]
 

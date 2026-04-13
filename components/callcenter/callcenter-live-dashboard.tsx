@@ -167,7 +167,7 @@ export function CallcenterLiveDashboard() {
 
   return (
     <div className="-m-4 sm:-m-6 min-h-[calc(100vh-2rem)] bg-background text-foreground dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(ellipse_60%_50%_at_100%_100%,rgba(16,185,129,0.06),transparent_50%),#020617]">
-      <div className="mx-auto flex h-full max-w-[1800px] flex-col gap-5 p-6 lg:p-8">
+      <div className="mx-auto flex h-full max-w-[1800px] flex-col gap-5 p-4 md:p-5 lg:p-8">
         {/* ───── Header ───── */}
         <header className="flex items-center justify-between gap-6">
           <div className="flex items-center gap-4">
@@ -176,7 +176,7 @@ export function CallcenterLiveDashboard() {
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
                   Callcenter Live
                 </h1>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
@@ -199,7 +199,7 @@ export function CallcenterLiveDashboard() {
           </div>
 
           <div className="text-right">
-            <p className="font-mono text-5xl font-bold tabular-nums tracking-tight text-foreground">
+            <p className="font-mono text-3xl md:text-4xl lg:text-5xl font-bold tabular-nums tracking-tight text-foreground">
               {clock.toLocaleTimeString('de-DE', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -251,7 +251,7 @@ export function CallcenterLiveDashboard() {
         </section>
 
         {/* ───── Main two-column grid ───── */}
-        <section className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-5">
+        <section className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           {/* ─── Left: Live feed (60%) ─── */}
           <div className="lg:col-span-3 flex">
             <DashboardCard
@@ -469,7 +469,7 @@ function KpiTile({
         <p
           className={cn(
             'font-bold tabular-nums leading-none tracking-tight',
-            'text-6xl lg:text-7xl',
+            'text-4xl md:text-5xl lg:text-7xl',
             styles.number,
           )}
         >

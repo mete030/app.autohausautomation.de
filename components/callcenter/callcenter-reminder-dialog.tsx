@@ -103,7 +103,7 @@ export function CallcenterReminderDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="sm:!max-w-md md:!max-w-lg">
         <DialogHeader>
           <DialogTitle>Erinnerung setzen</DialogTitle>
           {callback && (

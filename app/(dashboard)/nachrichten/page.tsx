@@ -295,7 +295,7 @@ function ConversationList({
             </span>
           </div>
           <button
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-sm transition-all hover:opacity-80 active:scale-95"
+            className="flex h-10 w-10 md:h-8 md:w-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-sm transition-all hover:opacity-80 active:scale-95"
             title="Neue Unterhaltung"
           >
             <PenSquare className="h-3.5 w-3.5" />
@@ -309,10 +309,10 @@ function ConversationList({
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Suchen..."
-              className="h-8 rounded-lg border-transparent bg-muted/50 pl-8 pr-3 text-[13px] shadow-none placeholder:text-muted-foreground/40 focus-visible:bg-white focus-visible:border-border"
+              className="h-10 md:h-8 rounded-lg border-transparent bg-muted/50 pl-8 pr-3 text-[13px] shadow-none placeholder:text-muted-foreground/40 focus-visible:bg-white focus-visible:border-border"
             />
           </div>
-          <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+          <button className="flex h-10 w-10 md:h-8 md:w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
             <Filter className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -356,7 +356,7 @@ function ConversationList({
 
       {/* ── List ── */}
       <ScrollArea className="flex-1">
-        <div className="px-1.5 py-1.5">
+        <div className="px-1.5 md:px-2.5 py-1.5">
         {filtered.length === 0 && (
           <div className="flex h-40 flex-col items-center justify-center gap-2 mx-2 rounded-xl border border-dashed border-border/60 text-muted-foreground/60">
             <Mail className="w-6 h-6" />
@@ -373,7 +373,7 @@ function ConversationList({
               key={conv.id}
               onClick={() => onSelect(conv)}
               className={cn(
-                'w-full rounded-lg px-3 py-2.5 text-left transition-all group relative',
+                'w-full rounded-lg px-3 py-2.5 md:py-3 text-left transition-all group relative',
                 isSelected
                   ? 'bg-blue-50/70'
                   : 'hover:bg-muted/40'
@@ -416,13 +416,13 @@ function ConversationList({
                   {/* Row 2: preview + unread badge */}
                   <div className="mt-1.5 flex min-w-0 items-start gap-2">
                     <p className={cn(
-                      'min-w-0 flex-1 overflow-hidden text-[12px] leading-[1.4] break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]',
+                      'min-w-0 flex-1 overflow-hidden text-[13px] md:text-[12px] leading-[1.4] break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:1] md:[-webkit-line-clamp:2]',
                       conv.unread ? 'text-foreground/70' : 'text-muted-foreground/60'
                     )}>
                       {conv.lastMessage}
                     </p>
                     {conv.unreadCount > 0 && (
-                      <span className="mt-0.5 flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#2563EB] px-1 text-[9px] font-bold text-white">
+                      <span className="mt-0.5 flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#2563EB] px-1 text-[10px] font-bold text-white">
                         {conv.unreadCount}
                       </span>
                     )}
@@ -557,7 +557,7 @@ function ChatView({
           <Popover open={labelOpen} onOpenChange={setLabelOpen}>
             <PopoverTrigger asChild>
               <button title="Label"
-                className="p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
+                className="p-1.5 md:p-2.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
                 <Tag className="w-3.5 h-3.5" />
               </button>
             </PopoverTrigger>
@@ -576,7 +576,7 @@ function ChatView({
             </PopoverContent>
           </Popover>
           <button title="Erinnern"
-            className="p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
+            className="p-1.5 md:p-2.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
             <Clock className="w-3.5 h-3.5" />
           </button>
           <button title="Erledigen"
@@ -584,7 +584,7 @@ function ChatView({
               const next = (conv.status ?? 'offen') === 'erledigt' ? 'offen' : 'erledigt'
               updateConversationStatus(conv.id, next)
             }}
-            className={cn('p-1.5 rounded-md transition-colors',
+            className={cn('p-1.5 md:p-2.5 rounded-md transition-colors',
               (conv.status ?? 'offen') === 'erledigt'
                 ? 'text-emerald-600 hover:bg-emerald-50'
                 : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/50'
@@ -592,14 +592,14 @@ function ChatView({
             <CheckCircle2 className="w-3.5 h-3.5" />
           </button>
           <button title="Mehr"
-            className="p-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
+            className="p-1.5 md:p-2.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors">
             <MoreHorizontal className="w-3.5 h-3.5" />
           </button>
         </div>
         {onOpenContact && (
           <button
             onClick={onOpenContact}
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            className="rounded-md p-1.5 md:p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
             title="Kontakt öffnen"
           >
             <Users className="h-4 w-4" />
@@ -1002,7 +1002,7 @@ function ContactPanel({
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-medium text-foreground/80">Follow-up nach 48h</p>
                   <p className="text-[10px] text-muted-foreground/40">Automatische Erinnerung wenn keine Antwort</p>
-                  <span className="inline-flex items-center mt-1 text-[9px] font-medium px-1.5 py-px rounded bg-emerald-50 text-emerald-600">Aktiv</span>
+                  <span className="inline-flex items-center mt-1 text-[10px] font-medium px-1.5 py-px rounded bg-emerald-50 text-emerald-600">Aktiv</span>
                 </div>
               </div>
             </div>
@@ -1030,7 +1030,7 @@ function ContactPanel({
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-medium text-foreground/80">{int.name}</p>
                   </div>
-                  <span className="text-[9px] font-medium px-1.5 py-px rounded bg-emerald-50 text-emerald-600">{int.status}</span>
+                  <span className="text-[10px] font-medium px-1.5 py-px rounded bg-emerald-50 text-emerald-600">{int.status}</span>
                 </div>
               ))}
             </div>
@@ -1216,7 +1216,7 @@ export default function NachrichtenPage() {
     <div className="flex flex-col h-full overflow-hidden">
       <PerspectiveSelector perspective={perspective} onChange={setPerspective} />
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className={cn('h-full w-full md:w-[320px] md:shrink-0 xl:w-[336px]', showListPane ? 'flex' : 'hidden')}>
+        <div className={cn('h-full w-full md:w-[280px] md:shrink-0 lg:w-[300px] xl:w-[336px]', showListPane ? 'flex' : 'hidden')}>
           <ConversationList
             allConversations={perspectiveFiltered}
             conversations={visible}

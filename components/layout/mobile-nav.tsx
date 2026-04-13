@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { navigation } from '@/lib/constants'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 interface MobileNavProps {
   open: boolean
@@ -40,13 +41,24 @@ export function MobileNav({ open, onOpenChange }: MobileNavProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-[88vw] max-w-xs p-0 sm:max-w-sm">
-        <SheetHeader className="border-b px-4 py-4">
+        <SheetHeader className="border-b px-4 py-4 gap-3">
           <SheetTitle className="flex items-center">
-            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-auto max-w-[160px] invert dark:invert-0 sm:max-w-[180px]" />
+            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-7 w-auto max-w-[150px] invert dark:invert-0" />
           </SheetTitle>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                TM
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">Thomas Mueller</p>
+              <p className="truncate text-xs text-muted-foreground">Geschaeftsfuehrung</p>
+            </div>
+          </div>
         </SheetHeader>
-        <ScrollArea className="flex-1 py-4">
-          <nav className="flex flex-col gap-1 px-2">
+        <ScrollArea className="flex-1 py-3">
+          <nav className="flex flex-col gap-0.5 px-2">
             {navigation.map((item) => {
               const Icon = item.icon
               const hasChildren = Boolean(item.children?.length)
@@ -58,32 +70,35 @@ export function MobileNav({ open, onOpenChange }: MobileNavProps) {
                     href={item.href}
                     onClick={() => onOpenChange(false)}
                     className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition-colors',
                       active
-                        ? 'bg-accent text-primary font-medium'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-foreground/80 hover:bg-accent hover:text-foreground'
                     )}
                   >
-                    <Icon className="h-5 w-5 shrink-0" />
+                    <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
                     <span>{item.title}</span>
                   </Link>
-                  {item.children && (
-                    <div className="ml-8 mt-1 flex flex-col gap-1">
-                      {item.children.map((child) => (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          onClick={() => onOpenChange(false)}
-                          className={cn(
-                            'rounded-lg px-3 py-1.5 text-sm transition-colors',
-                            isChildActive(child.href)
-                              ? 'text-primary font-medium'
-                              : 'text-muted-foreground hover:text-foreground'
-                          )}
-                        >
-                          {child.title}
-                        </Link>
-                      ))}
+                  {item.children && active && (
+                    <div className="ml-5 mt-1 mb-1 flex flex-col border-l border-border/70">
+                      {item.children.map((child) => {
+                        const childActive = isChildActive(child.href)
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={() => onOpenChange(false)}
+                            className={cn(
+                              'relative -ml-px border-l-2 px-4 py-2 text-sm transition-colors',
+                              childActive
+                                ? 'border-l-primary text-primary font-medium'
+                                : 'border-l-transparent text-muted-foreground hover:text-foreground hover:border-l-border'
+                            )}
+                          >
+                            {child.title}
+                          </Link>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

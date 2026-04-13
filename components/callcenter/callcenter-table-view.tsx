@@ -248,7 +248,7 @@ export function CallcenterTableView({
                     {/* Master cell — at md (tablet) we inline priority, source, advisor; at lg+ keep slim */}
                     <div className="space-y-1 lg:space-y-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm md:text-[15px] lg:text-sm font-medium md:font-semibold lg:font-normal truncate max-w-[220px] md:max-w-[280px] lg:max-w-[200px]">
+                        <p className="text-sm md:text-[15px] lg:text-sm font-medium md:font-semibold lg:font-normal truncate max-w-[220px] md:max-w-[240px] lg:max-w-[200px]">
                           {cb.customerName}
                         </p>
                         {/* Tablet-only inline priority badge */}
@@ -261,28 +261,22 @@ export function CallcenterTableView({
                         >
                           {priorityCfg.label}
                         </Badge>
-                        {/* Tablet-only inline source pill */}
-                        <span className={cn(
-                          'hidden md:inline-flex lg:hidden items-center gap-1 text-[10px] font-medium rounded-full px-1.5 py-0.5',
-                          sourceCfg.color,
-                        )}>
-                          <SourceIcon className="h-3 w-3" />
-                          {sourceCfg.label}
-                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-xs md:text-[13px] lg:text-xs text-muted-foreground tabular-nums">
                           {cb.customerPhone}
                         </p>
-                        {/* Tablet-only inline advisor */}
+                        {/* Tablet-only inline advisor (compact: avatar + first name) */}
                         <span className="hidden md:inline-flex lg:hidden items-center gap-1.5 text-xs text-muted-foreground">
                           <span className="text-muted-foreground/40">·</span>
                           <Avatar className="h-5 w-5">
-                            <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-semibold">
+                            <AvatarFallback className="text-[10px] md:text-[9px] bg-primary/10 text-primary font-semibold">
                               {advisorInitials}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium text-foreground/80 truncate max-w-[180px]">{cb.assignedAdvisor}</span>
+                          <span className="font-medium text-foreground/80 truncate max-w-[100px]">
+                            {cb.assignedAdvisor.split(' ')[0]}
+                          </span>
                           {isKi && (
                             <span className="ml-0.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400">
                               <Bot className="h-3 w-3" />
@@ -320,7 +314,7 @@ export function CallcenterTableView({
                       </Avatar>
                       <span className="text-sm truncate max-w-[110px]">{cb.takenBy.name}</span>
                       {isKi && (
-                        <Badge variant="secondary" className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 text-[9px] px-1 py-0">
+                        <Badge variant="secondary" className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 text-[10px] md:text-[9px] px-1 py-0">
                           KI
                         </Badge>
                       )}
@@ -354,7 +348,7 @@ export function CallcenterTableView({
                           <MoreHorizontal className="h-4 w-4 md:h-[18px] md:w-[18px] lg:h-4 lg:w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="md:min-w-[220px] md:[&_[role=menuitem]]:py-2 md:[&_[role=menuitem]]:text-sm">
+                      <DropdownMenuContent align="end" className="md:min-w-[220px] md:[&_[role=menuitem]]:py-2.5 md:[&_[role=menuitem]]:text-sm">
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewTranscript(cb.id) }}>
                           <FileText className="h-3.5 w-3.5 mr-2" />
                           Transkript anzeigen
@@ -554,11 +548,11 @@ function CallbackCard({
         <p className="text-xs text-foreground/80 line-clamp-2 pl-4">{cb.reason}</p>
       )}
 
-      {/* Bottom row: advisor + meta */}
+      {/* Bottom row: advisor + meta + status */}
       <div className="flex items-center justify-between gap-2 pl-4">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <Avatar className="h-5 w-5 flex-shrink-0">
-            <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-semibold">
+            <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
               {advisorInitials}
             </AvatarFallback>
           </Avatar>
@@ -566,18 +560,14 @@ function CallbackCard({
           <SourceIconInline source={cb.source} />
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Badge variant="secondary" className={cn('text-[10px] px-1.5 py-0 h-4', statusCfg.color)}>
+            {statusCfg.label}
+          </Badge>
           <CountdownCell dueAt={cb.dueAt} slaDurationMinutes={cb.slaDurationMinutes} status={cb.status} />
-          <Badge variant="secondary" className={cn('text-[9px] px-1.5 py-0 h-4', priorityCfg.color)}>
+          <Badge variant="secondary" className={cn('text-[10px] px-1.5 py-0 h-4', priorityCfg.color)}>
             {priorityCfg.label}
           </Badge>
         </div>
-      </div>
-
-      {/* Status pill (small, bottom-left) */}
-      <div className="flex items-center gap-1.5 pl-4">
-        <Badge variant="secondary" className={cn('text-[9px] px-1.5 py-0 h-4', statusCfg.color)}>
-          {statusCfg.label}
-        </Badge>
       </div>
     </div>
   )

@@ -194,7 +194,7 @@ export function CallcenterAdvisorView({
                           {sourceCfg.label}
                         </span>
                         {cb.callTranscript && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-[320px] hidden sm:inline italic">
+                          <span className="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-[240px] lg:max-w-[320px] hidden sm:inline italic">
                             &quot;{cb.callTranscript.slice(0, 60)}...&quot;
                           </span>
                         )}

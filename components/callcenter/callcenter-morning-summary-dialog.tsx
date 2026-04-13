@@ -95,7 +95,7 @@ export function CallcenterMorningSummaryDialog() {
           <span className="hidden sm:inline">Tägliche Rundmail</span>
           <span className="sm:hidden">Rundmail</span>
           {summaryData.overdueCallbacks.length > 0 && (
-            <Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400">
+            <Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400">
               {summaryData.overdueCallbacks.length}
             </Badge>
           )}
@@ -187,7 +187,7 @@ export function CallcenterMorningSummaryDialog() {
                       </label>
                     ))}
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1.5">{selectedRecipients.size}/{recipients.length} ausgewählt</p>
+                  <p className="text-[10px] text-muted-foreground mt-1.5">{selectedRecipients.size}/{recipients.length} ausgewählt</p>
                 </div>
 
                 {/* Callbacks */}
@@ -219,7 +219,7 @@ export function CallcenterMorningSummaryDialog() {
                       </label>
                     ))}
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1.5">{selectedCallbacks.size}/{selectableCallbacks.length} ausgewählt</p>
+                  <p className="text-[10px] text-muted-foreground mt-1.5">{selectedCallbacks.size}/{selectableCallbacks.length} ausgewählt</p>
                 </div>
               </div>
 
@@ -266,7 +266,7 @@ export function CallcenterMorningSummaryDialog() {
                       ].map(k => (
                         <div key={k.l} className={cn('rounded-lg border p-2 text-center', k.bg)}>
                           <p className={cn('text-base font-bold tabular-nums', k.c)}>{k.n}</p>
-                          <p className="text-[9px] text-muted-foreground">{k.l}</p>
+                          <p className="text-[10px] text-muted-foreground">{k.l}</p>
                         </div>
                       ))}
                     </div>

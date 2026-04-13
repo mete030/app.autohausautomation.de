@@ -136,6 +136,8 @@ export function CallcenterEmployeeDialog({
               <Input
                 id="emp-email"
                 type="email"
+                inputMode="email"
+                autoComplete="email"
                 placeholder="name@firma.de"
                 value={form.email}
                 onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
@@ -146,6 +148,8 @@ export function CallcenterEmployeeDialog({
               <Input
                 id="emp-phone"
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 placeholder="+49 711 ..."
                 value={form.phone}
                 onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}

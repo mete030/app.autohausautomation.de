@@ -366,11 +366,11 @@ export default function CallcenterPageClient() {
       {role === 'admin' && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="-mx-3 px-3 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabsList className="md:h-11">
-              <TabsTrigger value="uebersicht" className="md:h-9 md:px-4 md:text-sm">Übersicht</TabsTrigger>
-              <TabsTrigger value="rueckrufe" className="md:h-9 md:px-4 md:text-sm">Rückrufe</TabsTrigger>
-              <TabsTrigger value="mitarbeiter" className="md:h-9 md:px-4 md:text-sm">Mitarbeiter</TabsTrigger>
-              <TabsTrigger value="einstellungen" className="md:h-9 md:px-4 md:text-sm">Einstellungen</TabsTrigger>
+            <TabsList className="md:h-12">
+              <TabsTrigger value="uebersicht" className="md:h-10 md:px-5 md:text-sm">Übersicht</TabsTrigger>
+              <TabsTrigger value="rueckrufe" className="md:h-10 md:px-5 md:text-sm">Rückrufe</TabsTrigger>
+              <TabsTrigger value="mitarbeiter" className="md:h-10 md:px-5 md:text-sm">Mitarbeiter</TabsTrigger>
+              <TabsTrigger value="einstellungen" className="md:h-10 md:px-5 md:text-sm">Einstellungen</TabsTrigger>
             </TabsList>
           </div>
 
@@ -447,9 +447,9 @@ export default function CallcenterPageClient() {
       {role === 'callcenter' && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="-mx-3 px-3 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabsList className="md:h-11">
-              <TabsTrigger value="rueckrufe" className="md:h-9 md:px-4 md:text-sm">Rückrufe</TabsTrigger>
-              <TabsTrigger value="mails" className="md:h-9 md:px-4 md:text-sm">Mails</TabsTrigger>
+            <TabsList className="md:h-12">
+              <TabsTrigger value="rueckrufe" className="md:h-10 md:px-5 md:text-sm">Rückrufe</TabsTrigger>
+              <TabsTrigger value="mails" className="md:h-10 md:px-5 md:text-sm">Mails</TabsTrigger>
             </TabsList>
           </div>
 
@@ -547,7 +547,7 @@ export default function CallcenterPageClient() {
           type="button"
           aria-label="Neuer Rückruf"
           onClick={() => setNewCallbackOpen(true)}
-          className="md:hidden fixed right-4 bottom-[var(--mobile-float-offset)] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
+          className="lg:hidden fixed right-4 md:right-6 bottom-[var(--mobile-float-offset)] md:bottom-8 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
         >
           <Plus className="h-6 w-6" />
         </button>

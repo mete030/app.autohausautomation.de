@@ -63,11 +63,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-auto max-w-[180px] invert dark:invert-0" />
           </Link>
         ) : (
-          <Link href="/callcenter" className="mx-auto flex flex-col items-center gap-1.5">
-            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-7 w-7 object-contain invert dark:invert-0" />
-            <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-              Menu
-            </span>
+          <Link href="/callcenter" className="mx-auto flex items-center justify-center">
+            <img src="/wackenhut_logo1.svg" alt="Wackenhut" className="h-8 w-8 object-contain invert dark:invert-0" />
           </Link>
         )}
       </div>
@@ -95,14 +92,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       )}
                     >
                       <span className={cn(
-                        'flex h-10 w-10 items-center justify-center rounded-2xl transition-colors',
+                        'flex items-center justify-center rounded-2xl transition-colors',
+                        isTablet ? 'h-11 w-11' : 'h-10 w-10',
                         active ? 'bg-primary/12' : 'bg-muted/50',
                       )}>
                         <Icon className="h-[18px] w-[18px]" />
                       </span>
                       <span className={cn(
-                        'line-clamp-2 text-[10px] font-medium leading-tight',
-                        isTablet ? 'max-w-[64px]' : 'max-w-[52px]',
+                        'line-clamp-2 font-medium leading-tight',
+                        isTablet ? 'max-w-[64px] text-[11px]' : 'max-w-[52px] text-[10px]',
                       )}>
                         {item.title}
                       </span>

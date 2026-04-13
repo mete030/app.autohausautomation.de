@@ -35,7 +35,7 @@ export function CompletionDialog({ open, callbackId, onOpenChange, onComplete }:
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="sm:!max-w-md md:!max-w-lg">
         <DialogHeader>
           <DialogTitle>Rückruf als erledigt markieren</DialogTitle>
         </DialogHeader>

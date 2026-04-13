@@ -355,7 +355,7 @@ export function VehicleOperationsSheet({ vehicle, open, onOpenChange }: VehicleO
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium">{entry.action}</p>
-                        <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                        <Badge variant="outline" className="px-1 py-0 text-[10px]">
                           {entry.source ?? 'system'}
                         </Badge>
                       </div>

@@ -1015,11 +1015,11 @@ export default function VerifizierungPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5"><Label className="text-xs">Name</Label><Input className="h-8 text-sm" placeholder="Max Mustermann" value={formName} onChange={e => setFormName(e.target.value)} /></div>
-                    <div className="space-y-1.5"><Label className="text-xs">E-Mail</Label><Input className="h-8 text-sm" placeholder="email@beispiel.de" type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">E-Mail</Label><Input className="h-8 text-sm" placeholder="email@beispiel.de" type="email" inputMode="email" autoComplete="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} /></div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5"><Label className="text-xs">Telefon</Label><Input className="h-8 text-sm" placeholder="+49 711 1234567" value={formPhone} onChange={e => setFormPhone(e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">Telefon</Label><Input className="h-8 text-sm" placeholder="+49 711 1234567" type="tel" inputMode="tel" autoComplete="tel" value={formPhone} onChange={e => setFormPhone(e.target.value)} /></div>
                     {customerSegment !== 'privat' && customerSegment !== 'export' && customerSegment !== 'diplomat' ? (
                       <div className="space-y-1.5"><Label className="text-xs">Firmenname</Label><Input className="h-8 text-sm" placeholder="Musterfirma GmbH" value={formCompanyName} onChange={e => setFormCompanyName(e.target.value)} /></div>
                     ) : <div />}

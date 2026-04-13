@@ -272,7 +272,7 @@ export function TranscriptSheet({
         className={cn(
           'p-0 flex flex-col',
           isDesktop
-            ? 'sm:max-w-lg md:max-w-xl lg:max-w-2xl h-full'
+            ? 'sm:max-w-md md:max-w-[480px] lg:max-w-xl xl:max-w-2xl h-full'
             : 'h-[92dvh] rounded-t-2xl border-t',
         )}
       >
@@ -471,7 +471,7 @@ export function TranscriptSheet({
                               <p className="font-medium text-foreground">Erinnerung</p>
                               <Badge
                                 variant="secondary"
-                                className={cn('text-[9px] py-0 h-4', {
+                                className={cn('text-[10px] py-0 h-4', {
                                   'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400': reminder.status === 'ausstehend',
                                   'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400': reminder.status === 'angezeigt',
                                   'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400': reminder.status === 'erledigt',

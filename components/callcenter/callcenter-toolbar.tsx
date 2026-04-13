@@ -214,13 +214,54 @@ export function CallcenterToolbar({
           />
         </div>
 
-        {/* Mobile-only: filter button + new-callback */}
+        {/* Mobile-only: filter button + view-mode quick switch */}
         <div className="flex items-center gap-2 md:hidden">
           <Button
             type="button"
             variant="outline"
             size="sm"
             className="h-10 flex-1 justify-center"
+            onClick={() => setMobileFiltersOpen(true)}
+          >
+            <SlidersHorizontal className="h-4 w-4 mr-1.5" />
+            Filter
+            {activeFilterCount > 0 && (
+              <span className="ml-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground px-1.5 text-[10px] font-bold text-background">
+                {activeFilterCount}
+              </span>
+            )}
+          </Button>
+          <div className="flex items-center rounded-lg border border-border bg-background p-0.5 flex-shrink-0">
+            {viewModes.map((vm) => {
+              const Icon = vm.icon
+              const isActive = viewMode === vm.value
+              return (
+                <button
+                  key={vm.value}
+                  type="button"
+                  onClick={() => onViewModeChange(vm.value)}
+                  aria-label={vm.label}
+                  aria-pressed={isActive}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-md transition-colors',
+                    isActive
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Tablet-only (md-lg): compact filter button next to actions */}
+        <div className="hidden md:flex lg:hidden items-center">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 px-3.5"
             onClick={() => setMobileFiltersOpen(true)}
           >
             <SlidersHorizontal className="h-4 w-4 mr-1.5" />
@@ -313,7 +354,7 @@ export function CallcenterToolbar({
               key={f.value}
               onClick={() => onStatusFilterChange(f.value)}
               className={cn(
-                'h-9 md:h-9 px-3.5 md:px-4 text-xs md:text-[13px] rounded-full border font-medium transition-colors whitespace-nowrap flex-shrink-0',
+                'h-9 md:h-10 px-3.5 md:px-4 text-xs md:text-[13px] rounded-full border font-medium transition-colors whitespace-nowrap flex-shrink-0',
                 statusFilter === f.value
                   ? 'bg-foreground text-background border-foreground'
                   : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/50',
@@ -324,8 +365,8 @@ export function CallcenterToolbar({
           ))}
         </div>
 
-        {/* Desktop filters inline */}
-        <div className="hidden md:flex md:items-center md:gap-2 md:flex-wrap md:flex-1">
+        {/* Desktop filters inline (lg+ only; below lg use filter sheet) */}
+        <div className="hidden lg:flex lg:items-center lg:gap-2 lg:flex-wrap lg:flex-1">
           {!hideAdvisorFilter && (
             <>
               <div className="h-6 w-px bg-border" />
@@ -339,7 +380,7 @@ export function CallcenterToolbar({
 
       {/* Row 3: Admin-only refined filters (Kunde, Call-Center-Agent) — desktop inline */}
       {(showCustomerFilter || showCallAgentFilter) && (
-        <div className="hidden md:flex flex-wrap items-center gap-2 rounded-lg border border-dashed bg-muted/20 px-2.5 py-2">
+        <div className="hidden lg:flex flex-wrap items-center gap-2 rounded-lg border border-dashed bg-muted/20 px-2.5 py-2">
           <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
             Admin-Filter
           </span>
