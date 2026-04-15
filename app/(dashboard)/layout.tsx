@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { MobileDock } from '@/components/layout/mobile-dock'
 import { MobileNav } from '@/components/layout/mobile-nav'
+import { CallcenterCallbackNotificationProvider } from '@/components/callcenter/callcenter-callback-notification-provider'
 import { VoiceControl } from '@/components/voice/voice-control'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useIsLargeDesktop, useIsTablet } from '@/lib/hooks/use-media-query'
@@ -27,8 +28,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return
     }
 
-    setSidebarCollapsed(nextMode === 'tablet')
-    previousShellMode.current = nextMode
+    const nextCollapsed = nextMode === 'tablet'
+    const frame = window.requestAnimationFrame(() => {
+      setSidebarCollapsed(nextCollapsed)
+      previousShellMode.current = nextMode
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+    }
   }, [isLargeDesktop, isTablet])
 
   return (
@@ -78,6 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Voice Control */}
         <VoiceControl />
+        <CallcenterCallbackNotificationProvider />
       </div>
     </TooltipProvider>
   )

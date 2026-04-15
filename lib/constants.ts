@@ -218,12 +218,15 @@ export interface NachrichtenPerspective {
 // ---- Employee / Mitarbeiter ----
 
 export const employeeRoleConfig = {
-  verkaufer:          { label: 'Verkäufer',          color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' },
-  serviceberater:     { label: 'Serviceberater',     color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' },
-  werkstattleiter:    { label: 'Werkstattleiter',    color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' },
-  callcenter_agent:   { label: 'Call Center',        color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-400' },
-  backoffice:         { label: 'Backoffice',         color: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-400' },
-  geschaeftsfuehrung: { label: 'Geschäftsführung',   color: 'bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400' },
+  verkaufer:          { label: 'Verkäufer',               color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' },
+  verkaufsleiter:     { label: 'Verkaufsleiter',          color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400' },
+  serviceberater:     { label: 'Serviceberater',          color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' },
+  serviceleiter:      { label: 'Serviceleiter (LKD)',     color: 'bg-teal-100 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400' },
+  werkstattleiter:    { label: 'Werkstattleiter',         color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' },
+  standortleiter:     { label: 'Standortverantwortlicher', color: 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400' },
+  callcenter_agent:   { label: 'Call Center',             color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-400' },
+  backoffice:         { label: 'Backoffice',              color: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-400' },
+  geschaeftsfuehrung: { label: 'Geschäftsführung',        color: 'bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400' },
 } as const
 
 export const employeeStatusConfig = {
@@ -233,9 +236,9 @@ export const employeeStatusConfig = {
 } as const
 
 export const escalationLevelConfig = {
-  1: { label: 'Stufe 1 — Berater',      color: 'text-blue-600 dark:text-blue-400',  bg: 'bg-blue-100 dark:bg-blue-950/30' },
-  2: { label: 'Stufe 2 — Teamleitung',  color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-950/30' },
-  3: { label: 'Stufe 3 — Management',   color: 'text-red-600 dark:text-red-400',    bg: 'bg-red-100 dark:bg-red-950/30' },
+  1: { label: 'Stufe 1 — Person (Berater/Verkäufer)', color: 'text-blue-600 dark:text-blue-400',   bg: 'bg-blue-100 dark:bg-blue-950/30' },
+  2: { label: 'Stufe 2 — LKD/Verkaufsleiter',         color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-950/30' },
+  3: { label: 'Stufe 3 — Standortverantwortlicher',   color: 'text-red-600 dark:text-red-400',     bg: 'bg-red-100 dark:bg-red-950/30' },
 } as const
 
 export const slaDurationOptions: { value: number; label: string }[] = [
@@ -263,6 +266,15 @@ export const mockEmployees: Employee[] = [
   // Werkstattleiter
   { id: 'emp-rh', name: 'Ralf Hammann',           role: 'werkstattleiter',    email: 'r.hammann@wackenhut.de',       phone: '+49 7452 6031450', status: 'aktiv', isCallAgent: false, isSupervisor: true,  createdAt: '2024-01-01T00:00:00' },
   { id: 'emp-ar', name: 'Andreas Rötlich',        role: 'werkstattleiter',    email: 'a.roetlich@wackenhut.de',      phone: '+49 7032 97593244', status: 'aktiv', isCallAgent: false, isSupervisor: true, createdAt: '2024-01-01T00:00:00' },
+  // Serviceleiter (LKD) — laut wackenhut.de/kontakte
+  { id: 'emp-tl', name: 'Tobias Lohmüller',       role: 'serviceleiter',      email: 't.lohmueller@wackenhut.de',    phone: '+49 7452 6031402', status: 'aktiv', isCallAgent: false, isSupervisor: true, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-mr', name: 'Marius Reinert',         role: 'serviceleiter',      email: 'M.Reinert@wackenhut.de',       phone: '+49 7221 6862402', status: 'aktiv', isCallAgent: false, isSupervisor: true, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-md', name: 'Murat Demircan',         role: 'serviceleiter',      email: 'm.demircan@wackenhut.de',      phone: '+49 731 39794401', status: 'aktiv', isCallAgent: false, isSupervisor: true, createdAt: '2024-01-01T00:00:00' },
+  // Verkaufsleiter — laut wackenhut.de/kontakte
+  { id: 'emp-tv', name: 'Tobias Vogt',            role: 'verkaufsleiter',     email: 'T.Vogt@wackenhut.de',          phone: '+49 7452 6031250', status: 'aktiv', isCallAgent: false, isSupervisor: true, createdAt: '2024-01-01T00:00:00' },
+  // Standortverantwortliche — laut wackenhut.de/kontakte
+  { id: 'emp-rl', name: 'Rainer Leenen',          role: 'standortleiter',     email: 'R.Leenen@wackenhut.de',        phone: '+49 7452 6031203', status: 'aktiv', isCallAgent: false, isSupervisor: true, createdAt: '2024-01-01T00:00:00' },
+  { id: 'emp-pk', name: 'Peter Kraft',            role: 'standortleiter',     email: 'P.Kraft@wackenhut.de',         phone: '+49 7452 6032102', status: 'aktiv', isCallAgent: false, isSupervisor: true, createdAt: '2024-01-01T00:00:00' },
   // Serviceberater
   { id: 'emp-ae', name: 'Alexander Eckhardt',     role: 'serviceberater',     email: 'a.eckhardt@wackenhut.de',      phone: '+49 7051 93103321', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
   { id: 'emp-cb', name: 'Cedric Bauerdick',       role: 'serviceberater',     email: 'c.bauerdick@wackenhut.de',     phone: '+49 7221 6862442', status: 'aktiv', isCallAgent: false, isSupervisor: false, createdAt: '2024-01-01T00:00:00' },
@@ -282,6 +294,10 @@ export const mockEmployees: Employee[] = [
 ]
 
 export const mockEscalationRules: EscalationRule[] = [
-  { id: 'rule-1', name: 'Erinnerung per E-Mail (L1)', triggerAfterMinutes: 30, fromLevel: 1, toLevel: 2, notifyChannels: ['email'], isActive: true },
-  { id: 'rule-2', name: 'Eskalation an Teamleitung (L2)', triggerAfterMinutes: 90, fromLevel: 2, toLevel: 3, notifyChannels: ['app', 'email'], isActive: true },
+  // Stufe 1: Reminder an die zugewiesene Person selbst (kein expliziter Empfänger — nutzt die Zuweisung des Rückrufs).
+  { id: 'rule-1', name: 'Nach 2 Stunden: Reminder an die Person', triggerAfterMinutes: 120, fromLevel: 1, toLevel: 1, notifyChannels: ['app', 'email'], isActive: true },
+  // Stufe 2: LKD (Tobias Lohmüller, Nagold) — Standardempfänger gemäß wackenhut.de/kontakte.
+  { id: 'rule-2', name: 'Nach 4 Stunden: Reminder an LKD/Verkaufsleiter', triggerAfterMinutes: 240, fromLevel: 1, toLevel: 2, notifyChannels: ['app', 'email'], isActive: true, recipientEmployeeId: 'emp-tl' },
+  // Stufe 3: Standortverantwortlicher Nagold (Rainer Leenen) — Standardempfänger gemäß wackenhut.de/kontakte.
+  { id: 'rule-3', name: 'Nach 7 Stunden: Reminder an Standortverantwortlichen', triggerAfterMinutes: 420, fromLevel: 2, toLevel: 3, notifyChannels: ['app', 'email'], isActive: true, recipientEmployeeId: 'emp-rl' },
 ]

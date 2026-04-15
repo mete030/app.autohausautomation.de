@@ -14,6 +14,11 @@ import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig, escalat
 import { useCountdown } from '@/lib/hooks/use-countdown'
 import { useIsDesktop } from '@/lib/hooks/use-media-query'
 import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
+import { useBrowserNotifications } from '@/lib/hooks/use-browser-notifications'
+import {
+  markCallbackNotificationActivitySeen,
+  sendCallbackNotificationEmail,
+} from '@/lib/callcenter/callback-notification-client'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import type { Callback, CallbackAttachment, CallSource, EscalationLevel } from '@/lib/types'
 
@@ -43,13 +48,18 @@ function getEmailActivityLabel(emailKind?: string) {
   }
 }
 
-function getSourceIcon(source: CallSource) {
+function SourceTypeIcon({ source, className }: { source: CallSource; className?: string }) {
   switch (source) {
-    case 'telefon': return Phone
-    case 'website': return Globe
-    case 'whatsapp': return MessageCircle
-    case 'ki_agent': return Bot
-    case 'manuell': return PenLine
+    case 'telefon':
+      return <Phone className={className} />
+    case 'website':
+      return <Globe className={className} />
+    case 'whatsapp':
+      return <MessageCircle className={className} />
+    case 'ki_agent':
+      return <Bot className={className} />
+    case 'manuell':
+      return <PenLine className={className} />
   }
 }
 
@@ -69,6 +79,15 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function formatDueAtForNotification(dueAt: string) {
+  return new Date(dueAt).toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function AttachmentsList({ title, attachments }: { title: string; attachments: CallbackAttachment[] }) {
@@ -139,6 +158,7 @@ export function TranscriptSheet({
   const reminders = useCallbackStore((s) => s.reminders)
   const employees = useCallbackStore((s) => s.employees)
   const recordCallbackNotificationEmailSent = useCallbackStore((s) => s.recordCallbackNotificationEmailSent)
+  const { notify: notifyBrowser } = useBrowserNotifications()
   const isDesktop = useIsDesktop()
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
   const [emailStatusMessage, setEmailStatusMessage] = useState('')
@@ -147,7 +167,7 @@ export function TranscriptSheet({
     ? employees.find((e) => e.id === callback.assignedEmployeeId)
     : undefined
   const advisorEmail = assignedEmployeeRecord?.email ?? null
-  const isEmailCapable = Boolean(callback?.isPersisted && advisorEmail)
+  const isEmailCapable = Boolean(callback?.isPersisted)
 
   const {
     isAvailable: isNotificationEmailAvailable,
@@ -170,7 +190,6 @@ export function TranscriptSheet({
   const callbackReminders = reminders.filter(r => callback.reminders.includes(r.id))
   const isKi = callback.takenBy.type === 'ki'
   const isCompleted = callback.status === 'erledigt'
-  const SourceIcon = getSourceIcon(callback.source)
   const statusCfg = callbackStatusConfig[callback.status]
   const priorityCfg = callbackPriorityConfig[callback.priority]
   const sourceCfg = callSourceConfig[callback.source]
@@ -216,49 +235,33 @@ export function TranscriptSheet({
     setEmailStatusMessage('')
 
     try {
-      const response = await fetch('/api/email/send-callback-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          callbackId: callback.id,
-          sentBy: currentUserName,
-          recipientEmail: normalizedDraftRecipientEmail,
-          recipientName: callback.assignedAdvisor,
-        }),
+      const result = await sendCallbackNotificationEmail({
+        callbackId: callback.id,
+        sentBy: currentUserName,
+        recipientEmail: normalizedDraftRecipientEmail,
+        recipientName: callback.assignedAdvisor,
       })
-
-      const data = await response.json() as {
-        error?: string
-        provider?: string
-        providerMessageId?: string
-        recipientEmail?: string
-        recipientName?: string
-      }
-
-      if (!response.ok) {
-        throw new Error(data.error ?? 'Benachrichtigungs-E-Mail konnte nicht gesendet werden.')
-      }
-
-      const recipientEmail =
-        data.recipientEmail
-        ?? normalizedDraftRecipientEmail
-      const recipientName =
-        data.recipientName
-        ?? callback.assignedAdvisor
+      markCallbackNotificationActivitySeen(result.activity?.id)
 
       recordCallbackNotificationEmailSent({
         callbackId: callback.id,
-        recipientEmail,
-        recipientName,
+        recipientEmail: result.recipientEmail,
+        recipientName: result.recipientName,
         sentBy: currentUserName,
-        provider: data.provider ?? 'brevo',
-        providerMessageId: data.providerMessageId,
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
+        activity: result.activity,
+      })
+
+      notifyBrowser('Neuer Rueckruf geplant', {
+        body:
+          `${callback.customerName} — ${callback.reason}\n`
+          + `Geplant fuer ${formatDueAtForNotification(callback.dueAt)}`,
+        tag: `callback-email-${result.activity?.id ?? callback.id}`,
       })
 
       setEmailStatus('success')
-      setEmailStatusMessage(`Benachrichtigung an ${recipientEmail} gesendet.`)
+      setEmailStatusMessage(`Benachrichtigung an ${result.recipientEmail} gesendet.`)
     } catch (error) {
       setEmailStatus('error')
       setEmailStatusMessage(error instanceof Error ? error.message : 'Benachrichtigungs-E-Mail konnte nicht gesendet werden.')
@@ -331,7 +334,7 @@ export function TranscriptSheet({
               {/* Compact metadata row */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                 <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium', sourceCfg.color)}>
-                  <SourceIcon className="h-3 w-3" />
+                  <SourceTypeIcon source={callback.source} className="h-3 w-3" />
                   {sourceCfg.label}
                 </span>
                 <span className="text-muted-foreground/40">|</span>
@@ -551,16 +554,22 @@ export function TranscriptSheet({
           <div className="flex-shrink-0 border-t px-5 py-3 md:px-7 md:py-4 space-y-2 md:space-y-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
             {!isCompleted && (
               <>
-                {isEmailCapable && assignedEmployee && (
+                {isEmailCapable && (
                   <div className="space-y-2 rounded-lg border border-dashed px-3 py-2.5">
                     <div className="flex flex-col gap-2 text-xs text-muted-foreground md:flex-row md:items-start">
                       <div className="flex items-start gap-2 min-w-0 flex-1">
                         <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-foreground">Erinnerungs-E-Mail senden</p>
-                          <p className="truncate">
-                            Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
-                          </p>
+                          {assignedEmployee ? (
+                            <p className="truncate">
+                              Zuständig: <span className="font-medium text-foreground">{assignedEmployee.name}</span>
+                            </p>
+                          ) : (
+                            <p className="truncate">
+                              Kein Mitarbeiterprofil mit E-Mail gefunden — Fallback-Adresse wird verwendet.
+                            </p>
+                          )}
                         </div>
                       </div>
                       <Button

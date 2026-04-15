@@ -89,6 +89,7 @@ interface CreateCallbackPayload {
   takenBy: CallAgent
   callTranscript?: string
   slaDurationMinutes?: number
+  dueAt?: string
 }
 
 interface ReassignCallbackPayload {
@@ -137,6 +138,7 @@ interface RecordCallbackNotificationEmailSentPayload {
   sentBy: string
   provider: string
   providerMessageId?: string
+  activity?: CallbackActivity
 }
 
 interface CallbackStoreState {
@@ -301,6 +303,7 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
       body: JSON.stringify({
         ...payload,
         slaDurationMinutes: slaMinutes,
+        dueAt: payload.dueAt,
       }),
     })
 
@@ -543,7 +546,13 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
     set((state) => ({
       callbacks: state.callbacks.map((callback) =>
         callback.id === callbackId
-          ? { ...callback, activityLog: [...callback.activityLog, activity], updatedAt: new Date().toISOString() }
+          ? callback.activityLog.some((existingActivity) => existingActivity.id === activity.id)
+            ? callback
+            : {
+                ...callback,
+                activityLog: [...callback.activityLog, activity],
+                updatedAt: new Date().toISOString(),
+              }
           : callback,
       ),
     }))
@@ -590,7 +599,20 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
     })
   },
 
-  recordCallbackNotificationEmailSent: ({ callbackId, recipientEmail, recipientName, sentBy, provider, providerMessageId }) => {
+  recordCallbackNotificationEmailSent: ({
+    callbackId,
+    recipientEmail,
+    recipientName,
+    sentBy,
+    provider,
+    providerMessageId,
+    activity,
+  }) => {
+    if (activity) {
+      get().addActivityToCallback(callbackId, activity)
+      return
+    }
+
     const metadata: Record<string, string> = {
       recipientEmail,
       recipientName,
@@ -602,14 +624,14 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
       metadata.providerMessageId = providerMessageId
     }
 
-    const activity = createActivity(
+    const fallbackActivity = createActivity(
       'email_gesendet',
       `Callback-Benachrichtigung gesendet an ${recipientName} (${recipientEmail})`,
       sentBy,
       metadata,
     )
 
-    get().addActivityToCallback(callbackId, activity)
+    get().addActivityToCallback(callbackId, fallbackActivity)
   },
 
   checkAutoEscalations: () => {
@@ -630,7 +652,17 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
           )
           if (alreadyEscalated) continue
 
-          const target = supervisors[0]?.name ?? 'Teamleitung'
+          const ruleRecipient = rule.recipientEmployeeId
+            ? state.employees.find((e) => e.id === rule.recipientEmployeeId)
+            : undefined
+          const assignedPerson = callback.assignedEmployeeId
+            ? state.employees.find((e) => e.id === callback.assignedEmployeeId)
+            : undefined
+          const target =
+            ruleRecipient?.name
+              ?? (rule.fromLevel === rule.toLevel ? (assignedPerson?.name ?? callback.assignedAdvisor) : undefined)
+              ?? supervisors[0]?.name
+              ?? 'Teamleitung'
           get().escalateCallbackToLevel({
             callbackId: callback.id,
             toLevel: rule.toLevel,

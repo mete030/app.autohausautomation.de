@@ -112,7 +112,16 @@ export interface CallAgent {
 
 // ---- Employee / Mitarbeiter System ----
 
-export type EmployeeRole = 'verkaufer' | 'serviceberater' | 'werkstattleiter' | 'backoffice' | 'geschaeftsfuehrung' | 'callcenter_agent'
+export type EmployeeRole =
+  | 'verkaufer'
+  | 'verkaufsleiter'
+  | 'serviceberater'
+  | 'serviceleiter'
+  | 'werkstattleiter'
+  | 'standortleiter'
+  | 'backoffice'
+  | 'geschaeftsfuehrung'
+  | 'callcenter_agent'
 export type EmployeeStatus = 'aktiv' | 'abwesend' | 'pause'
 
 export interface Employee {
@@ -140,6 +149,9 @@ export interface EscalationRule {
   toLevel: EscalationLevel
   notifyChannels: ('app' | 'email')[]
   isActive: boolean
+  /** Specific recipient (Wackenhut supervisor) to notify. If omitted, the
+   *  assigned person of the callback is used (only meaningful for reminders). */
+  recipientEmployeeId?: string
 }
 
 export interface EscalationEvent {

@@ -16,14 +16,19 @@ import {
   callSourceConfig,
   mockCallAgents,
   mockCustomers,
-  mockEmployees,
   employeeRoleConfig,
   employeeStatusConfig,
 } from '@/lib/constants'
 import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
+import { useBrowserNotifications } from '@/lib/hooks/use-browser-notifications'
+import {
+  markCallbackNotificationActivitySeen,
+  sendCallbackNotificationEmail,
+} from '@/lib/callcenter/callback-notification-client'
 import { useCallbackStore } from '@/lib/stores/callback-store'
 import type {
   Callback,
+  CallbackActivity,
   CallbackAttachment,
   CallbackPriority,
   CallSource,
@@ -44,6 +49,7 @@ interface CreateCallbackPayload {
   takenBy: CallAgent
   callTranscript?: string
   slaDurationMinutes?: number
+  dueAt?: string
 }
 
 type DialogStep = 'form' | 'success' | 'emailSent'
@@ -86,6 +92,29 @@ const sourceOptions = Object.entries(callSourceConfig).map(([value, cfg]) => ({
 
 const assignableRoles = new Set<EmployeeRole>(['serviceberater', 'verkaufer'])
 
+function combineScheduledDateTime(dateValue: string, timeValue: string) {
+  if (!dateValue || !timeValue) return null
+
+  const [year, month, day] = dateValue.split('-').map(Number)
+  const [hours, minutes] = timeValue.split(':').map(Number)
+  const combined = new Date(year, (month ?? 1) - 1, day, hours ?? 0, minutes ?? 0, 0, 0)
+
+  if (Number.isNaN(combined.getTime())) {
+    return null
+  }
+
+  return combined
+}
+
+function formatDueAtLabel(dueAt: string) {
+  return new Date(dueAt).toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, defaultAgentId, currentUser }: NewCallbackDialogProps) {
   // Form state
   const [customerName, setCustomerName] = useState('')
@@ -99,6 +128,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const [agentId, setAgentId] = useState('')
   const [slaDurationMinutes, setSlaDurationMinutes] = useState<number | null>(null)
   const [manualDueOverride, setManualDueOverride] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [scheduledTime, setScheduledTime] = useState('')
 
   // Dialog step state
   const [dialogStep, setDialogStep] = useState<DialogStep>('form')
@@ -119,6 +150,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const slaConfig = useCallbackStore((s) => s.slaConfig)
   const callbacks = useCallbackStore((s) => s.callbacks)
   const recordCallbackNotificationEmailSent = useCallbackStore((s) => s.recordCallbackNotificationEmailSent)
+  const { notify: notifyBrowser } = useBrowserNotifications()
 
   const useEmployees = employees.length > 0
 
@@ -129,17 +161,22 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
 
   // Compute effective SLA duration
   const effectiveSla = slaDurationMinutes ?? slaConfig.perPriority[priority] ?? slaConfig.defaultMinutes
+  const hasExactScheduleInput = scheduledDate.trim().length > 0 || scheduledTime.trim().length > 0
+  const scheduledDueAtPreview = useMemo(() => {
+    const scheduledDueAt = combineScheduledDateTime(scheduledDate, scheduledTime)
+    return scheduledDueAt ? formatDueAtLabel(scheduledDueAt.toISOString()) : null
+  }, [scheduledDate, scheduledTime])
 
   // Determine the assigned employee and their default email — the dialog can
   // send a reminder email to ANY advisor that has an email on record (no more
   // hard-coded gating to a single recipient).
   const assignedEmployeeRecord = useMemo(() => {
     if (!createdCallback?.assignedEmployeeId) return null
-    return mockEmployees.find((e) => e.id === createdCallback.assignedEmployeeId) ?? null
-  }, [createdCallback?.assignedEmployeeId])
+    return employees.find((e) => e.id === createdCallback.assignedEmployeeId) ?? null
+  }, [createdCallback?.assignedEmployeeId, employees])
 
   const advisorDefaultEmail = assignedEmployeeRecord?.email ?? null
-  const isEmailCapable = Boolean(createdCallback?.isPersisted && advisorDefaultEmail)
+  const isEmailCapable = Boolean(createdCallback?.isPersisted)
 
   const {
     isAvailable: isNotificationEmailAvailable,
@@ -210,7 +247,72 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const handleDueTimePick = useCallback((minutes: number) => {
     setSlaDurationMinutes(minutes)
     setManualDueOverride(true)
+    setScheduledDate('')
+    setScheduledTime('')
   }, [])
+
+  const notifyCallbackScheduled = useCallback((callback: Callback, activity?: CallbackActivity) => {
+    notifyBrowser('Neuer Rueckruf geplant', {
+      body:
+        `${callback.customerName} — ${callback.reason}\n`
+        + `Geplant fuer ${formatDueAtLabel(callback.dueAt)}`,
+      tag: `callback-email-${activity?.id ?? callback.id}`,
+    })
+  }, [notifyBrowser])
+
+  const resolveScheduledDueAt = useCallback(() => {
+    if (!hasExactScheduleInput) {
+      return { dueAt: undefined as string | undefined, error: '' }
+    }
+
+    if (!scheduledDate.trim() || !scheduledTime.trim()) {
+      return {
+        dueAt: undefined,
+        error: 'Bitte Datum und Uhrzeit fuer die exakte Planung vollstaendig ausfuellen.',
+      }
+    }
+
+    const scheduledDueAt = combineScheduledDateTime(scheduledDate, scheduledTime)
+    if (!scheduledDueAt) {
+      return {
+        dueAt: undefined,
+        error: 'Der geplante Rueckruf konnte nicht aus Datum und Uhrzeit gelesen werden.',
+      }
+    }
+
+    if (scheduledDueAt.getTime() <= Date.now()) {
+      return {
+        dueAt: undefined,
+        error: 'Der geplante Rueckruf muss in der Zukunft liegen.',
+      }
+    }
+
+    return {
+      dueAt: scheduledDueAt.toISOString(),
+      error: '',
+    }
+  }, [hasExactScheduleInput, scheduledDate, scheduledTime])
+
+  const applyEmailSendResult = useCallback((callback: Callback, result: Awaited<ReturnType<typeof sendCallbackNotificationEmail>>) => {
+    markCallbackNotificationActivitySeen(result.activity?.id)
+
+    recordCallbackNotificationEmailSent({
+      callbackId: callback.id,
+      recipientEmail: result.recipientEmail,
+      recipientName: result.recipientName,
+      sentBy: currentUser ?? 'System',
+      provider: result.provider,
+      providerMessageId: result.providerMessageId,
+      activity: result.activity,
+    })
+
+    notifyCallbackScheduled(callback, result.activity)
+
+    setSentEmailRecipient({
+      name: result.recipientName,
+      email: result.recipientEmail,
+    })
+  }, [currentUser, notifyCallbackScheduled, recordCallbackNotificationEmailSent])
 
   const filteredCustomers = useMemo(() => {
     const q = customerSearch.toLowerCase()
@@ -235,6 +337,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     setCustomerSearch('')
     setSlaDurationMinutes(null)
     setManualDueOverride(false)
+    setScheduledDate('')
+    setScheduledTime('')
   }
 
   const resetAll = () => {
@@ -308,8 +412,15 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     const agent = mockCallAgents.find(a => a.id === agentId)
     if (!customerName.trim() || !reason.trim() || !assignedAdvisor || !agent) return
 
+    const { dueAt, error } = resolveScheduledDueAt()
+    if (error) {
+      setCreateError(error)
+      return
+    }
+
     setIsCreatingCallback(true)
     setCreateError(null)
+    setEmailError(null)
 
     try {
       const cb = await onCreate({
@@ -323,6 +434,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
         source,
         takenBy: agent,
         slaDurationMinutes: effectiveSla,
+        dueAt,
       })
 
       // Upload any attachments collected before persistence so they exist on
@@ -335,11 +447,33 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
 
       resetForm()
       setPendingAttachments([])
-      setCreatedCallback({
+      const finalCallback = {
         ...cb,
         attachments: [...(cb.attachments ?? []), ...uploaded],
-      })
+      }
+      setCreatedCallback(finalCallback)
       setDialogStep('success')
+
+      if (finalCallback.isPersisted) {
+        setIsSendingEmail(true)
+        try {
+          const result = await sendCallbackNotificationEmail({
+            callbackId: finalCallback.id,
+            sentBy: currentUser ?? 'System',
+            recipientName: finalCallback.assignedAdvisor,
+          })
+          applyEmailSendResult(finalCallback, result)
+          setDialogStep('emailSent')
+        } catch (sendError) {
+          setEmailError(
+            sendError instanceof Error
+              ? sendError.message
+              : 'Die automatische Benachrichtigungs-E-Mail konnte nicht gesendet werden.',
+          )
+        } finally {
+          setIsSendingEmail(false)
+        }
+      }
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'Rückruf konnte nicht erstellt werden.')
     } finally {
@@ -360,47 +494,13 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     setEmailError(null)
 
     try {
-      const res = await fetch('/api/email/send-callback-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          callbackId: createdCallback.id,
-          sentBy: currentUser ?? 'System',
-          recipientEmail: normalizedDraftRecipientEmail,
-          recipientName: createdCallback.assignedAdvisor,
-        }),
-      })
-
-      const data = await res.json() as {
-        error?: string
-        provider?: string
-        providerMessageId?: string
-        recipientEmail?: string
-        recipientName?: string
-      }
-      if (!res.ok) throw new Error(data.error || 'Fehler beim Senden der E-Mail')
-
-      const recipientEmail =
-        data.recipientEmail
-        ?? normalizedDraftRecipientEmail
-      const recipientName =
-        data.recipientName
-        ?? createdCallback.assignedAdvisor
-      const provider = data.provider ?? 'brevo'
-
-      recordCallbackNotificationEmailSent({
+      const result = await sendCallbackNotificationEmail({
         callbackId: createdCallback.id,
-        recipientEmail,
-        recipientName,
         sentBy: currentUser ?? 'System',
-        provider,
-        providerMessageId: data.providerMessageId,
+        recipientEmail: normalizedDraftRecipientEmail,
+        recipientName: createdCallback.assignedAdvisor,
       })
-
-      setSentEmailRecipient({
-        name: recipientName,
-        email: recipientEmail,
-      })
+      applyEmailSendResult(createdCallback, result)
       setDialogStep('emailSent')
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : 'Fehler beim Senden der E-Mail')
@@ -671,9 +771,36 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                         )
                       })}
                     </div>
-                    {!manualDueOverride && (
-                      <p className="text-[11px] text-muted-foreground">Automatisch nach Priorität</p>
+                    {!manualDueOverride && !scheduledDueAtPreview && (
+                      <p className="text-[11px] text-muted-foreground">Automatisch nach Prioritaet</p>
                     )}
+                    {scheduledDueAtPreview && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Exakt geplant fuer {scheduledDueAtPreview} Uhr
+                      </p>
+                    )}
+                    <div className="grid gap-2 pt-2 sm:grid-cols-2">
+                      <Input
+                        type="date"
+                        value={scheduledDate}
+                        min={new Date().toISOString().slice(0, 10)}
+                        onChange={(event) => {
+                          setScheduledDate(event.target.value)
+                          setManualDueOverride(true)
+                        }}
+                      />
+                      <Input
+                        type="time"
+                        value={scheduledTime}
+                        onChange={(event) => {
+                          setScheduledTime(event.target.value)
+                          setManualDueOverride(true)
+                        }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Optional: Datum und Uhrzeit setzen, wenn der Rueckruf nicht nur per SLA-Preset geplant werden soll.
+                    </p>
                   </div>
                 </div>
 
@@ -766,6 +893,11 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   <span className="text-muted-foreground">Priorität</span>
                   <span className="font-medium text-right">{priorityLabelMap[createdCallback.priority]}</span>
                 </div>
+                <Separator />
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Geplant für</span>
+                  <span className="font-medium text-right">{formatDueAtLabel(createdCallback.dueAt)} Uhr</span>
+                </div>
               </div>
 
               {/* Attachments uploaded with the callback */}
@@ -786,7 +918,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
               {isEmailCapable ? (
                 <div className="w-full space-y-3 pt-1">
                   <p className="text-sm text-muted-foreground">
-                    Möchtest du jetzt direkt eine Erinnerungs-E-Mail senden?
+                    Die Benachrichtigungs-E-Mail wird automatisch versendet. Falls du die Adresse anpassen oder erneut senden möchtest, kannst du das hier tun.
                   </p>
                   <CallbackNotificationRecipientEmailField
                     defaultRecipientEmail={defaultRecipientEmail}
@@ -828,23 +960,14 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                             ? 'E-Mail-Versand nicht verfügbar'
                             : hasUnsavedRecipientEmailChanges
                               ? 'Speichern & Erinnerung senden'
-                              : 'Erinnerungs-E-Mail senden'}
+                              : 'Erinnerungs-E-Mail erneut senden'}
                     </Button>
                     <Button variant="outline" onClick={() => handleClose(false)} disabled={isSendingEmail}>
                       Später
                     </Button>
                   </div>
                 </div>
-              ) : (
-                <div className="w-full space-y-3 pt-1">
-                  <p className="text-xs text-muted-foreground">
-                    Für diese Zuweisung ist keine E-Mail-Adresse hinterlegt — bitte im Mitarbeiter-Profil ergänzen.
-                  </p>
-                  <Button variant="outline" onClick={() => handleClose(false)}>
-                    Schließen
-                  </Button>
-                </div>
-              )}
+              ) : null}
             </div>
           </>
         ) : dialogStep === 'emailSent' ? (

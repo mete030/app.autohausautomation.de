@@ -24,7 +24,8 @@ const createCallbackSchema = z.object({
   source: callSourceSchema,
   takenBy: takenBySchema,
   callTranscript: z.string().optional(),
-  slaDurationMinutes: z.number().int().positive(),
+  slaDurationMinutes: z.number().int().positive().optional(),
+  dueAt: z.string().datetime().optional(),
 })
 
 export async function GET() {

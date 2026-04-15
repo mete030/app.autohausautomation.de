@@ -12,17 +12,20 @@ interface CountdownResult {
 }
 
 export function useCountdown(targetDate: string, totalDurationMinutes?: number): CountdownResult {
-  const [now, setNow] = useState(() => Date.now())
+  // Start from the target itself so SSR and initial client render both produce
+  // diff=0 (stable hydration). The real clock kicks in after mount.
+  const target = new Date(targetDate).getTime()
+  const [now, setNow] = useState(target)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    setNow(Date.now())
     intervalRef.current = setInterval(() => setNow(Date.now()), 1000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [])
 
-  const target = new Date(targetDate).getTime()
   const diff = target - now
   const isOverdue = diff <= 0
   const absDiff = Math.abs(diff)

@@ -21,6 +21,7 @@ import { TranscriptSheet } from '@/components/callcenter/callcenter-transcript-s
 import { CallcenterEscalationDialog } from '@/components/callcenter/callcenter-escalation-dialog'
 import { CallcenterReminderDialog } from '@/components/callcenter/callcenter-reminder-dialog'
 import { CallcenterReminderToast } from '@/components/callcenter/callcenter-reminder-toast'
+import { CallcenterNotificationPermissionBanner } from '@/components/callcenter/callcenter-notification-permission-banner'
 import { CallcenterAutoEscalationProvider } from '@/components/callcenter/callcenter-auto-escalation-provider'
 import { CallcenterRoleSwitcher, type CallcenterRole } from '@/components/callcenter/callcenter-role-switcher'
 import { CallcenterLiveDashboard } from '@/components/callcenter/callcenter-live-dashboard'
@@ -68,8 +69,6 @@ export default function CallcenterPageClient() {
         }
       }
     }
-
-    void refreshCallbacks()
 
     const handleFocus = () => {
       void refreshCallbacks()
@@ -361,6 +360,8 @@ export default function CallcenterPageClient() {
           />
         </div>
       </div>
+
+      {role !== 'dashboard' && <CallcenterNotificationPermissionBanner />}
 
       {/* ======== ADMIN VIEW ======== */}
       {role === 'admin' && (

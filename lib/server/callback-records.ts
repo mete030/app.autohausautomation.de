@@ -58,7 +58,8 @@ export interface CreatePersistedCallbackInput {
   source: CallSource
   takenBy: CallAgent
   callTranscript?: string
-  slaDurationMinutes: number
+  slaDurationMinutes?: number
+  dueAt?: string
 }
 
 export interface CreateCallbackActivityInput {
@@ -153,7 +154,32 @@ export async function getPersistedCallbackById(id: string): Promise<PersistedCal
 export async function createPersistedCallback(input: CreatePersistedCallbackInput): Promise<PersistedCallbackDto> {
   const prisma = getPrismaClient()
   const now = new Date()
-  const dueDate = new Date(now.getTime() + input.slaDurationMinutes * 60 * 1000)
+  let dueDate: Date
+  let resolvedSlaDurationMinutes: number
+
+  if (input.dueAt?.trim()) {
+    dueDate = new Date(input.dueAt)
+
+    if (Number.isNaN(dueDate.getTime())) {
+      throw new Error('Ungültige Fälligkeit für den Rückruf.')
+    }
+
+    if (dueDate.getTime() <= now.getTime()) {
+      throw new Error('Der geplante Rückruf muss in der Zukunft liegen.')
+    }
+
+    resolvedSlaDurationMinutes = Math.max(
+      1,
+      Math.ceil((dueDate.getTime() - now.getTime()) / 60000),
+    )
+  } else {
+    if (!input.slaDurationMinutes || input.slaDurationMinutes <= 0) {
+      throw new Error('Für den Rückruf fehlt eine gültige Fälligkeit.')
+    }
+
+    resolvedSlaDurationMinutes = input.slaDurationMinutes
+    dueDate = new Date(now.getTime() + resolvedSlaDurationMinutes * 60 * 1000)
+  }
 
   const record = await prisma.callbackRecord.create({
     data: {
@@ -169,7 +195,7 @@ export async function createPersistedCallback(input: CreatePersistedCallbackInpu
       takenByName: input.takenBy.name,
       takenByType: input.takenBy.type as PrismaAgentType,
       callTranscript: input.callTranscript,
-      slaDurationMinutes: input.slaDurationMinutes,
+      slaDurationMinutes: resolvedSlaDurationMinutes,
       dueAt: dueDate,
       slaDeadline: dueDate,
       activities: {
@@ -180,6 +206,7 @@ export async function createPersistedCallback(input: CreatePersistedCallbackInpu
           metadata: toInputJson({
             source: input.source,
             assignedEmployeeId: input.assignedEmployeeId ?? '',
+            dueAt: dueDate.toISOString(),
           }),
         },
       },
