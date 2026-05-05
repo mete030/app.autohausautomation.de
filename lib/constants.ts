@@ -37,13 +37,11 @@ export const navigation: NavItem[] = [
         icon: LayoutDashboard,
       }]
     : []),
-  ...(featureVisibility.fahrzeuge
-    ? [{
-        title: 'Hofsteuerung',
-        href: '/fahrzeuge',
-        icon: Car,
-      }]
-    : []),
+  {
+    title: 'Callcenter',
+    href: '/callcenter',
+    icon: Phone,
+  },
   ...(featureVisibility.einkauf
     ? [{
         title: 'Einkauf',
@@ -51,11 +49,6 @@ export const navigation: NavItem[] = [
         icon: ShoppingCart,
       }]
     : []),
-  {
-    title: 'Callcenter',
-    href: '/callcenter',
-    icon: Phone,
-  },
   ...(featureVisibility.inserate
     ? [{
         title: 'Inserate',
@@ -65,6 +58,13 @@ export const navigation: NavItem[] = [
           { title: 'Übersicht', href: '/inserate' },
           { title: 'Neues Inserat', href: '/inserate/neu' },
         ],
+      }]
+    : []),
+  ...(featureVisibility.fahrzeuge
+    ? [{
+        title: 'Hofsteuerung',
+        href: '/fahrzeuge',
+        icon: Car,
       }]
     : []),
   ...(featureVisibility.buchhaltung
