@@ -296,6 +296,50 @@ export interface Advisor {
 export type ListingStatus = 'entwurf' | 'live' | 'archiviert'
 export type PriceCategory = 'sehr_gut' | 'gut' | 'zufriedenstellend' | 'erhoht' | 'stark_erhoht'
 
+// Mirrors the structure mobile.de uses on a listing detail page.
+export interface ListingDataSheet {
+  fahrzeugdaten: {
+    fahrzeugzustand: string // z.B. "Gebraucht"
+    kategorie: string // SUV / Limousine / Kombi / Coupé
+    erstzulassung: string // MM/YYYY
+    kilometerstand: number
+    huBis?: string // MM/YYYY
+    vorbesitzer: number
+    fahrzeugnummer?: string // intern
+    tueren: number
+    sitze: number
+    aussenfarbe: string
+    innenausstattung: string // z.B. "Leder schwarz"
+    schadstoffklasse?: string // Euro 6d-TEMP, etc.
+    umweltplakette?: string // Grün
+    kraftstoff: FuelType
+    hubraum?: number // ccm
+    leistungKW: number
+    leistungPS: number
+    getriebe: 'Automatik' | 'Schaltung'
+    antrieb: string // Allrad / Frontantrieb / Heckantrieb
+    verbrauchInnerorts?: number // l/100km
+    verbrauchAusserorts?: number
+    verbrauchKombiniert?: number
+    verbrauchEinheit?: 'l/100km' | 'kWh/100km'
+    co2Emission?: number // g/km
+    energieeffizienzklasse?: string // A+ / A / B / ...
+    leergewicht?: number // kg
+    anhaengelastGebremst?: number // kg
+    elektroReichweite?: number // km
+    batteriekapazitaet?: number // kWh
+  }
+  serienausstattung: string[]
+  sonderausstattung: string[]
+  schaeden: {
+    unfallfrei: boolean
+    nichtraucher: boolean
+    scheckheftgepflegt: boolean
+    notes?: string[] // weitere Hinweise
+  }
+  zusatzinfo?: string[] // Garantie, Servicehistorie, Probefahrt, etc.
+}
+
 export interface Listing {
   id: string
   vehicleId: string
@@ -313,6 +357,7 @@ export interface Listing {
   updatedAt: string
   views: number
   inquiries: number
+  dataSheet?: ListingDataSheet
 }
 
 // ---- Nachrichten-Zentrale (Problem 4) ----

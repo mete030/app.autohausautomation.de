@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,8 @@ import {
   ArrowLeft, Sparkles, RefreshCw, Check, Star, Upload, ImagePlus,
   ScanLine, Pencil, Loader2, X, Wand2,
   Scissors, Zap, ExternalLink, CheckCircle2, ChevronRight, Plus,
-  Camera, Images,
+  Camera, Images, ShieldCheck, AlertTriangle, Info, XCircle,
+  ShoppingCart,
 } from 'lucide-react'
 
 // ─── Platform Brand Icons ────────────────────────────────────────────────────
@@ -105,7 +106,7 @@ const EXTRA_OPTIONS_LIST: readonly string[] = EXTRA_OPTIONS
 
 type InputMode = 'choose' | 'vin' | 'manual'
 type VinStatus = 'idle' | 'loading' | 'found'
-type EnhancementType = 'cutout' | 'background' | 'quality'
+type EnhancementType = 'cutout' | 'quality'
 type SlotState = 'original' | EnhancementType
 type ExportStatus = 'idle' | 'exporting' | 'done'
 
@@ -140,13 +141,18 @@ export default function NeuesInseratPage() {
   const [improvingKyc, setImprovingKyc] = useState(false)
   const [kycImproved, setKycImproved] = useState(false)
 
+  // Plausibility check
+  const [plausibilityRunning, setPlausibilityRunning] = useState(false)
+  const [plausibilityProgress, setPlausibilityProgress] = useState(0)
+  const [plausibilityDone, setPlausibilityDone] = useState(false)
+
   // Images — which version is currently showing per slot
-  const [slotStates, setSlotStates] = useState<Record<number, SlotState>>({
-    0: 'original', 1: 'original', 2: 'original',
-  })
-  const [processingSlot, setProcessingSlot] = useState<Record<number, EnhancementType | null>>({
-    0: null, 1: null, 2: null,
-  })
+  const [slotStates, setSlotStates] = useState<Record<number, SlotState>>(
+    Object.fromEntries(IMAGE_SLOTS.map(s => [s.id, 'original' as SlotState]))
+  )
+  const [processingSlot, setProcessingSlot] = useState<Record<number, EnhancementType | null>>(
+    Object.fromEntries(IMAGE_SLOTS.map(s => [s.id, null]))
+  )
 
   // Export
   const [inseratCreated, setInseratCreated] = useState(false)
@@ -154,6 +160,39 @@ export default function NeuesInseratPage() {
   const [exportStatus, setExportStatus] = useState<Record<string, ExportStatus>>({
     mobile_de: 'idle', autoscout24: 'idle', truckscout24: 'idle',
   })
+
+  // Prefill from Einkauf flow (handed over via sessionStorage)
+  const [fromEinkauf, setFromEinkauf] = useState<{
+    suggestedPrice?: string
+    mileage?: number
+  } | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const raw = sessionStorage.getItem('inserat-prefill')
+    if (!raw) return
+    try {
+      const data = JSON.parse(raw) as {
+        source?: string
+        suggestedPrice?: string
+        mileage?: number
+        createdAt?: number
+      }
+      // Stale guard: only honor prefill from the last 5 minutes
+      if (data.source !== 'einkauf' || !data.createdAt || Date.now() - data.createdAt > 5 * 60 * 1000) {
+        sessionStorage.removeItem('inserat-prefill')
+        return
+      }
+      setFromEinkauf({ suggestedPrice: data.suggestedPrice, mileage: data.mileage })
+      setInputMode('vin')
+      setVin(VIN_MOCK.vin)
+      setVinStatus('found')
+      setVinData(VIN_MOCK)
+      sessionStorage.removeItem('inserat-prefill')
+    } catch {
+      sessionStorage.removeItem('inserat-prefill')
+    }
+  }, [])
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
 
@@ -190,6 +229,22 @@ export default function NeuesInseratPage() {
       setKycImproved(true)
       setKycScore(MOCK_AI.improvedKycScore)
     }, 1500)
+  }
+
+  const handleRunPlausibility = () => {
+    setPlausibilityRunning(true)
+    setPlausibilityDone(false)
+    setPlausibilityProgress(0)
+
+    const steps = [18, 38, 56, 74, 88, 100]
+    steps.forEach((value, i) => {
+      setTimeout(() => setPlausibilityProgress(value), 350 * (i + 1))
+    })
+
+    setTimeout(() => {
+      setPlausibilityRunning(false)
+      setPlausibilityDone(true)
+    }, 350 * steps.length + 250)
   }
 
   const handleEnhance = (imageId: number, type: EnhancementType) => {
@@ -250,6 +305,29 @@ export default function NeuesInseratPage() {
           <p className="text-sm text-muted-foreground">KI-unterstützte Inserat-Erstellung</p>
         </div>
       </div>
+
+      {/* Prefill banner from Einkauf */}
+      {fromEinkauf && (
+        <div className="rounded-xl border border-indigo-200/70 bg-gradient-to-r from-indigo-50 via-card to-violet-50/40 px-4 py-3 dark:border-indigo-900/50 dark:from-indigo-950/30 dark:via-card dark:to-violet-950/20 animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-sm shrink-0">
+              <ShoppingCart className="h-4 w-4 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium leading-tight">
+                Aus der Einkauf-Bewertung übernommen
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Fahrzeugdaten &amp; Ausstattung sind vorausgefüllt &middot; Vorgeschlagener Preis: <span className="font-medium text-foreground">€&nbsp;{fromEinkauf.suggestedPrice ? Number(fromEinkauf.suggestedPrice).toLocaleString('de-DE') : '—'}</span>
+              </p>
+            </div>
+            <Badge variant="secondary" className="text-[10px] font-normal bg-emerald-50 text-emerald-700 border-0 dark:bg-emerald-950/30 dark:text-emerald-400 shrink-0 hidden sm:inline-flex">
+              <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+              Vorausgefüllt
+            </Badge>
+          </div>
+        </div>
+      )}
 
       {/* ─── Step 1: Choose Input Mode ──────────────────────────────────────── */}
       {inputMode === 'choose' && (
@@ -363,9 +441,19 @@ export default function NeuesInseratPage() {
                       </div>
                     )}
                     {vinStatus === 'idle' && (
-                      <p className="text-xs text-muted-foreground">
-                        Demo: Geben Sie min. 5 Zeichen ein und klicken Sie auf Abfragen.
-                      </p>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          Demo: Geben Sie min. 5 Zeichen ein und klicken Sie auf Abfragen.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setVin(VIN_MOCK.vin)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Demo-VIN nutzen
+                        </button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -461,9 +549,19 @@ export default function NeuesInseratPage() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                           <div className="relative flex-1">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
-                            <Input className="pl-7" defaultValue={vinData.price} />
+                            <Input
+                              key={fromEinkauf?.suggestedPrice ?? 'default'}
+                              className="pl-7"
+                              defaultValue={
+                                fromEinkauf?.suggestedPrice
+                                  ? Number(fromEinkauf.suggestedPrice).toLocaleString('de-DE')
+                                  : vinData.price
+                              }
+                            />
                           </div>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">Marktpreis ~€ 54.800</span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {fromEinkauf?.suggestedPrice ? 'Aus Einkauf-Analyse übernommen' : 'Marktpreis ~€ 54.800'}
+                          </span>
                         </div>
                       </CardContent>
                     </Card>
@@ -712,14 +810,12 @@ export default function NeuesInseratPage() {
                       const stateLabel = {
                         original:   slot.label,
                         cutout:     '✓ Freigestellt',
-                        background: '✓ Hintergrund',
                         quality:    '✓ Qualität',
                       }[state]
 
                       const stateLabelColor = {
                         original:   'text-muted-foreground',
                         cutout:     'text-blue-600 dark:text-blue-400',
-                        background: 'text-purple-600 dark:text-purple-400',
                         quality:    'text-amber-600 dark:text-amber-400',
                       }[state]
 
@@ -758,12 +854,6 @@ export default function NeuesInseratPage() {
                                 icon: Scissors,
                                 label: 'Freistellen',
                                 activeClass: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-                              },
-                              {
-                                type: 'background' as const,
-                                icon: Wand2,
-                                label: 'Hintergrund',
-                                activeClass: 'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800',
                               },
                               {
                                 type: 'quality' as const,
@@ -990,6 +1080,103 @@ export default function NeuesInseratPage() {
                             : kycImproved
                             ? <><CheckCircle2 className="h-3 w-3 mr-1" />Qualität optimiert</>
                             : <><Sparkles className="h-3 w-3 mr-1" />KI-Qualität verbessern</>
+                          }
+                        </Button>
+                      </div>
+
+                      <Separator />
+
+                      {/* Plausibilitätsprüfung */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                            Plausibilitätsprüfung
+                          </Label>
+                          {plausibilityDone && (
+                            <span className={`text-sm font-bold tabular-nums ${
+                              MOCK_AI.plausibilityCheck.score >= 90 ? 'text-emerald-600'
+                                : MOCK_AI.plausibilityCheck.score >= 70 ? 'text-amber-600'
+                                : 'text-red-500'
+                            }`}>
+                              {MOCK_AI.plausibilityCheck.score}/100
+                            </span>
+                          )}
+                        </div>
+
+                        {!plausibilityDone && !plausibilityRunning && (
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">
+                            KI-gestützter Abgleich von Bildern, Fahrzeugdaten und Marktdaten – erkennt Schäden, Inkonsistenzen und unplausible Angaben.
+                          </p>
+                        )}
+
+                        {plausibilityRunning && (
+                          <div className="space-y-1.5 animate-in fade-in">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <span>
+                                {plausibilityProgress < 25 ? 'Bilder werden analysiert…'
+                                  : plausibilityProgress < 50 ? 'Schadensprüfung läuft…'
+                                  : plausibilityProgress < 75 ? 'Fahrzeugdaten werden abgeglichen…'
+                                  : plausibilityProgress < 100 ? 'Marktdaten werden geprüft…'
+                                  : 'Auswertung abgeschlossen'}
+                              </span>
+                            </div>
+                            <Progress value={plausibilityProgress} className="h-1" />
+                          </div>
+                        )}
+
+                        {plausibilityDone && (
+                          <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                            <Progress value={MOCK_AI.plausibilityCheck.score} className="h-1.5" />
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                              {MOCK_AI.plausibilityCheck.summary}
+                            </p>
+
+                            <div className="rounded-lg border bg-card divide-y divide-border/60 max-h-56 overflow-y-auto">
+                              {MOCK_AI.plausibilityCheck.checks.map(check => {
+                                const cfg = {
+                                  pass:    { Icon: CheckCircle2,  color: 'text-emerald-600 dark:text-emerald-400' },
+                                  warning: { Icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400' },
+                                  fail:    { Icon: XCircle,       color: 'text-red-500 dark:text-red-400' },
+                                  info:    { Icon: Info,          color: 'text-sky-600 dark:text-sky-400' },
+                                }[check.status]
+                                return (
+                                  <div key={check.id} className="flex items-start gap-2 p-2">
+                                    <cfg.Icon className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${cfg.color}`} />
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs font-medium truncate">{check.label}</span>
+                                        <span className="text-[9px] text-muted-foreground uppercase tracking-wider shrink-0">
+                                          {check.category}
+                                        </span>
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                                        {check.detail}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className={`w-full h-7 text-xs ${
+                            plausibilityDone
+                              ? 'text-emerald-600 border-emerald-300 dark:border-emerald-800'
+                              : 'text-primary border-primary/30'
+                          }`}
+                          onClick={handleRunPlausibility}
+                          disabled={plausibilityRunning || inseratCreated}
+                        >
+                          {plausibilityRunning
+                            ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Prüfe...</>
+                            : plausibilityDone
+                            ? <><RefreshCw className="h-3 w-3 mr-1" />Erneut prüfen</>
+                            : <><ShieldCheck className="h-3 w-3 mr-1" />Plausibilitätsprüfung starten</>
                           }
                         </Button>
                       </div>

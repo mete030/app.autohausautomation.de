@@ -1,0 +1,158 @@
+{
+  "glc_front_left_lot": {
+    "file": "glc_front_left_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe4e/dKkMgJTno1KYFwXGSQ4QE_wUabHSL5.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-05-05T13:22:51.840Z"
+  },
+  "wackenhut_backdrop": {
+    "file": "wackenhut_backdrop.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe51/xKOUqUZ4j_5RuCDLJbMhb_C8LpVBov.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-05-05T13:23:29.102Z"
+  },
+  "glc_front_right_lot": {
+    "file": "glc_front_right_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe85/4ShJUcgk8evbhVDDuZjGD_Wfkl6Uta.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:32:09.006Z"
+  },
+  "glc_rear_left_lot": {
+    "file": "glc_rear_left_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe59/37kkbkipwXUq7gADQ0-mW_rFiRRQHn.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:25:02.418Z"
+  },
+  "glc_rear_right_lot": {
+    "file": "glc_rear_right_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe5e/zXIVxeDCgrTsn_-Y8fQrJ_6n10eFGs.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:25:32.159Z"
+  },
+  "glc_kofferraum_lot": {
+    "file": "glc_kofferraum_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe61/EJ52OpISFgTsc0HMQCzmP_l27ZO3gZ.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:26:02.445Z"
+  },
+  "glc_front_left_studio": {
+    "file": "glc_front_left_studio.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe64/Q8bqpvMPD0YSgtRfoAjeZ_4mTKsrER.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:26:51.028Z"
+  },
+  "glc_front_right_studio": {
+    "file": "glc_front_right_studio.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe88/uYVGLuCD3dlOpC3sZgPda_HiZ67zCW.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:32:44.008Z"
+  },
+  "glc_rear_left_studio": {
+    "file": "glc_rear_left_studio.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe6c/exIGKj-eEZCF3QrGgws6Y_yXqk5QfV.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:28:04.554Z"
+  },
+  "glc_rear_right_studio": {
+    "file": "glc_rear_right_studio.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe70/NzqYqG9OHTdIwfjlui40t_T9KBi1kj.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:28:39.464Z"
+  },
+  "glc_kofferraum_studio": {
+    "file": "glc_kofferraum_studio.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe74/8495GRRnl0rP_vYfUNi4T_4mPWUB7B.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:29:34.443Z"
+  },
+  "thumb_l1_cla_250e": {
+    "file": "thumb_l1_cla_250e.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe79/oXEh-thipSB6-R9CskEhn_ZxTINc2S.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-05-05T13:29:59.491Z"
+  },
+  "thumb_l2_eqe_350": {
+    "file": "thumb_l2_eqe_350.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe7c/Q0NYvvP3CfUS-GTeMS24L_0wA6aEFV.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-05-05T13:30:25.558Z"
+  },
+  "thumb_l4_e220d_estate": {
+    "file": "thumb_l4_e220d_estate.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe7e/YjnosM7XR1UTQ24BEMrjZ_0YVNifSd.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-05-05T13:31:04.797Z"
+  },
+  "cla_front_right_lot": {
+    "file": "cla_front_right_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fe9e/VYxVXmAZ2W2JvLzjX8_Im_1VhXO1j3.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:38:34.825Z"
+  },
+  "cla_rear_left_lot": {
+    "file": "cla_rear_left_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98feaf/4w6ZXe7aRWFGltltNkvl9_p5Zf0WIk.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:39:10.376Z"
+  },
+  "cla_rear_right_lot": {
+    "file": "cla_rear_right_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98feb3/d1A0g23BJHN8tqx3r_Bov_Xq5e9LWm.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:39:43.526Z"
+  },
+  "cla_kofferraum_lot": {
+    "file": "cla_kofferraum_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98feb6/l2C5m_G12UEmGlbVJS40b_ZWQVyN9Z.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:40:20.384Z"
+  },
+  "eqe_front_right_lot": {
+    "file": "eqe_front_right_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98feba/KqV4mmGTisFDviw9bWgWL_Pq4RU0gA.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:41:22.194Z"
+  },
+  "eqe_rear_left_lot": {
+    "file": "eqe_rear_left_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fec0/4QcT7k46pwe4BxC8u7uiE_S1xf2lCx.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:41:56.562Z"
+  },
+  "eqe_rear_right_lot": {
+    "file": "eqe_rear_right_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fec3/rpJ9cPtLuv51WHZ-Xocrp_I8BWmVtb.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:46:18.399Z"
+  },
+  "eqe_kofferraum_lot": {
+    "file": "eqe_kofferraum_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fedd/Qy7p32u-FDtjhfCVvqIAI_wUEAtVlB.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:47:16.551Z"
+  },
+  "eclass_front_right_lot": {
+    "file": "eclass_front_right_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fee3/7leMZ1rx9Tcz0voifq-z1_Rzl9lytd.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:47:59.741Z"
+  },
+  "eclass_rear_left_lot": {
+    "file": "eclass_rear_left_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98fee8/otilubuOzhSGlsQBom4v7_ZNi1I7Ny.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:48:32.841Z"
+  },
+  "eclass_rear_right_lot": {
+    "file": "eclass_rear_right_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98feeb/ekoNCmb-hvonNLK75W7Y1_0Y2XKmad.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:49:02.117Z"
+  },
+  "eclass_kofferraum_lot": {
+    "file": "eclass_kofferraum_lot.png",
+    "url": "https://v3b.fal.media/files/b/0a98feee/zGkc7R_MEXtevsaU717h3_sMRllm5J.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-05-05T13:49:33.772Z"
+  }
+}

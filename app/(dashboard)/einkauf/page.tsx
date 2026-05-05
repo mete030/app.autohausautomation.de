@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +9,13 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -40,6 +48,11 @@ import {
   List,
   ChevronRight,
   Search,
+  FileText,
+  ArrowRight,
+  Pencil,
+  Rocket,
+  TrendingUp,
 } from 'lucide-react'
 import {
   Bar,
@@ -116,6 +129,8 @@ const FUEL_TYPES = ['Benzin', 'Diesel', 'Elektro', 'Hybrid', 'Plug-in-Hybrid'] a
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function EinkaufPage() {
+  const router = useRouter()
+
   // Input mode
   const [inputMode, setInputMode] = useState<InputMode>('choose')
 
@@ -151,6 +166,12 @@ export default function EinkaufPage() {
   // Results
   const [pricingResult, setPricingResult] = useState<EinkaufPricingResult | null>(null)
   const [resultsView, setResultsView] = useState<ResultsView>('empfehlung')
+
+  // Inserat creation modal
+  const [showInseratModal, setShowInseratModal] = useState(false)
+  const [inseratPrice, setInseratPrice] = useState<string>('')
+  const [creatingInserat, setCreatingInserat] = useState(false)
+  const [inseratCreated, setInseratCreated] = useState(false)
 
   // ─── Derived ───────────────────────────────────────────────────────────────
 
@@ -223,6 +244,44 @@ export default function EinkaufPage() {
     setComputePhase('')
     setPricingResult(null)
     setResultsView('empfehlung')
+    setShowInseratModal(false)
+    setInseratPrice('')
+    setCreatingInserat(false)
+    setInseratCreated(false)
+  }
+
+  const handleOpenInseratModal = () => {
+    if (pricingResult) {
+      setInseratPrice(String(pricingResult.mobileDe.medianPrice))
+    }
+    setInseratCreated(false)
+    setShowInseratModal(true)
+  }
+
+  const handleCreateInseratExpress = () => {
+    setCreatingInserat(true)
+    setTimeout(() => {
+      setCreatingInserat(false)
+      setInseratCreated(true)
+    }, 1600)
+  }
+
+  const handleOpenInseratEditor = () => {
+    if (typeof window !== 'undefined' && vehicleData && pricingResult) {
+      sessionStorage.setItem(
+        'inserat-prefill',
+        JSON.stringify({
+          source: 'einkauf',
+          vin: vehicleData.vin,
+          suggestedPrice: inseratPrice || String(pricingResult.mobileDe.medianPrice),
+          mileage,
+          condition,
+          equipment: selectedEquipment,
+          createdAt: Date.now(),
+        }),
+      )
+    }
+    router.push('/inserate/neu')
   }
 
   const switchMode = (mode: InputMode) => {
@@ -396,9 +455,19 @@ export default function EinkaufPage() {
                   </div>
                 )}
                 {lookupStatus === 'idle' && (
-                  <p className="text-xs text-muted-foreground">
-                    17-stellige Fahrgestellnummer eingeben. Zu finden im Fahrzeugschein (Feld E) oder an der Windschutzscheibe.
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      17-stellige Fahrgestellnummer eingeben. Zu finden im Fahrzeugschein (Feld E) oder an der Windschutzscheibe.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setVin(einkaufVinMock.vin)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2 shrink-0"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Demo-VIN nutzen
+                    </button>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1107,28 +1176,245 @@ export default function EinkaufPage() {
           )}
 
           {/* Action Bar */}
-          <Card className="border-border/60 bg-muted/30">
-            <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium">Bereit zum Ankauf?</p>
+          <Card className="border-border/60 bg-gradient-to-r from-muted/40 via-muted/20 to-primary/[0.04]">
+            <CardContent className="p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Nächster Schritt</p>
                 <p className="text-xs text-muted-foreground">
-                  Empfohlener Einkaufspreis: {formatCurrency(pricingResult.sweetSpot)}
+                  Ankauf zu {formatCurrency(pricingResult.sweetSpot)} &middot; Verkauf zu ~{formatCurrency(pricingResult.mobileDe.medianPrice)} &middot; Marge {formatCurrency(pricingResult.mobileDe.medianPrice - pricingResult.sweetSpot)}
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleReset}>
+              <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                <Button variant="ghost" onClick={handleReset} className="shrink-0">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Neue Bewertung
                 </Button>
-                <Button>
+                <Button variant="outline" className="shrink-0">
                   <Check className="h-4 w-4 mr-2" />
                   Ankauf einleiten
+                </Button>
+                <Button
+                  onClick={handleOpenInseratModal}
+                  className="shrink-0 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-500/20"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Inserat erstellen
+                  <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
+
+      {/* ═══ Floating Action Button (FAB) — only on results step ═══ */}
+      {/* Positioned to avoid overlap with the global voice mic button */}
+      {step === 'results' && pricingResult && !showInseratModal && (
+        <button
+          onClick={handleOpenInseratModal}
+          className="group fixed right-3 bottom-[calc(var(--mobile-float-offset,1rem)+4rem)] z-40 flex items-center gap-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3.5 text-sm font-semibold text-white shadow-xl shadow-indigo-500/30 ring-1 ring-white/10 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/40 hover:scale-[1.03] active:scale-[0.98] animate-in fade-in slide-in-from-bottom-4 sm:right-[5.25rem] sm:bottom-6"
+          aria-label="Inserat aus dieser Bewertung erstellen"
+        >
+          <span className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
+          <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <span className="relative">Inserat erstellen</span>
+          <ArrowRight className="relative h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+        </button>
+      )}
+
+      {/* ═══ Inserat Creation Modal ═══ */}
+      <Dialog
+        open={showInseratModal}
+        onOpenChange={(open) => {
+          setShowInseratModal(open)
+          if (!open) {
+            setInseratCreated(false)
+            setCreatingInserat(false)
+          }
+        }}
+      >
+        <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-2xl p-0 overflow-hidden gap-0">
+          {!inseratCreated ? (
+            <>
+              {/* Header with gradient accent */}
+              <div className="relative px-6 pt-6 pb-5 bg-gradient-to-br from-indigo-50 via-card to-violet-50/40 dark:from-indigo-950/30 dark:via-card dark:to-violet-950/20 border-b border-border/60">
+                <DialogHeader>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    <DialogTitle className="text-base font-semibold">
+                      Inserat aus Bewertung erstellen
+                    </DialogTitle>
+                  </div>
+                  <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                    Alle Fahrzeugdaten, Ausstattungen und Preise werden automatisch übernommen. Wählen Sie Ihren bevorzugten Weg.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              {/* Vehicle Preview */}
+              {vehicleData && pricingResult && (
+                <div className="px-6 py-5 space-y-4">
+                  <div className="flex gap-4 items-start">
+                    <div className="h-20 w-28 sm:h-24 sm:w-32 rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border/60">
+                      <img
+                        src={vehicleData.imageUrl}
+                        alt={`${vehicleData.make} ${vehicleData.model}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold leading-tight">
+                        {vehicleData.make} {vehicleData.model}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        EZ {vehicleData.firstRegistration} &middot; {mileage.toLocaleString('de-DE')} km &middot; {vehicleData.power} PS
+                      </p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        <Badge variant="secondary" className="text-[10px] font-normal">
+                          {vehicleData.fuelType}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] font-normal">
+                          {vehicleData.transmission}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] font-normal">
+                          {selectedEquipment.length} Sonderausst.
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Suggested price — editable */}
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Vorgeschlagener Verkaufspreis
+                      </Label>
+                      <Badge className="text-[10px] font-normal bg-emerald-50 text-emerald-700 border-0 dark:bg-emerald-950/30 dark:text-emerald-400">
+                        <TrendingUp className="h-2.5 w-2.5 mr-1" />
+                        Marktbasiert
+                      </Badge>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-base font-medium">€</span>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={inseratPrice}
+                        onChange={(e) => setInseratPrice(e.target.value.replace(/[^0-9]/g, ''))}
+                        className="pl-8 text-lg font-bold tabular-nums h-11 bg-card"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+                      Basis: mobile.de Median ({formatCurrency(pricingResult.mobileDe.medianPrice)}) &middot; Erwartete Marge bei EK {formatCurrency(pricingResult.sweetSpot)}: <span className="text-emerald-600 dark:text-emerald-400 font-medium">{formatCurrency(Number(inseratPrice || 0) - pricingResult.sweetSpot)}</span>
+                    </p>
+                  </div>
+
+                  {/* Auto-imported summary */}
+                  <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-2">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
+                      Wird automatisch übernommen
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                      {[
+                        ['Fahrzeugdaten', `${vehicleData.make} ${vehicleData.model}`],
+                        ['VIN', vehicleData.vin],
+                        ['Erstzulassung', vehicleData.firstRegistration],
+                        ['Kilometerstand', `${mileage.toLocaleString('de-DE')} km`],
+                        ['Leistung / Hubraum', `${vehicleData.power} PS / ${vehicleData.displacement} ccm`],
+                        ['Farbe', vehicleData.color],
+                        ['Serienausstattung', `${vehicleData.serienausstattung.length} Merkmale`],
+                        ['Sonderausstattung', `${selectedEquipment.length} Extras`],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex items-center gap-1.5 min-w-0">
+                          <Check className="h-3 w-3 text-emerald-500 shrink-0" />
+                          <span className="text-muted-foreground shrink-0">{label}:</span>
+                          <span className="font-medium truncate">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Two paths */}
+              <div className="px-6 pb-6 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Path 1: Editor */}
+                  <button
+                    onClick={handleOpenInseratEditor}
+                    disabled={creatingInserat}
+                    className="group relative rounded-xl border border-border bg-card p-3.5 text-left transition-all hover:border-primary/40 hover:shadow-sm disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <span className="text-sm font-semibold">Im Editor anpassen</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Bilder hochladen, KI-Beschreibung generieren, Plausibilitätsprüfung &amp; Plattform-Export.
+                    </p>
+                    <ArrowRight className="absolute right-3 top-3.5 h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  </button>
+
+                  {/* Path 2: Express */}
+                  <button
+                    onClick={handleCreateInseratExpress}
+                    disabled={creatingInserat}
+                    className="group relative rounded-xl border-2 border-primary/30 bg-gradient-to-br from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20 p-3.5 text-left transition-all hover:border-primary/60 hover:shadow-md disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {creatingInserat ? (
+                        <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+                      ) : (
+                        <Rocket className="h-3.5 w-3.5 text-primary" />
+                      )}
+                      <span className="text-sm font-semibold">
+                        {creatingInserat ? 'Wird erstellt...' : 'Express erstellen'}
+                      </span>
+                      <Badge className="ml-auto text-[9px] font-normal bg-primary/10 text-primary border-0 px-1.5 py-0">
+                        Schnell
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      KI generiert Titel, Beschreibung &amp; Qualitätscheck automatisch. Direkt veröffentlichungsbereit.
+                    </p>
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            // Success state
+            <div className="px-6 py-10 text-center animate-in fade-in zoom-in-95 duration-300">
+              <div className="relative mx-auto w-16 h-16 mb-4">
+                <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
+                <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                  <Check className="h-8 w-8 text-white" strokeWidth={3} />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold mb-1.5">Inserat erfolgreich erstellt</h3>
+              <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto leading-relaxed">
+                Das Inserat ist bereit. Sie können es jetzt im Editor öffnen oder direkt auf Ihren Plattformen veröffentlichen.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button variant="outline" onClick={() => setShowInseratModal(false)}>
+                  Schließen
+                </Button>
+                <Button
+                  onClick={handleOpenInseratEditor}
+                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Inserat öffnen
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
