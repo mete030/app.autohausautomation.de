@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutohausAutomation - Enterprise Hosting &amp; DSGVO Konzept</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #5b6472;
+      --line: #d8dee8;
+      --soft: #f4f7fb;
+      --paper: #fbfcfe;
+      --navy: #15345a;
+      --blue: #2463eb;
+      --cyan: #1ca3b8;
+      --green: #168a5a;
+      --amber: #c17a16;
+      --red: #b93b45;
+      --white: #ffffff;
+      --shadow: 0 18px 55px rgba(22, 35, 54, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #dfe6ef;
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body.deck-mode {
+      overflow: hidden;
+    }
+
+    .deck {
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    .slide {
+      display: none;
+      position: relative;
+      width: min(100vw - 36px, 1366px);
+      aspect-ratio: 16 / 9;
+      max-height: calc(100vh - 36px);
+      background: var(--paper);
+      overflow: hidden;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .slide.active {
+      display: block;
+    }
+
+    .slide-inner {
+      position: absolute;
+      inset: 0;
+      padding: 86px 68px 52px;
+    }
+
+    .kicker {
+      margin: 0 0 16px;
+      color: var(--blue);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 930px;
+      margin-bottom: 24px;
+      color: #0c1b2d;
+      font-size: 66px;
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      max-width: 980px;
+      margin-bottom: 18px;
+      color: #0d1b2f;
+      font-size: 40px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 22px;
+      line-height: 1.38;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .caption {
+      color: #667084;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .topbar {
+      position: absolute;
+      top: 28px;
+      left: 68px;
+      right: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #6a7280;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      z-index: 4;
+    }
+
+    .brand {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      color: #162337;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .pager {
+      position: absolute;
+      right: 34px;
+      bottom: 28px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      color: #778193;
+      font-size: 13px;
+      z-index: 5;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #b8c2d0;
+    }
+
+    .dot.on {
+      width: 28px;
+      background: var(--blue);
+    }
+
+    .footer-note {
+      position: absolute;
+      left: 68px;
+      right: 120px;
+      bottom: 30px;
+      color: #738094;
+      font-size: 12px;
+      line-height: 1.35;
+      z-index: 4;
+    }
+
+    .cover-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(118deg, rgba(15, 38, 66, 0.98) 0%, rgba(16, 43, 78, 0.94) 43%, rgba(248, 250, 252, 0.96) 43.2%, rgba(248, 250, 252, 0.98) 100%);
+    }
+
+    .cover-grid {
+      position: absolute;
+      inset: 0;
+      opacity: 0.15;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.36) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.36) 1px, transparent 1px);
+      background-size: 44px 44px;
+    }
+
+    .cover-title {
+      position: absolute;
+      left: 68px;
+      top: 112px;
+      width: 590px;
+      color: white;
+      z-index: 2;
+    }
+
+    .cover-title h1 {
+      color: white;
+      font-size: 64px;
+    }
+
+    .cover-title .lead {
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    .cover-proof {
+      position: absolute;
+      right: 78px;
+      top: 120px;
+      width: 475px;
+      z-index: 2;
+    }
+
+    .proof-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .proof-item {
+      position: relative;
+      padding: 18px 20px 18px 58px;
+      border: 1px solid rgba(36, 99, 235, 0.13);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.8);
+      box-shadow: 0 12px 34px rgba(20, 38, 60, 0.08);
+    }
+
+    .proof-item:before {
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 22px;
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      background: var(--blue);
+      box-shadow: 8px 8px 0 rgba(28, 163, 184, 0.26);
+    }
+
+    .proof-item h3 {
+      color: #142338;
+      font-size: 20px;
+    }
+
+    .proof-item p {
+      margin: 0;
+      color: #566174;
+      font-size: 16px;
+      line-height: 1.38;
+    }
+
+    .decision-strip {
+      position: absolute;
+      left: 68px;
+      bottom: 58px;
+      display: flex;
+      gap: 28px;
+      align-items: center;
+      color: rgba(255, 255, 255, 0.74);
+      font-size: 14px;
+      z-index: 2;
+    }
+
+    .decision-strip strong {
+      color: white;
+      display: block;
+      margin-bottom: 3px;
+      font-size: 16px;
+    }
+
+    .pattern-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      gap: 48px;
+      margin-top: 32px;
+      align-items: stretch;
+    }
+
+    .signal-list {
+      display: grid;
+      gap: 18px;
+      margin-top: 28px;
+    }
+
+    .signal {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .signal-number {
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      background: #eaf0ff;
+      color: var(--blue);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 18px;
+    }
+
+    .signal p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.42;
+    }
+
+    .market-board {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+      padding: 26px;
+      border-radius: 18px;
+      background: #0f2744;
+      color: white;
+      min-height: 440px;
+    }
+
+    .market-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 18px;
+      align-items: center;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .market-label {
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .market-copy {
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 15px;
+      line-height: 1.4;
+    }
+
+    .architecture {
+      position: relative;
+      margin-top: 46px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 48px;
+      align-items: stretch;
+    }
+
+    .architecture:before {
+      content: "";
+      position: absolute;
+      top: 29px;
+      left: 58px;
+      right: 58px;
+      height: 1px;
+      background: #cbd5e1;
+    }
+
+    .arch-col {
+      position: relative;
+      min-height: 330px;
+      padding-right: 22px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .arch-col.primary {
+      border: 0;
+      box-shadow: none;
+    }
+
+    .arch-node {
+      position: relative;
+      z-index: 2;
+      width: 58px;
+      height: 58px;
+      margin-bottom: 26px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: var(--paper);
+      display: grid;
+      place-items: center;
+      color: #536175;
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .arch-col.primary .arch-node {
+      border-color: var(--navy);
+      background: var(--navy);
+      color: white;
+    }
+
+    .arch-title {
+      margin-bottom: 8px;
+      padding-bottom: 0;
+      border-bottom: 0;
+      color: #142238;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .arch-summary {
+      min-height: 74px;
+      margin: 0 0 20px;
+      color: #667085;
+      font-size: 17px;
+      line-height: 1.42;
+    }
+
+    .arch-list {
+      display: grid;
+      gap: 11px;
+      margin: 0;
+      padding: 17px 0 0;
+      border-top: 1px solid #e3e9f2;
+      list-style: none;
+    }
+
+    .arch-list li {
+      position: relative;
+      padding-left: 18px;
+      color: #334155;
+      font-size: 16px;
+      line-height: 1.32;
+    }
+
+    .arch-list li:before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 9px;
+      width: 5px;
+      height: 5px;
+      border-radius: 99px;
+      background: #2563eb;
+    }
+
+    .connector {
+      display: none;
+    }
+
+    .security-band {
+      position: absolute;
+      left: 68px;
+      right: 68px;
+      bottom: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0;
+      padding: 13px 20px;
+      border: 1px solid #dbe4ef;
+      border-radius: 14px;
+      background: #f3f7fc;
+    }
+
+    .band-item {
+      position: relative;
+      padding: 0 16px;
+      background: transparent;
+      color: #42526a;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .band-item + .band-item:before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 2px;
+      bottom: 2px;
+      width: 1px;
+      background: #d6e0ec;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 48px;
+      align-items: start;
+      margin-top: 30px;
+    }
+
+    .avv-callout {
+      padding: 32px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #102744, #183f6e);
+      color: white;
+      min-height: 420px;
+    }
+
+    .avv-callout h3 {
+      color: white;
+      font-size: 30px;
+      line-height: 1.12;
+    }
+
+    .avv-callout p {
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 18px;
+      line-height: 1.45;
+    }
+
+    .legal-flow {
+      display: grid;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .flow-step {
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: white;
+    }
+
+    .flow-step strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #15233a;
+      font-size: 18px;
+    }
+
+    .flow-step span {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .comparison {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .option {
+      position: relative;
+      min-height: 430px;
+      padding: 24px 22px;
+      border: 1px solid var(--line);
+      border-top: 8px solid #94a3b8;
+      border-radius: 18px;
+      background: white;
+    }
+
+    .option.recommended {
+      border-top-color: var(--green);
+      box-shadow: 0 18px 45px rgba(22, 138, 90, 0.12);
+    }
+
+    .option.secure {
+      border-top-color: var(--blue);
+    }
+
+    .option.maximum {
+      border-top-color: #334155;
+    }
+
+    .option-label {
+      margin-bottom: 12px;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .option h3 {
+      font-size: 25px;
+      line-height: 1.12;
+    }
+
+    .option ul {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .option li {
+      position: relative;
+      padding-left: 20px;
+      color: #4b5567;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .option li:before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 7px;
+      width: 7px;
+      height: 7px;
+      border-radius: 99px;
+      background: #64748b;
+    }
+
+    .recommended li:before {
+      background: var(--green);
+    }
+
+    .secure li:before {
+      background: var(--blue);
+    }
+
+    .maximum li:before {
+      background: #334155;
+    }
+
+    .fit-line {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      bottom: 22px;
+      padding-top: 14px;
+      border-top: 1px solid #e8edf5;
+      color: #536175;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .readiness {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 42px;
+      align-items: start;
+    }
+
+    .status-panel {
+      padding: 26px;
+      border-radius: 20px;
+      background: #fff8ed;
+      border: 1px solid #f2cf9e;
+    }
+
+    .status-panel h3 {
+      color: #7a3d00;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .status-panel p {
+      color: #6b5131;
+      font-size: 17px;
+      line-height: 1.42;
+    }
+
+    .roadmap {
+      display: grid;
+      gap: 12px;
+    }
+
+    .roadmap-step {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 14px 0;
+      border-bottom: 1px solid #e6ecf4;
+    }
+
+    .roadmap-index {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: #eaf0ff;
+      color: var(--blue);
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .roadmap-step strong {
+      display: block;
+      margin-bottom: 3px;
+      color: #17243a;
+      font-size: 17px;
+    }
+
+    .roadmap-step span {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.38;
+    }
+
+    .source-grid {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .source-item {
+      padding: 20px 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: white;
+    }
+
+    .source-item strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #17243a;
+      font-size: 18px;
+    }
+
+    .source-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.4;
+    }
+
+    .source-item a {
+      display: block;
+      margin-top: 10px;
+      color: var(--blue);
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+      text-decoration: none;
+    }
+
+    .controls {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      opacity: 0;
+      transition: opacity 140ms ease;
+      z-index: 50;
+    }
+
+    .controls:hover {
+      opacity: 1;
+    }
+
+    .controls button {
+      border: 0;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.82);
+      color: white;
+      padding: 10px 16px;
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .controls button:hover {
+      background: rgba(15, 23, 42, 0.96);
+    }
+
+    @media (max-width: 900px) {
+      body.deck-mode {
+        overflow: auto;
+      }
+
+      .deck {
+        height: auto;
+        display: block;
+        padding: 0;
+      }
+
+      .slide,
+      .slide.active {
+        display: block;
+        width: 100vw;
+        min-height: 100vh;
+        aspect-ratio: auto;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .slide:not(.active) {
+        display: none;
+      }
+
+      .slide-inner {
+        position: relative;
+        padding: 74px 24px 88px;
+      }
+
+      .topbar {
+        left: 24px;
+        right: 24px;
+      }
+
+      h1,
+      .cover-title h1 {
+        font-size: 42px;
+      }
+
+      h2 {
+        font-size: 32px;
+      }
+
+      .lead {
+        font-size: 18px;
+      }
+
+      .cover-bg {
+        background: #102744;
+      }
+
+      .cover-title,
+      .cover-proof,
+      .decision-strip {
+        position: relative;
+        left: auto;
+        right: auto;
+        top: auto;
+        bottom: auto;
+        width: auto;
+      }
+
+      .cover-title {
+        padding: 100px 24px 28px;
+      }
+
+      .cover-proof {
+        padding: 0 24px 30px;
+      }
+
+      .decision-strip {
+        padding: 0 24px 70px;
+        display: grid;
+      }
+
+      .pattern-layout,
+      .architecture,
+      .split,
+      .comparison,
+      .readiness,
+      .source-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .security-band {
+        position: relative;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        margin-top: 24px;
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .footer-note {
+        left: 24px;
+        right: 24px;
+      }
+
+      .connector {
+        display: none;
+      }
+
+      .controls {
+        display: none;
+      }
+    }
+
+    @media print {
+      html,
+      body {
+        background: white;
+      }
+
+      body.deck-mode {
+        overflow: visible;
+      }
+
+      .deck {
+        display: block;
+        width: auto;
+        height: auto;
+        padding: 0;
+      }
+
+      .slide,
+      .slide.active {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        aspect-ratio: 16 / 9;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+        page-break-after: always;
+      }
+
+      .slide-inner {
+        inset: 0;
+      }
+
+      .controls {
+        display: none;
+      }
+
+      @page {
+        size: 16in 9in;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body class="deck-mode">
+  <main class="deck" aria-label="AutohausAutomation Enterprise Hosting Slide Deck">
+    <section class="slide active" data-title="Cover">
+      <div class="cover-bg"></div>
+      <div class="cover-grid"></div>
+      <div class="topbar">
+        <div class="brand"><span class="brand-mark">AA</span><span>AutohausAutomation</span></div>
+        <span>IT-Leiter Konzept</span>
+      </div>
+      <div class="cover-title">
+        <p class="kicker">Produktivbetrieb fuer echte Kundendaten</p>
+        <h1>Cloud wie gewohnt. Sicherheit wie gefordert.</h1>
+        <p class="lead">Ein Enterprise-Betriebsmodell fuer deutsche Autoh&auml;user: DSGVO-konform umsetzbar, AVV-f&auml;hig, auditierbar und passend zu bestehenden SaaS-Workflows wie CarGate360&deg;, 2GO! und Autofox.</p>
+      </div>
+      <div class="cover-proof">
+        <div class="proof-stack">
+          <article class="proof-item">
+            <h3>Deutschland/EU als Zielbild</h3>
+            <p>Produktive Datenhaltung in Frankfurt oder bei einem deutschen Cloud-Provider, inklusive verschluesselter Backups und dokumentierter Subprozessoren.</p>
+          </article>
+          <article class="proof-item">
+            <h3>AVV-Kette statt Bauchgefuehl</h3>
+            <p>AVV mit dem Autohaus, DPAs/AVVs mit Hosting, Datenbank, E-Mail, Telefonie und optional KI-Anbietern.</p>
+          </article>
+          <article class="proof-item">
+            <h3>Technisch gehaertet vor Go-Live</h3>
+            <p>SSO, serverseitige Rollen, Mandantentrennung, WAF, Rate Limiting, Audit-Logs, Loeschkonzept und Restore-Test.</p>
+          </article>
+        </div>
+      </div>
+      <div class="decision-strip">
+        <div><strong>Empfehlung</strong>Enterprise Cloud Deutschland/EU</div>
+        <div><strong>Alternative 1</strong>Souveraene deutsche Cloud</div>
+        <div><strong>Alternative 2</strong>Private / On-Prem / Hybrid</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Marktstandard">
+      <div class="slide-inner">
+        <div class="topbar">
+          <div class="brand"><span class="brand-mark">AA</span><span>AutohausAutomation</span></div>
+          <span>01 / Ausgangslage</span>
+        </div>
+        <p class="kicker">Was das Autohaus bereits kennt</p>
+        <h2>Autofox und CarGate zeigen: Cloud-SaaS ist im Autohausalltag akzeptiert, wenn Schnittstellen und Datenschutz sauber sind.</h2>
+        <div class="pattern-layout">
+          <div>
+            <p class="lead">Der richtige Verkaufsrahmen ist nicht "wir experimentieren mit Cloud", sondern: Wir betreiben eine vertraute Autohaus-SaaS-Architektur mit nachvollziehbarer Sicherheits- und Vertragskette.</p>
+            <div class="signal-list">
+              <div class="signal">
+                <div class="signal-number">1</div>
+                <div><h3>Bestehende Tools arbeiten integriert</h3><p>Autofox beschreibt direkte DMS-/Bestandsmanagement-Anbindung sowie API- oder FTP-Workflows. CarGate360&deg; deckt Fahrzeugverwaltung, mobile Erfassung, Leadmanagement und KPIs ab.</p></div>
+              </div>
+              <div class="signal">
+                <div class="signal-number">2</div>
+                <div><h3>Cloud ist grundsaetzlich akzeptiert</h3><p>Das Autohaus nutzt bereits externe SaaS-Prozesse. Entscheidend ist daher nicht "Cloud ja/nein", sondern Datenresidenz, AVV, Zugriffsschutz und Betriebsnachweise.</p></div>
+              </div>
+              <div class="signal">
+                <div class="signal-number">3</div>
+                <div><h3>Unser Konzept passt in diese Landschaft</h3><p>Wir positionieren AutohausAutomation als kontrollierte Ergaenzung: offene Schnittstellen, keine Datensilos, klare Verantwortlichkeiten.</p></div>
+              </div>
+            </div>
+          </div>
+          <aside class="market-board">
+            <div class="market-row">
+              <div class="market-label">Autofox</div>
+              <div class="market-copy">KI-Fotografie, DMS-/IMS-/Website-Synchronisation, Verarbeitung und Weitergabe von Fahrzeugbildern ueber API oder FTP.</div>
+            </div>
+            <div class="market-row">
+              <div class="market-label">CarGate360&deg;<br>2GO!</div>
+              <div class="market-copy">Fahrzeugvermarktung, mobile Erfassung, Leadmanagement, Eskalationsmanagement, filialuebergreifende Datenqualitaet.</div>
+            </div>
+            <div class="market-row">
+              <div class="market-label">Unser Fit</div>
+              <div class="market-copy">Callcenter, Rueckrufe, Dokumente, Fahrzeugprozesse und Automatisierung als sicher betriebene Plattform im bestehenden Autohaus-Workflow.</div>
+            </div>
+          </aside>
+        </div>
+        <div class="footer-note">Oeffentliche Anbieterangaben zeigen Integrations- und SaaS-Muster, aber keine vollstaendige Hosting-Architektur. Daher empfehlen wir ein eigenes, nachweisbares Enterprise-Zielbild.</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Zielarchitektur">
+      <div class="slide-inner">
+        <div class="topbar">
+          <div class="brand"><span class="brand-mark">AA</span><span>AutohausAutomation</span></div>
+          <span>02 / Zielarchitektur</span>
+        </div>
+        <p class="kicker">Empfohlenes Konzept</p>
+        <h2>Produktivbetrieb: dediziert, kontrolliert, nachweisbar.</h2>
+        <div class="architecture">
+          <article class="arch-col">
+            <div class="arch-node">01</div>
+            <div class="arch-title">Autohaus-Systeme</div>
+            <p class="arch-summary">Bestehende Prozesse bleiben fuehrend. Wir verbinden uns kontrolliert mit den Systemen, die das Autohaus bereits nutzt.</p>
+            <ul class="arch-list">
+              <li>DMS, CRM, Website-Leads</li>
+              <li>CarGate360&deg;, 2GO!, Autofox</li>
+              <li>API, Webhook oder SFTP/FTP nach Bedarf</li>
+            </ul>
+            <div class="connector"></div>
+          </article>
+          <article class="arch-col primary">
+            <div class="arch-node">02</div>
+            <div class="arch-title">Unsere Plattform</div>
+            <p class="arch-summary">Die Anwendung laeuft als gehaertete Enterprise-Version, nicht als Demo-Setup mit offenen Flaechen.</p>
+            <ul class="arch-list">
+              <li>Containerisierte Next.js App und API</li>
+              <li>Serverseitige Rollen und Mandantentrennung</li>
+              <li>Audit-Logs fuer Zugriff, Aenderung und Download</li>
+            </ul>
+            <div class="connector"></div>
+          </article>
+          <article class="arch-col">
+            <div class="arch-node">03</div>
+            <div class="arch-title">Hosting &amp; Betrieb</div>
+            <p class="arch-summary">Datenhaltung, Storage, Backups und Betrieb werden fuer Deutschland/EU dokumentiert und abnahmefaehig gemacht.</p>
+            <ul class="arch-list">
+              <li>AWS Frankfurt oder deutscher Cloud-Provider</li>
+              <li>PostgreSQL und Object Storage in DE/EU</li>
+              <li>WAF, Monitoring, Backups und Restore-Test</li>
+            </ul>
+          </article>
+        </div>
+        <div class="security-band" aria-label="Sicherheitsbausteine">
+          <div class="band-item">AVV</div>
+          <div class="band-item">Subprozessoren</div>
+          <div class="band-item">TOMs Art. 32</div>
+          <div class="band-item">SSO/OIDC</div>
+          <div class="band-item">Audit Logs</div>
+          <div class="band-item">Loeschkonzept</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="AVV und DSGVO">
+      <div class="slide-inner">
+        <div class="topbar">
+          <div class="brand"><span class="brand-mark">AA</span><span>AutohausAutomation</span></div>
+          <span>03 / Datenschutz</span>
+        </div>
+        <p class="kicker">Antwort auf die IT- und Datenschutzfrage</p>
+        <h2>DSGVO-Konformitaet ist kein einzelnes Feature. Sie entsteht aus Vertrag, Technik und Betrieb.</h2>
+        <div class="split">
+          <aside class="avv-callout">
+            <h3>AVV: Wer macht was mit welchen Daten?</h3>
+            <p>Das Autohaus bleibt Verantwortlicher. Wir verarbeiten Kunden-, Mitarbeiter- und Prozessdaten nur nach Weisung des Autohauses und nur fuer den vereinbarten Zweck.</p>
+            <p>Der AVV regelt Gegenstand, Dauer, Datenarten, Betroffene, TOMs, Subprozessoren, Loeschung/Rueckgabe, Unterstuetzung bei Betroffenenrechten und Meldeprozesse.</p>
+            <p class="caption" style="color: rgba(255,255,255,0.62);">Hinweis: keine Rechtsberatung, sondern umsetzungsreifes Konzept fuer Legal/Datenschutzbeauftragte.</p>
+          </aside>
+          <div class="legal-flow">
+            <div class="flow-step"><strong>1. AVV mit dem Autohaus</strong><span>Unsere Leistung wird als Auftragsverarbeitung dokumentiert. Eine UG/GmbH ist rechtlich nicht zwingend fuer den AVV, aber als Vertragspartner fuer Enterprise-Vertrieb sinnvoll.</span></div>
+            <div class="flow-step"><strong>2. AVV/DPA mit Subprozessoren</strong><span>Hosting, Datenbank, Storage, E-Mail, Telefonie und KI-Anbieter werden mit Zweck, Datenkategorien, Standort und Garantien in einer Subprozessorliste gefuehrt.</span></div>
+            <div class="flow-step"><strong>3. TOMs nach Art. 32 DSGVO</strong><span>Verschluesselung, Zugriffskontrolle, Wiederherstellbarkeit, Vertraulichkeit, Integritaet, Verfuegbarkeit und regelmaessige Pruefung werden technisch umgesetzt und dokumentiert.</span></div>
+            <div class="flow-step"><strong>4. Datenschutz im Produkt</strong><span>Datenminimierung, Berechtigung je Rolle, Mandantentrennung, Auditierbarkeit, Aufbewahrungsfristen, Loeschroutinen und Export fuer Betroffenenrechte.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Alternativen">
+      <div class="slide-inner">
+        <div class="topbar">
+          <div class="brand"><span class="brand-mark">AA</span><span>AutohausAutomation</span></div>
+          <span>04 / Optionen</span>
+        </div>
+        <p class="kicker">Betriebsmodell mit Eskalationspfad</p>
+        <h2>Drei Optionen, aber eine klare Empfehlung: Enterprise Cloud Deutschland/EU.</h2>
+        <div class="comparison">
+          <article class="option recommended">
+            <div class="option-label">Empfohlen</div>
+            <h3>Enterprise Cloud Deutschland/EU</h3>
+            <ul>
+              <li>App Runtime in AWS Frankfurt oder deutschem Cloud-Provider</li>
+              <li>PostgreSQL/Supabase in Frankfurt</li>
+              <li>Verschluesselter Object Storage fuer Anhaenge</li>
+              <li>SSO, WAF, Audit-Logs, AVV, TOMs</li>
+              <li>Gute Balance aus Geschwindigkeit, Kosten und IT-Akzeptanz</li>
+            </ul>
+            <div class="fit-line"><strong>Passt fuer:</strong> Pilot mit echten Daten und produktiven Autohausbetrieb.</div>
+          </article>
+          <article class="option secure">
+            <div class="option-label">Noch sicherer</div>
+            <h3>Souveraene deutsche Cloud</h3>
+            <ul>
+              <li>STACKIT, Open Telekom Cloud oder vergleichbarer Anbieter</li>
+              <li>Staerkere deutsche/europaeische Jurisdiktion</li>
+              <li>Dedizierte Umgebung pro Autohausgruppe moeglich</li>
+              <li>Geeignet fuer strengere Konzern- oder Datenschutzvorgaben</li>
+              <li>Hoehere Kosten, etwas laengere Umsetzung</li>
+            </ul>
+            <div class="fit-line"><strong>Passt fuer:</strong> IT-Leitung mit Fokus auf Souveraenitaet.</div>
+          </article>
+          <article class="option maximum">
+            <div class="option-label">Maximal</div>
+            <h3>Private / On-Prem / Hybrid</h3>
+            <ul>
+              <li>Betrieb in Kundenumgebung oder dedizierter VPC</li>
+              <li>Zugriff nur via VPN und IP-Allowlisting</li>
+              <li>Kundenseitiges Key Management moeglich</li>
+              <li>Maximale Kontrolle fuer IT-Abteilung</li>
+              <li>Hoechster Betriebsaufwand und laengste Projektlaufzeit</li>
+            </ul>
+            <div class="fit-line"><strong>Passt fuer:</strong> sehr strikte interne IT-Policy.</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Go-Live Readiness">
+      <div class="slide-inner">
+        <div class="topbar">
+          <div class="brand"><span class="brand-mark">AA</span><span>AutohausAutomation</span></div>
+          <span>05 / Go-Live</span>
+        </div>
+        <p class="kicker">Was wir dem IT-Leiter zusagen</p>
+        <h2>Vor echten Kundendaten gibt es einen klaren H&auml;rtungs- und Nachweisplan.</h2>
+        <div class="readiness">
+          <aside class="status-panel">
+            <h3>Demo heute, Enterprise-Version vor Produktivbetrieb.</h3>
+            <p>Das aktuelle Projekt ist als Demo stark, aber Produktivdaten brauchen eine geh&auml;rtete Zielarchitektur: echte Authentifizierung, geschuetzte APIs, geeigneten Storage, Betriebsprozesse und vertragliche Nachweise.</p>
+            <p>Die starke Verkaufsbotschaft: Wir verkaufen nicht ein unfertiges Demo-Hosting, sondern die fachliche L&ouml;sung plus belastbaren Enterprise-Betrieb.</p>
+          </aside>
+          <div class="roadmap">
+            <div class="roadmap-step"><div class="roadmap-index">1</div><div><strong>Identity &amp; Zugriff</strong><span>SSO/OIDC/SAML, MFA, serverseitige Rollen, Mandantentrennung, keine UI-Rollen-Simulation.</span></div></div>
+            <div class="roadmap-step"><div class="roadmap-index">2</div><div><strong>API- und Storage-H&auml;rtung</strong><span>Alle Endpunkte mit Session-, Rollen-, Tenant- und Rate-Limit-Pruefung; Dokumente nur in verschluesseltem Object Storage mit signierten Links.</span></div></div>
+            <div class="roadmap-step"><div class="roadmap-index">3</div><div><strong>Betrieb &amp; Monitoring</strong><span>WAF, Security-Header, Secret Manager/KMS, Audit-Logs, Backups, Restore-Test, Incident-Prozess.</span></div></div>
+            <div class="roadmap-step"><div class="roadmap-index">4</div><div><strong>Datenschutzpaket</strong><span>AVV, Subprozessorliste, TOMs, Loesch- und Aufbewahrungskonzept, Verzeichnis der Verarbeitungstaetigkeiten als Vorlage.</span></div></div>
+            <div class="roadmap-step"><div class="roadmap-index">5</div><div><strong>Freigabe vor Go-Live</strong><span>Penetrationstest, Dependency-/Secrets-Scanning, SBOM, Release-Gates und gemeinsame technische Abnahme mit der IT.</span></div></div>
+          </div>
+        </div>
+        <div class="footer-note">Gespr&auml;chssatz: "Das Autohaus bekommt Cloud-Komfort wie bei bestehenden SaaS-Tools, aber mit produktionsreifer Sicherheitsarchitektur, klarer AVV-Kette und nachvollziehbaren Kontrollen."</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Nachweise">
+      <div class="slide-inner">
+        <div class="topbar">
+          <div class="brand"><span class="brand-mark">AA</span><span>AutohausAutomation</span></div>
+          <span>06 / Nachweise</span>
+        </div>
+        <p class="kicker">Material fuer IT, Datenschutz und Einkauf</p>
+        <h2>Diese Quellen stuetzen das Konzept und gehoeren in den Abnahmeordner.</h2>
+        <p class="lead">Die Anbieterarchitektur von Autofox und Dotzilla ist oeffentlich nicht vollstaendig offengelegt. Deshalb lautet unser belastbarer Ansatz: SaaS-Muster uebernehmen, aber Hosting, AVV-Kette und TOMs selbst sauber nachweisen.</p>
+        <div class="source-grid">
+          <article class="source-item"><strong>Autofox Produkt- und Integrationsmuster</strong><span>DMS-/IMS-/Website-Integration, API/FTP-Workflows, KI-Fotoprozess fuer Autoh&auml;user.</span><a href="https://www.autofox.ai/de">https://www.autofox.ai/de</a></article>
+          <article class="source-item"><strong>Dotzilla / CarGate360&deg; &amp; 2GO!</strong><span>Fahrzeugverwaltung, mobile Erfassung, Leadmanagement, KPIs und Vermarktungsprozesse.</span><a href="https://www.dotzilla.de/produkte/fahrzeugvermarktung-verwaltung/">https://www.dotzilla.de/produkte/fahrzeugvermarktung-verwaltung/</a></article>
+          <article class="source-item"><strong>Supabase Regionen &amp; Security</strong><span>Frankfurt-Region, SOC 2 Type 2, Security Controls, DPA-Unterlagen.</span><a href="https://supabase.com/docs/guides/platform/regions">https://supabase.com/docs/guides/platform/regions</a></article>
+          <article class="source-item"><strong>AWS Frankfurt &amp; DSGVO-Basis</strong><span>AWS Subprozessoren fuer Europe Frankfurt sowie Art. 28 und Art. 32 DSGVO als Vertrags- und TOM-Rahmen.</span><a href="https://aws.amazon.com/compliance/sub-processors/">https://aws.amazon.com/compliance/sub-processors/</a></article>
+        </div>
+        <div class="footer-note">Empfohlene naechste Dokumente: AVV-Entwurf, Subprozessorliste, TOM-Anlage, Loesch-/Aufbewahrungskonzept, Architekturdiagramm, Go-Live-Sicherheitscheckliste.</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="controls" aria-label="Slide navigation">
+    <button type="button" id="prev">Zurueck</button>
+    <button type="button" id="next">Weiter</button>
+  </div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    let current = 0;
+
+    function addPager(slide, index) {
+      const pager = document.createElement("div");
+      pager.className = "pager";
+      const dots = slides.map((_, dotIndex) => {
+        const dot = document.createElement("span");
+        dot.className = "dot" + (dotIndex === index ? " on" : "");
+        return dot;
+      });
+      dots.forEach((dot) => pager.appendChild(dot));
+      const label = document.createElement("span");
+      label.textContent = `${index + 1}/${slides.length}`;
+      pager.appendChild(label);
+      slide.appendChild(pager);
+    }
+
+    slides.forEach(addPager);
+
+    function show(index) {
+      current = (index + slides.length) % slides.length;
+      slides.forEach((slide, slideIndex) => {
+        slide.classList.toggle("active", slideIndex === current);
+      });
+      const title = slides[current].dataset.title || `Slide ${current + 1}`;
+      window.location.hash = `slide-${current + 1}`;
+      document.title = `${title} - AutohausAutomation`;
+    }
+
+    document.getElementById("prev").addEventListener("click", () => show(current - 1));
+    document.getElementById("next").addEventListener("click", () => show(current + 1));
+
+    window.addEventListener("keydown", (event) => {
+      if (["ArrowRight", "PageDown", " "].includes(event.key)) {
+        event.preventDefault();
+        show(current + 1);
+      }
+      if (["ArrowLeft", "PageUp", "Backspace"].includes(event.key)) {
+        event.preventDefault();
+        show(current - 1);
+      }
+      if (event.key === "Home") show(0);
+      if (event.key === "End") show(slides.length - 1);
+    });
+
+    const fromHash = Number((window.location.hash.match(/slide-(\d+)/) || [])[1]);
+    if (Number.isFinite(fromHash) && fromHash > 0) {
+      show(fromHash - 1);
+    } else {
+      show(0);
+    }
+  </script>
+</body>
+</html>

@@ -138,17 +138,17 @@ export function CallcenterMorningSummaryDialog() {
             </div>
 
             {/* Compact KPIs */}
-            <div className="grid grid-cols-4 gap-2 md:flex md:items-center md:gap-4 text-[11px]">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
               {[
-                { n: summaryData.overdueCallbacks.length, l: 'Überfällig', c: 'text-red-600', dot: 'bg-red-500' },
-                { n: summaryData.openCallbacks.length, l: 'Offen', c: 'text-blue-600', dot: 'bg-blue-400' },
-                { n: summaryData.inProgressCallbacks.length, l: 'In Bearb.', c: 'text-amber-600', dot: 'bg-amber-400' },
-                { n: summaryData.completedToday, l: 'Erledigt', c: 'text-emerald-600', dot: 'bg-emerald-400' },
+                { n: summaryData.overdueCallbacks.length, l: 'Überfällig', c: 'text-red-600 dark:text-red-400', dot: 'bg-red-500' },
+                { n: summaryData.openCallbacks.length, l: 'Offen', c: 'text-blue-600 dark:text-blue-400', dot: 'bg-blue-500' },
+                { n: summaryData.inProgressCallbacks.length, l: 'In Bearbeitung', c: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-500' },
+                { n: summaryData.completedToday, l: 'Erledigt', c: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
               ].map(k => (
-                <div key={k.l} className="flex flex-col items-center gap-0.5 md:flex-row md:gap-1.5 rounded-md md:rounded-none border md:border-0 py-1 md:py-0">
-                  <span className={cn('hidden md:inline-block h-1.5 w-1.5 rounded-full', k.dot)} />
-                  <span className={cn('font-bold tabular-nums text-base md:text-[11px]', k.c)}>{k.n}</span>
-                  <span className="text-muted-foreground text-[10px] md:text-[11px]">{k.l}</span>
+                <div key={k.l} className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className={cn('h-1.5 w-1.5 rounded-full', k.dot)} />
+                  <span className={cn('font-bold tabular-nums', k.c)}>{k.n}</span>
+                  <span className="text-muted-foreground">{k.l}</span>
                 </div>
               ))}
             </div>
@@ -179,9 +179,9 @@ export function CallcenterMorningSummaryDialog() {
                           selectedRecipients.has(emp.id) ? 'bg-primary/5' : 'hover:bg-muted/50 opacity-50'
                         )}
                       >
-                        <Checkbox checked={selectedRecipients.has(emp.id)} onCheckedChange={() => toggleRecipient(emp.id)} className="h-3 w-3" />
+                        <Checkbox checked={selectedRecipients.has(emp.id)} onCheckedChange={() => toggleRecipient(emp.id)} className="h-3.5 w-3.5" />
                         <span className="font-medium truncate flex-1">{emp.name}</span>
-                        <Badge variant="secondary" className={cn('text-[7px] px-1 py-0 h-3', employeeRoleConfig[emp.role].color)}>
+                        <Badge variant="secondary" className={cn('text-[9px] leading-none px-1.5 py-0.5 font-medium', employeeRoleConfig[emp.role].color)}>
                           {employeeRoleConfig[emp.role].label}
                         </Badge>
                       </label>
@@ -208,12 +208,12 @@ export function CallcenterMorningSummaryDialog() {
                           selectedCallbacks.has(cb.id) ? 'bg-primary/5' : 'hover:bg-muted/50 opacity-40'
                         )}
                       >
-                        <Checkbox checked={selectedCallbacks.has(cb.id)} onCheckedChange={() => toggleCallback(cb.id)} className="h-2.5 w-2.5 flex-shrink-0" />
+                        <Checkbox checked={selectedCallbacks.has(cb.id)} onCheckedChange={() => toggleCallback(cb.id)} className="h-3 w-3 flex-shrink-0" />
                         <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0',
                           cb.status === 'ueberfaellig' ? 'bg-red-500' : cb.status === 'offen' ? 'bg-blue-400' : 'bg-amber-400'
                         )} />
                         <span className="font-medium truncate flex-1">{cb.customerName}</span>
-                        <Badge variant="secondary" className={cn('text-[6px] px-0.5 py-0 h-2.5', callbackPriorityConfig[cb.priority].color)}>
+                        <Badge variant="secondary" className={cn('text-[9px] leading-none px-1.5 py-0.5 font-medium', callbackPriorityConfig[cb.priority].color)}>
                           {callbackPriorityConfig[cb.priority].label}
                         </Badge>
                       </label>
@@ -227,25 +227,31 @@ export function CallcenterMorningSummaryDialog() {
               <div className="overflow-y-auto bg-stone-50 dark:bg-muted/20 p-5">
                 <div className="max-w-[540px] mx-auto rounded-xl border bg-white dark:bg-card shadow-sm overflow-hidden">
                   {/* Email header bar */}
-                  <div className="bg-muted/40 dark:bg-muted/20 px-5 py-3 border-b space-y-1.5">
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="text-muted-foreground w-10">Von</span>
-                      <span className="font-medium">callcenter@wackenhut.de</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="text-muted-foreground w-10">An</span>
-                      <span className="font-medium">{selectedRecipients.size} Empfänger</span>
-                      <span className="text-muted-foreground">
-                        ({[...selectedRecipients].slice(0, 3).map(id => {
-                          const emp = recipients.find(r => r.id === id)
-                          return emp?.name.split(' ')[1] ?? emp?.name
-                        }).join(', ')}{selectedRecipients.size > 3 ? `, +${selectedRecipients.size - 3}` : ''})
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="text-muted-foreground w-10">Betreff</span>
-                      <span className="font-semibold">Rückruf-Übersicht — {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                    </div>
+                  <div className="bg-muted/40 dark:bg-muted/20 px-4 py-3 border-b">
+                    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-[11px] items-baseline">
+                      <dt className="text-muted-foreground">Von</dt>
+                      <dd className="font-medium truncate">callcenter@wackenhut.de</dd>
+
+                      <dt className="text-muted-foreground">An</dt>
+                      <dd className="truncate">
+                        <span className="font-medium">{selectedRecipients.size} Empfänger</span>
+                        {selectedRecipients.size > 0 && (
+                          <span className="text-muted-foreground">
+                            {' · '}
+                            {[...selectedRecipients].slice(0, 3).map(id => {
+                              const emp = recipients.find(r => r.id === id)
+                              return emp?.name.split(' ').slice(-1)[0] ?? emp?.name
+                            }).filter(Boolean).join(', ')}
+                            {selectedRecipients.size > 3 ? ` +${selectedRecipients.size - 3}` : ''}
+                          </span>
+                        )}
+                      </dd>
+
+                      <dt className="text-muted-foreground">Betreff</dt>
+                      <dd className="font-semibold truncate">
+                        Rückruf-Übersicht — {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </dd>
+                    </dl>
                   </div>
 
                   {/* Email body — rendered, not raw text */}
@@ -257,16 +263,16 @@ export function CallcenterMorningSummaryDialog() {
                     </p>
 
                     {/* Summary cards */}
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {[
-                        { n: summaryData.overdueCallbacks.length, l: 'Überfällig', c: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/30' },
-                        { n: summaryData.openCallbacks.length, l: 'Offen', c: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30' },
-                        { n: summaryData.inProgressCallbacks.length, l: 'In Bearb.', c: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30' },
-                        { n: summaryData.completedToday, l: 'Erledigt', c: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' },
+                        { n: summaryData.overdueCallbacks.length, l: 'Überfällig', c: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/30' },
+                        { n: summaryData.openCallbacks.length, l: 'Offen', c: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30' },
+                        { n: summaryData.inProgressCallbacks.length, l: 'In Bearbeitung', c: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30' },
+                        { n: summaryData.completedToday, l: 'Erledigt', c: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' },
                       ].map(k => (
-                        <div key={k.l} className={cn('rounded-lg border p-2 text-center', k.bg)}>
-                          <p className={cn('text-base font-bold tabular-nums', k.c)}>{k.n}</p>
-                          <p className="text-[10px] text-muted-foreground">{k.l}</p>
+                        <div key={k.l} className={cn('flex items-center gap-2 rounded-lg border px-2.5 py-1.5 sm:flex-col sm:gap-0.5 sm:px-2 sm:py-2', k.bg)}>
+                          <p className={cn('text-lg sm:text-base font-bold tabular-nums leading-none', k.c)}>{k.n}</p>
+                          <p className="text-[10px] text-muted-foreground truncate sm:whitespace-normal sm:text-center">{k.l}</p>
                         </div>
                       ))}
                     </div>
@@ -283,19 +289,21 @@ export function CallcenterMorningSummaryDialog() {
                             const overMin = Math.round((Date.now() - new Date(cb.slaDeadline).getTime()) / 60000)
                             const prioCfg = callbackPriorityConfig[cb.priority]
                             return (
-                              <div key={cb.id} className={cn('flex items-center gap-2.5 px-3 py-2', isOverdue && 'bg-red-50/50 dark:bg-red-950/10')}>
-                                <div className={cn('h-2 w-2 rounded-full flex-shrink-0',
+                              <div key={cb.id} className={cn('flex items-center gap-2 px-3 py-2', isOverdue && 'bg-red-50/50 dark:bg-red-950/10')}>
+                                <span className={cn('h-2 w-2 rounded-full flex-shrink-0',
                                   isOverdue ? 'bg-red-500' : cb.status === 'offen' ? 'bg-blue-400' : 'bg-amber-400'
                                 )} />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[11px] font-semibold truncate">{cb.customerName}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-[11px] font-semibold truncate">{cb.customerName}</p>
+                                    <Badge variant="secondary" className={cn('text-[8px] leading-none px-1 py-0.5 flex-shrink-0', prioCfg.color)}>
+                                      {prioCfg.label}
+                                    </Badge>
+                                  </div>
                                   <p className="text-[10px] text-muted-foreground truncate">{cb.reason} · {cb.assignedAdvisor}</p>
                                 </div>
-                                <Badge variant="secondary" className={cn('text-[7px] px-1 py-0 h-3.5 flex-shrink-0', prioCfg.color)}>
-                                  {prioCfg.label}
-                                </Badge>
-                                <span className={cn('text-[10px] font-medium tabular-nums flex-shrink-0 w-[60px] text-right',
-                                  isOverdue ? 'text-red-600' : 'text-muted-foreground'
+                                <span className={cn('text-[10px] font-medium tabular-nums whitespace-nowrap flex-shrink-0',
+                                  isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
                                 )}>
                                   {isOverdue ? `+${overMin} Min.` : formatTime(cb.dueAt)}
                                 </span>

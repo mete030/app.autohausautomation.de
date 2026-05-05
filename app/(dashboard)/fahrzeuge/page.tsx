@@ -43,7 +43,7 @@ const statusColors: Record<VehicleStatus, string> = {
 
 export default function FahrzeugePage() {
   const vehicles = useVehicleStore((state) => state.vehicles)
-  const [view, setView] = useState<'grid' | 'list' | 'map'>('list')
+  const [view, setView] = useState<'grid' | 'list' | 'map'>('grid')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('alle')
   const [locationFilter, setLocationFilter] = useState<string>('alle')

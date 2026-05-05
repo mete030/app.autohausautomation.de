@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -48,14 +48,34 @@ function getStatusDot(status: CallbackStatus): string {
   }
 }
 
-function getSlaDisplay(cb: Callback): { text: string; className: string } {
+function useClientNow(refreshMs = 30_000) {
+  const [now, setNow] = useState<number | null>(null)
+
+  useEffect(() => {
+    const updateNow = () => setNow(Date.now())
+    const timeout = setTimeout(updateNow, 0)
+    const interval = setInterval(updateNow, refreshMs)
+
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
+  }, [refreshMs])
+
+  return now
+}
+
+function getSlaDisplay(cb: Callback, now: number | null): { text: string; className: string } {
   if (cb.status === 'erledigt') {
     if (cb.completedAt && new Date(cb.completedAt) <= new Date(cb.slaDeadline)) {
       return { text: 'Im SLA', className: 'text-emerald-600 dark:text-emerald-400' }
     }
     return { text: 'SLA überschritten', className: 'text-red-600 dark:text-red-400' }
   }
-  const diffMs = new Date(cb.slaDeadline).getTime() - Date.now()
+
+  if (now === null) return { text: '--', className: 'text-muted-foreground' }
+
+  const diffMs = new Date(cb.slaDeadline).getTime() - now
   if (diffMs < 0) return { text: 'Überfällig', className: 'text-red-600 font-semibold' }
   if (diffMs < 30 * 60 * 1000) {
     const mins = Math.ceil(diffMs / 60000)
@@ -98,6 +118,7 @@ export function CallcenterTableView({
   onSetReminder, onEscalateToLevel, onDelete,
 }: CallcenterTableViewProps) {
   const [sortKey, setSortKey] = useState<'status' | 'priority' | 'created'>('status')
+  const now = useClientNow()
 
   const sorted = useMemo(() => {
     return [...callbacks].sort((a, b) => {
@@ -206,7 +227,7 @@ export function CallcenterTableView({
               const statusCfg = callbackStatusConfig[cb.status]
               const priorityCfg = callbackPriorityConfig[cb.priority]
               const sourceCfg = callSourceConfig[cb.source]
-              const sla = getSlaDisplay(cb)
+              const sla = getSlaDisplay(cb, now)
               const SourceIcon = getSourceIcon(cb.source)
               const advisorInitials = cb.assignedAdvisor.split(' ').map(n => n[0]).join('')
               const agentInitials = cb.takenBy.name.split(' ').map(n => n[0]).join('')
@@ -338,7 +359,7 @@ export function CallcenterTableView({
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                      {formatTimeAgo(cb.createdAt)}
+                      {now === null ? '--' : formatTimeAgo(cb.createdAt)}
                     </span>
                   </TableCell>
                   <TableCell>

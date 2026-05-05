@@ -22,10 +22,11 @@ export interface NavItem {
 export const featureVisibility = {
   buchhaltung: false,
   verifizierung: false,
-  dashboard: false,
-  fahrzeuge: false,
-  einkauf: false,
-  inserate: false,
+  nachrichten: false,
+  dashboard: true,
+  fahrzeuge: true,
+  einkauf: true,
+  inserate: true,
 } as const
 
 export const navigation: NavItem[] = [
@@ -38,14 +39,9 @@ export const navigation: NavItem[] = [
     : []),
   ...(featureVisibility.fahrzeuge
     ? [{
-        title: 'Fahrzeuge',
-        href: '/fahrzeuge/hofsteuerung',
+        title: 'Hofsteuerung',
+        href: '/fahrzeuge',
         icon: Car,
-        children: [
-          { title: 'Hofsteuerung', href: '/fahrzeuge/hofsteuerung' },
-          { title: 'Inventar', href: '/fahrzeuge' },
-          { title: 'Werkstatt', href: '/fahrzeuge/werkstatt' },
-        ],
       }]
     : []),
   ...(featureVisibility.einkauf
@@ -84,11 +80,13 @@ export const navigation: NavItem[] = [
         ],
       }]
     : []),
-  {
-    title: 'Nachrichten',
-    href: '/nachrichten',
-    icon: MessageSquare,
-  },
+  ...(featureVisibility.nachrichten
+    ? [{
+        title: 'Nachrichten' as const,
+        href: '/nachrichten',
+        icon: MessageSquare,
+      }]
+    : []),
   ...(featureVisibility.verifizierung
     ? [{
         title: 'Verifizierung' as const,
