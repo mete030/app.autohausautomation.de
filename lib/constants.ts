@@ -23,8 +23,8 @@ export const featureVisibility = {
   buchhaltung: false,
   verifizierung: false,
   nachrichten: false,
-  dashboard: true,
-  fahrzeuge: true,
+  dashboard: false,
+  fahrzeuge: false,
   einkauf: true,
   inserate: true,
 } as const

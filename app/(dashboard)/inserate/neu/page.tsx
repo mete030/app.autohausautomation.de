@@ -294,14 +294,17 @@ export default function NeuesInseratPage() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/inserate">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+      <div className="flex items-center gap-4">
+        <Link
+          href="/inserate"
+          className="group inline-flex h-10 items-center gap-1.5 rounded-lg border border-border/60 bg-card pl-2 pr-3 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/[0.04] hover:text-primary hover:shadow-md"
+          aria-label="Zurück zu Inserate"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+          <span className="hidden sm:inline">Zurück</span>
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold">Neues Inserat</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold leading-tight tracking-tight">Neues Inserat</h1>
           <p className="text-sm text-muted-foreground">KI-unterstützte Inserat-Erstellung</p>
         </div>
       </div>

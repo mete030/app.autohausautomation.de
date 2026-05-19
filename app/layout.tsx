@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
+import { PrototypeIndicator } from "@/components/layout/prototype-indicator"
 
 const inter = Inter({
   variable: "--font-sans",
@@ -10,6 +11,22 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Wackenhut Autohaus Management",
   description: "AI-Native Autohaus Management Platform",
+  icons: {
+    icon: [
+      {
+        url: "/favicon-light.png",
+        type: "image/png",
+        sizes: "128x128",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicon-dark.png",
+        type: "image/png",
+        sizes: "128x128",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+  },
 }
 
 export default function RootLayout({
@@ -19,8 +36,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased pt-6`}>
         {children}
+        <PrototypeIndicator />
       </body>
     </html>
   )

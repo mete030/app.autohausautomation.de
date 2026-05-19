@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react'
 import { useIsTablet } from '@/lib/hooks/use-media-query'
+import { StatusBadges } from '@/components/layout/status-badges'
 
 interface SidebarProps {
   collapsed: boolean
@@ -165,16 +166,26 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </nav>
       </ScrollArea>
 
-      {/* Collapse Toggle */}
+      {/* Status badges + collapse toggle */}
       <div className="border-t border-border/50 p-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-full text-muted-foreground hover:text-foreground"
+        <StatusBadges collapsed={collapsed} />
+        <button
           onClick={onToggle}
+          aria-label={collapsed ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen'}
+          className={cn(
+            'group mt-1.5 flex h-9 items-center justify-center gap-2 rounded-lg border border-border/60 bg-background text-[12px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/[0.04] hover:text-foreground hover:shadow-sm',
+            collapsed ? 'mx-auto w-9' : 'w-full'
+          )}
         >
-          <ChevronLeft className={cn('h-4 w-4 transition-transform duration-200', collapsed && 'rotate-180')} />
-        </Button>
+          {collapsed ? (
+            <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+          ) : (
+            <>
+              <ChevronLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              <span>Einklappen</span>
+            </>
+          )}
+        </button>
       </div>
     </aside>
   )

@@ -41,7 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <TooltipProvider>
-      <div className="flex h-dvh min-h-dvh overflow-hidden bg-background">
+      <div className="flex h-[calc(100dvh-1.5rem)] min-h-[calc(100dvh-1.5rem)] overflow-hidden bg-background">
         {/* Desktop & Tablet Sidebar */}
         <div className="hidden md:flex">
           <Suspense fallback={null}>
