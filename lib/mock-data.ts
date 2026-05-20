@@ -1079,7 +1079,10 @@ function minutesFromNow(mins: number): string {
   return new Date(Date.now() + mins * 60 * 1000).toISOString()
 }
 
-export const mockCallbacks: Callback[] = [
+// Demo data is built lazily so that every refresh anchors the timestamps to the
+// current `Date.now()` instead of the moment the module was first loaded.
+export function buildMockCallbacks(): Callback[] {
+  return [
   {
     id: 'cb1',
     customerName: 'Hans Gruber',
@@ -1473,7 +1476,10 @@ export const mockCallbacks: Callback[] = [
     reminders: [],
     activityLog: [],
   },
-]
+  ]
+}
+
+export const mockCallbacks: Callback[] = buildMockCallbacks()
 
 // ============================================
 // Inserate

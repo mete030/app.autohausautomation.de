@@ -1,7 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
-import { mockCallbacks } from '@/lib/mock-data'
+import { buildMockCallbacks } from '@/lib/mock-data'
 import { defaultSlaConfig, mockEmployees, mockEscalationRules } from '@/lib/constants'
 import type {
   Callback,
@@ -47,6 +47,65 @@ function normalizeMockCallback(callback: Callback): Callback {
   }
 }
 
+// Anchor the most recent persisted callback at ~3 minutes ago and add ~4
+// minutes between each older one. The user wants the demo to never display
+// "vor einem Monat" — every reload should look like the callbacks were taken
+// just now. We rebase each callback by a constant delta so all internal
+// relationships (createdAt → dueAt, activity log ordering, escalation events,
+// completedAt vs createdAt) stay intact.
+const FRESHEN_NEWEST_AGE_MIN = 3
+const FRESHEN_STEP_MIN = 4
+
+function shiftIso(iso: string | undefined, deltaMs: number): string | undefined {
+  if (!iso) return iso
+  const time = new Date(iso).getTime()
+  if (Number.isNaN(time)) return iso
+  return new Date(time + deltaMs).toISOString()
+}
+
+function freshenPersistedCallback(
+  callback: PersistedCallbackDto,
+  indexFromNewest: number,
+): PersistedCallbackDto {
+  const targetCreatedAtMs =
+    Date.now() - (FRESHEN_NEWEST_AGE_MIN + indexFromNewest * FRESHEN_STEP_MIN) * 60_000
+  const originalCreatedAtMs = new Date(callback.createdAt).getTime()
+  if (Number.isNaN(originalCreatedAtMs)) {
+    return callback
+  }
+  const deltaMs = targetCreatedAtMs - originalCreatedAtMs
+
+  return {
+    ...callback,
+    createdAt: shiftIso(callback.createdAt, deltaMs) ?? callback.createdAt,
+    updatedAt: shiftIso(callback.updatedAt, deltaMs) ?? callback.updatedAt,
+    completedAt: shiftIso(callback.completedAt, deltaMs),
+    slaDeadline: shiftIso(callback.slaDeadline, deltaMs) ?? callback.slaDeadline,
+    dueAt: shiftIso(callback.dueAt, deltaMs) ?? callback.dueAt,
+    reassignedAt: shiftIso(callback.reassignedAt, deltaMs),
+    escalatedAt: shiftIso(callback.escalatedAt, deltaMs),
+    escalationHistory: callback.escalationHistory.map((event) => ({
+      ...event,
+      escalatedAt: shiftIso(event.escalatedAt, deltaMs) ?? event.escalatedAt,
+    })),
+    activityLog: callback.activityLog.map((activity) => ({
+      ...activity,
+      performedAt: shiftIso(activity.performedAt, deltaMs) ?? activity.performedAt,
+    })),
+    attachments: callback.attachments?.map((attachment) => ({
+      ...attachment,
+      createdAt: shiftIso(attachment.createdAt, deltaMs) ?? attachment.createdAt,
+    })),
+  }
+}
+
+function freshenPersistedCallbacks(callbacks: PersistedCallbackDto[]): PersistedCallbackDto[] {
+  const sortedDesc = [...callbacks].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
+  return sortedDesc.map((callback, index) => freshenPersistedCallback(callback, index))
+}
+
 function normalizePersistedCallback(callback: PersistedCallbackDto): PersistedCallbackDto {
   return {
     ...callback,
@@ -69,7 +128,11 @@ function mergePersistedCallbacks(currentCallbacks: Callback[], persistedCallback
   ])
 }
 
-const initialCallbacks = sortCallbacks(mockCallbacks.map(normalizeMockCallback))
+function buildFreshMockCallbacks(): Callback[] {
+  return sortCallbacks(buildMockCallbacks().map(normalizeMockCallback))
+}
+
+const initialCallbacks = buildFreshMockCallbacks()
 
 interface UpdateCallbackPayload {
   callbackId: string
@@ -150,6 +213,7 @@ interface CallbackStoreState {
 
   loadPersistedCallbacks: () => Promise<void>
   hydratePersistedCallbacks: (callbacks: PersistedCallbackDto[]) => void
+  refreshDemoCallbacks: () => void
 
   updateCallbackStatus: (payload: UpdateCallbackPayload) => Promise<void>
   createCallback: (payload: CreateCallbackPayload) => Promise<Callback>
@@ -189,6 +253,10 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
   slaConfig: { ...defaultSlaConfig },
 
   loadPersistedCallbacks: async () => {
+    // Refresh demo mock callbacks first so timestamps that were anchored at
+    // module load time get re-anchored to "now" on every visit/refresh.
+    get().refreshDemoCallbacks()
+
     try {
       const response = await fetch('/api/callbacks', {
         method: 'GET',
@@ -205,7 +273,12 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
         return
       }
 
-      get().hydratePersistedCallbacks(data.callbacks ?? [])
+      // Freshen persisted callbacks so they always appear to have been taken
+      // within the last few minutes — the demo should never show
+      // "vor einem Monat" timestamps regardless of when the DB record was
+      // actually written.
+      const freshened = freshenPersistedCallbacks(data.callbacks ?? [])
+      get().hydratePersistedCallbacks(freshened)
     } catch {
       get().hydratePersistedCallbacks([])
     }
@@ -218,6 +291,15 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
         callbacks.map(normalizePersistedCallback),
       ),
     }))
+  },
+
+  refreshDemoCallbacks: () => {
+    set((state) => {
+      const persisted = state.callbacks.filter((callback) => callback.isPersisted) as PersistedCallbackDto[]
+      return {
+        callbacks: mergePersistedCallbacks(buildFreshMockCallbacks(), persisted),
+      }
+    })
   },
 
   updateCallbackStatus: async ({ callbackId, status, completionNotes }) => {

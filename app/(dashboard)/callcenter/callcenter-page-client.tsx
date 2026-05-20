@@ -57,6 +57,20 @@ export default function CallcenterPageClient() {
   const escalateCallback = useCallbackStore(s => s.escalateCallback)
   const loadPersistedCallbacks = useCallbackStore(s => s.loadPersistedCallbacks)
 
+  // Role state
+  const [role, setRole] = useState<CallcenterRole>('callcenter')
+  const [selectedUser, setSelectedUser] = useState('Marina Schittenhelm')
+
+  // Derive current user from role + selection
+  const currentUser = role === 'admin' || role === 'dashboard' ? 'Admin' : selectedUser
+
+  // UI state
+  const [activeTab, setActiveTab] = useState('rueckrufe')
+
+  // Refresh callbacks whenever the page mounts, the role changes, the
+  // active sub-tab changes, or the window regains focus. This ensures the
+  // demo callbacks always show "vor wenigen Minuten" instead of stale
+  // timestamps from a previous session.
   useEffect(() => {
     let mounted = true
 
@@ -70,6 +84,8 @@ export default function CallcenterPageClient() {
       }
     }
 
+    void refreshCallbacks()
+
     const handleFocus = () => {
       void refreshCallbacks()
     }
@@ -80,17 +96,7 @@ export default function CallcenterPageClient() {
       mounted = false
       window.removeEventListener('focus', handleFocus)
     }
-  }, [loadPersistedCallbacks])
-
-  // Role state
-  const [role, setRole] = useState<CallcenterRole>('callcenter')
-  const [selectedUser, setSelectedUser] = useState('Marina Schittenhelm')
-
-  // Derive current user from role + selection
-  const currentUser = role === 'admin' || role === 'dashboard' ? 'Admin' : selectedUser
-
-  // UI state
-  const [activeTab, setActiveTab] = useState('rueckrufe')
+  }, [loadPersistedCallbacks, role, activeTab])
   const [viewMode, setViewMode] = useState<ViewMode>('tabelle')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<FilterMode>('aktiv')
