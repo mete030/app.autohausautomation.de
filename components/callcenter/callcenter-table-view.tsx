@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import {
 import {
   MoreHorizontal, Bot, CheckCircle, ArrowRightLeft,
   ChevronUp, FileText, Phone, Globe, MessageCircle, PenLine,
-  Shield, Bell, Trash2,
+  Shield, Bell, Trash2, BellRing, Tablet, X,
 } from 'lucide-react'
 import { cn, formatTimeAgo } from '@/lib/utils'
 import { useCountdown } from '@/lib/hooks/use-countdown'
@@ -113,12 +113,93 @@ function CountdownCell({ dueAt, slaDurationMinutes, status }: { dueAt: string; s
   )
 }
 
+// A callback is "push-urgent" when it is already overdue or due within the
+// next 5 minutes — that's when nudging the advisor's phone matters most.
+const PUSH_URGENT_THRESHOLD_MS = 5 * 60 * 1000
+function isPushUrgent(cb: Callback, now: number | null): boolean {
+  if (cb.status === 'erledigt') return false
+  if (cb.status === 'ueberfaellig') return true
+  if (now === null) return false
+  return new Date(cb.dueAt).getTime() - now <= PUSH_URGENT_THRESHOLD_MS
+}
+
+function SendPushButton({
+  urgent,
+  advisorName,
+  onSend,
+}: {
+  urgent: boolean
+  advisorName: string
+  onSend: () => void
+}) {
+  const label = `Push-Benachrichtigung an ${advisorName} senden`
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      title={label}
+      aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation()
+        onSend()
+      }}
+      className={cn(
+        'h-9 w-9 md:h-10 md:w-10 lg:h-7 lg:w-7 p-0',
+        urgent
+          ? 'text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30'
+          : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      <BellRing className={cn('h-4 w-4 md:h-[18px] md:w-[18px] lg:h-4 lg:w-4', urgent && 'animate-pulse')} />
+    </Button>
+  )
+}
+
+function PushToast({ advisor, onClose }: { advisor: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-x-4 bottom-20 z-[60] sm:inset-x-auto sm:right-4 sm:bottom-4 sm:max-w-sm animate-in fade-in slide-in-from-bottom-2">
+      <div className="flex items-start gap-3 rounded-xl border bg-card p-3.5 shadow-lg">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+          <Tablet className="h-[18px] w-[18px]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Push-Benachrichtigung gesendet</p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{advisor}</span> wurde auf dem Tablet / iPad über die mobile App benachrichtigt.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Schließen"
+          className="-mr-1 -mt-1 flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function CallcenterTableView({
   callbacks, onComplete, onReassign, onEscalate, onViewTranscript,
   onSetReminder, onEscalateToLevel, onDelete,
 }: CallcenterTableViewProps) {
   const [sortKey, setSortKey] = useState<'status' | 'priority' | 'created'>('status')
   const now = useClientNow()
+  const [pushToast, setPushToast] = useState<{ id: number; advisor: string } | null>(null)
+
+  useEffect(() => {
+    if (!pushToast) return
+    const timeout = setTimeout(() => setPushToast(null), 8000)
+    return () => clearTimeout(timeout)
+  }, [pushToast])
+
+  const pushToastSeq = useRef(0)
+  const sendPush = (cb: Callback) => {
+    pushToastSeq.current += 1
+    setPushToast({ id: pushToastSeq.current, advisor: cb.assignedAdvisor })
+  }
 
   const sorted = useMemo(() => {
     return [...callbacks].sort((a, b) => {
@@ -178,6 +259,8 @@ export function CallcenterTableView({
                 onSetReminder={onSetReminder}
                 onEscalateToLevel={onEscalateToLevel}
                 onDelete={onDelete}
+                onSendPush={sendPush}
+                pushUrgent={isPushUrgent(cb, now)}
               />
             </li>
           ))}
@@ -216,7 +299,7 @@ export function CallcenterTableView({
                   Erstellt {sortKey === 'created' && '↓'}
                 </button>
               </TableHead>
-              <TableHead className="w-[60px]" />
+              <TableHead className="w-[100px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -363,6 +446,14 @@ export function CallcenterTableView({
                     </span>
                   </TableCell>
                   <TableCell>
+                    <div className="flex items-center justify-end gap-0.5">
+                    {!isCompleted && (
+                      <SendPushButton
+                        urgent={isPushUrgent(cb, now)}
+                        advisorName={cb.assignedAdvisor}
+                        onSend={() => sendPush(cb)}
+                      />
+                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                         <Button variant="ghost" size="sm" className="h-9 w-9 md:h-10 md:w-10 lg:h-7 lg:w-7 p-0">
@@ -421,6 +512,7 @@ export function CallcenterTableView({
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               )
@@ -432,6 +524,10 @@ export function CallcenterTableView({
           {callbacks.length} Rückruf{callbacks.length !== 1 ? 'e' : ''}
         </div>
       </div>
+
+      {pushToast && (
+        <PushToast key={pushToast.id} advisor={pushToast.advisor} onClose={() => setPushToast(null)} />
+      )}
     </>
   )
 }
@@ -449,6 +545,8 @@ interface CallbackCardProps {
   onSetReminder?: (id: string) => void
   onEscalateToLevel?: (id: string) => void
   onDelete?: (id: string) => void
+  onSendPush?: (cb: Callback) => void
+  pushUrgent?: boolean
 }
 
 function CallbackCard({
@@ -460,6 +558,8 @@ function CallbackCard({
   onSetReminder,
   onEscalateToLevel,
   onDelete,
+  onSendPush,
+  pushUrgent = false,
 }: CallbackCardProps) {
   const isCompleted = cb.status === 'erledigt'
   const isOverdue = cb.status === 'ueberfaellig'
@@ -504,6 +604,15 @@ function CallbackCard({
           </div>
           <p className="text-xs text-muted-foreground tabular-nums">{cb.customerPhone}</p>
         </div>
+        {!isCompleted && onSendPush && (
+          <div className="-mt-1 flex-shrink-0">
+            <SendPushButton
+              urgent={pushUrgent}
+              advisorName={cb.assignedAdvisor}
+              onSend={() => onSendPush(cb)}
+            />
+          </div>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-9 w-9 -mt-1 -mr-1 flex-shrink-0">

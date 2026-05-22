@@ -243,6 +243,22 @@ interface CallbackStoreState {
   recordCallbackNotificationEmailSent: (payload: RecordCallbackNotificationEmailSentPayload) => void
 
   checkAutoEscalations: () => void
+  processEscalations: () => Promise<void>
+}
+
+// Guards against firing the same rule for the same callback twice while a
+// request is still in flight (the provider ticks every few seconds).
+const inflightEscalations = new Set<string>()
+
+function resolveRuleRecipient(rule: EscalationRule, employees: Employee[]) {
+  const fromEmployee = rule.recipientEmployeeId
+    ? employees.find((employee) => employee.id === rule.recipientEmployeeId)
+    : undefined
+
+  const recipientEmail = rule.recipientEmail?.trim() || fromEmployee?.email?.trim() || ''
+  const recipientName = rule.recipientName?.trim() || fromEmployee?.name?.trim() || ''
+
+  return { recipientEmail, recipientName }
 }
 
 export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
@@ -756,5 +772,96 @@ export const useCallbackStore = create<CallbackStoreState>((set, get) => ({
         }
       }
     })
+  },
+
+  processEscalations: async () => {
+    const state = get()
+    const now = Date.now()
+    const activeRules = state.escalationRules.filter(
+      (rule) => rule.isActive && rule.notifyChannels.includes('email'),
+    )
+    if (activeRules.length === 0) return
+
+    for (const callback of state.callbacks) {
+      // These rules only apply to real callbacks persisted in the database
+      // (created via the "Neuer Rückruf" dialog) — never to mock demo data.
+      if (!callback.isPersisted) continue
+      if (callback.status === 'erledigt') continue
+
+      const elapsedSeconds = (now - new Date(callback.createdAt).getTime()) / 1000
+
+      for (const rule of activeRules) {
+        if (rule.appliesToPersistedOnly && !callback.isPersisted) continue
+        if (callback.escalationLevel !== rule.fromLevel) continue
+
+        // A rule only applies to callbacks created at or after the moment it was
+        // activated — switching it on never retroactively escalates callbacks
+        // that already existed in the database.
+        if (!rule.activatedAt) continue
+        if (new Date(callback.createdAt).getTime() < new Date(rule.activatedAt).getTime()) continue
+
+        const triggerSeconds = rule.triggerAfterSeconds ?? rule.triggerAfterMinutes * 60
+        if (elapsedSeconds < triggerSeconds) continue
+
+        const alreadyEscalated = callback.escalationHistory.some(
+          (event) => event.fromLevel === rule.fromLevel && event.toLevel === rule.toLevel,
+        )
+        if (alreadyEscalated) continue
+
+        const { recipientEmail, recipientName } = resolveRuleRecipient(rule, state.employees)
+        if (!recipientEmail) continue // never send without a configured recipient
+
+        const inflightKey = `${callback.id}:${rule.id}`
+        if (inflightEscalations.has(inflightKey)) continue
+        inflightEscalations.add(inflightKey)
+
+        try {
+          const response = await fetch(`/api/callbacks/${callback.id}/escalate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ruleId: rule.id,
+              ruleName: rule.name,
+              fromLevel: rule.fromLevel,
+              toLevel: rule.toLevel,
+              triggerSeconds,
+              recipientEmail,
+              recipientName,
+              performedBy: 'System (Auto-Eskalation)',
+            }),
+          })
+
+          const data = (await response.json().catch(() => ({}))) as {
+            ok?: boolean
+            activity?: CallbackActivity
+            error?: string
+          }
+
+          if (!response.ok) {
+            console.error('Auto-Eskalation fehlgeschlagen:', data.error)
+            continue
+          }
+
+          // Advance the in-memory escalation level so the next rule (e.g.
+          // Stufe 2 → 3) becomes eligible, and surface the e-mail in the log.
+          get().escalateCallbackToLevel({
+            callbackId: callback.id,
+            toLevel: rule.toLevel,
+            escalatedBy: 'System (Auto-Eskalation)',
+            escalatedTo: recipientName || recipientEmail,
+            trigger: 'zeit_basiert',
+            note: `Automatisch eskaliert (${rule.name})`,
+          })
+
+          if (data.activity) {
+            get().addActivityToCallback(callback.id, data.activity)
+          }
+        } catch (error) {
+          console.error(error)
+        } finally {
+          inflightEscalations.delete(inflightKey)
+        }
+      }
+    }
   },
 }))

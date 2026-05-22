@@ -99,7 +99,7 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
               <CardDescription>
                 {isInvalidLink
                   ? invalidDescription
-                  : 'Dokumentiere den Rückruf — eine Notiz ist Pflicht, Anhänge sind optional.'}
+                  : 'Halte fest, wie der Rückruf ausgegangen ist — das Callcenter sieht deine Rückmeldung.'}
               </CardDescription>
             </div>
           </CardHeader>
@@ -117,7 +117,7 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
             {submitState === 'success' ? (
               <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
                 <p className="font-medium">Der Rückruf wurde als erledigt markiert.</p>
-                <p>Deine Notiz wurde gespeichert.</p>
+                <p>Deine Rückmeldung wurde gespeichert und ist für das Callcenter sichtbar.</p>
                 {uploadedAttachments.length > 0 && (
                   <p>{uploadedAttachments.length} Anhang{uploadedAttachments.length === 1 ? '' : 'änge'} hochgeladen.</p>
                 )}
@@ -127,7 +127,7 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium">
-                      Notiz zum Abschluss
+                      Ergebnis des Rückrufs
                       <span className="ml-1 text-destructive">*</span>
                     </label>
                     <span
@@ -139,6 +139,9 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
                       {trimmedNotesLength} / {MIN_CALLBACK_COMPLETION_NOTE_LENGTH}
                     </span>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Was hast du mit dem Kunden besprochen und wie seid ihr verblieben?
+                  </p>
                   <Textarea
                     rows={4}
                     value={completionNotes}
@@ -149,11 +152,11 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
                         setSubmitState('idle')
                       }
                     }}
-                    placeholder="z. B. Kunde erreicht, Termin am Donnerstag 10:00 vereinbart."
+                    placeholder="z. B. Kunde erreicht — Probefahrt für Do., 10:00 Uhr vereinbart. Kunde ist zufrieden, keine weitere Aktion durch das Callcenter nötig."
                   />
                   {!isNotesValid && (
                     <p className="text-[11px] text-muted-foreground">
-                      Bitte beschreibe in mindestens {MIN_CALLBACK_COMPLETION_NOTE_LENGTH} Zeichen, was passiert ist
+                      Bitte in mindestens {MIN_CALLBACK_COMPLETION_NOTE_LENGTH} Zeichen beschreiben, was besprochen wurde
                       ({remainingChars} fehlen).
                     </p>
                   )}

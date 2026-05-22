@@ -145,6 +145,9 @@ export interface EscalationRule {
   id: string
   name: string
   triggerAfterMinutes: number
+  /** Precise trigger threshold in seconds. When set, it takes precedence over
+   *  `triggerAfterMinutes` — required for sub-minute escalations (e.g. 30s). */
+  triggerAfterSeconds?: number
   fromLevel: EscalationLevel
   toLevel: EscalationLevel
   notifyChannels: ('app' | 'email')[]
@@ -152,6 +155,19 @@ export interface EscalationRule {
   /** Specific recipient (Wackenhut supervisor) to notify. If omitted, the
    *  assigned person of the callback is used (only meaningful for reminders). */
   recipientEmployeeId?: string
+  /** Free-text / resolved recipient e-mail. Required before the rule may be
+   *  activated — the escalation e-mail is sent here. */
+  recipientEmail?: string
+  /** Free-text / resolved recipient name matching `recipientEmail`. */
+  recipientName?: string
+  /** When true, the rule only fires for callbacks that were actually persisted
+   *  to the database (created via the "Neuer Rückruf" dialog) — never for mock
+   *  demo callbacks. */
+  appliesToPersistedOnly?: boolean
+  /** ISO timestamp of the moment the rule was last activated. The rule only
+   *  applies to callbacks created at or after this time, so switching a rule on
+   *  never retroactively escalates callbacks that already existed. */
+  activatedAt?: string
 }
 
 export interface EscalationEvent {

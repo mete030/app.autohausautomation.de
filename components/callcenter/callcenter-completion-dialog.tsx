@@ -42,7 +42,7 @@ export function CompletionDialog({ open, callbackId, onOpenChange, onComplete }:
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium">
-              Notiz zum Abschluss
+              Ergebnis des Rückrufs
               <span className="ml-1 text-destructive">*</span>
             </label>
             <span
@@ -54,8 +54,11 @@ export function CompletionDialog({ open, callbackId, onOpenChange, onComplete }:
               {trimmedLength} / {MIN_CALLBACK_COMPLETION_NOTE_LENGTH}
             </span>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Was wurde mit dem Kunden besprochen und wie wurde verblieben?
+          </p>
           <Textarea
-            placeholder={`Pflichtfeld — beschreibe in mindestens ${MIN_CALLBACK_COMPLETION_NOTE_LENGTH} Zeichen, wie der Rückruf erledigt wurde.`}
+            placeholder="z. B. Kunde erreicht — Probefahrt für Do., 10:00 Uhr vereinbart. Kunde ist zufrieden, keine weitere Aktion nötig."
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={4}

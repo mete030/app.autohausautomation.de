@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { Plus, Search, User, X, Check, Phone, CheckCircle2, Mail, Loader2 } from 'lucide-react'
+import { Plus, Search, User, X, Check, Phone, CheckCircle2, Mail, Loader2, CalendarClock } from 'lucide-react'
 import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
 import { CallbackAttachmentUploader, type LocalAttachment } from '@/components/callcenter/callback-attachment-uploader'
 import { cn } from '@/lib/utils'
@@ -130,6 +130,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const [manualDueOverride, setManualDueOverride] = useState(false)
   const [scheduledDate, setScheduledDate] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
+  const [showExactSchedule, setShowExactSchedule] = useState(false)
 
   // Dialog step state
   const [dialogStep, setDialogStep] = useState<DialogStep>('form')
@@ -247,8 +248,11 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const handleDueTimePick = useCallback((minutes: number) => {
     setSlaDurationMinutes(minutes)
     setManualDueOverride(true)
+    // Presets and an exact due date/time are mutually exclusive — picking a
+    // quick preset clears and closes the exact-schedule mode.
     setScheduledDate('')
     setScheduledTime('')
+    setShowExactSchedule(false)
   }, [])
 
   const notifyCallbackScheduled = useCallback((callback: Callback, activity?: CallbackActivity) => {
@@ -339,6 +343,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     setManualDueOverride(false)
     setScheduledDate('')
     setScheduledTime('')
+    setShowExactSchedule(false)
   }
 
   const resetAll = () => {
@@ -452,28 +457,10 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
         attachments: [...(cb.attachments ?? []), ...uploaded],
       }
       setCreatedCallback(finalCallback)
+      // Stay on the success step so the user can review/adjust the recipient
+      // address and explicitly send the notification email. The email is no
+      // longer sent automatically — that previously skipped this step.
       setDialogStep('success')
-
-      if (finalCallback.isPersisted) {
-        setIsSendingEmail(true)
-        try {
-          const result = await sendCallbackNotificationEmail({
-            callbackId: finalCallback.id,
-            sentBy: currentUser ?? 'System',
-            recipientName: finalCallback.assignedAdvisor,
-          })
-          applyEmailSendResult(finalCallback, result)
-          setDialogStep('emailSent')
-        } catch (sendError) {
-          setEmailError(
-            sendError instanceof Error
-              ? sendError.message
-              : 'Die automatische Benachrichtigungs-E-Mail konnte nicht gesendet werden.',
-          )
-        } finally {
-          setIsSendingEmail(false)
-        }
-      }
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'Rückruf konnte nicht erstellt werden.')
     } finally {
@@ -513,22 +500,32 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[92dvh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-5rem)] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
         {dialogStep === 'form' ? (
           <>
             <DialogHeader>
-              <DialogTitle>Neuer Rückruf</DialogTitle>
+              <div className="flex items-center gap-3 text-left">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Phone className="h-5 w-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <DialogTitle>Neuer Rückruf</DialogTitle>
+                  <DialogDescription>Erfasse die Anfrage und weise sie einem Berater zu.</DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
-            <div className="space-y-4">
-              {/* === Section 1: Customer === */}
+            <div className="space-y-5">
+              {/* === Kunde === */}
               <div className="space-y-1.5" ref={dropdownRef}>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Kunde</label>
+                <label className="text-sm font-medium">
+                  Kunde<span className="ml-1 text-destructive">*</span>
+                </label>
                 {customerName && !customerDropdownOpen ? (
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => { setCustomerDropdownOpen(true); setCustomerSearch('') }}
-                      className="flex h-9 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-left hover:bg-muted/30 transition-colors"
+                      className="flex h-10 md:h-9 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-left hover:bg-muted/30 transition-colors"
                     >
                       <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary flex-shrink-0">
                         <User className="h-3 w-3" />
@@ -644,12 +641,12 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                 )}
               </div>
 
-              <Separator />
-
-              {/* === Section 2: Anliegen === */}
+              {/* === Anliegen === */}
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Anliegen *</label>
+                  <label className="text-sm font-medium">
+                    Anliegen<span className="ml-1 text-destructive">*</span>
+                  </label>
                   <Input
                     placeholder="Grund des Anrufs..."
                     value={reason}
@@ -667,13 +664,13 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                 </div>
               </div>
 
-              <Separator />
-
-              {/* === Section 3: Zuweisung & Priorität === */}
-              <div className="space-y-3">
+              {/* === Zuweisung, Klassifizierung & Planung === */}
+              <div className="space-y-4">
                 {/* Zuweisen an - full width to avoid overflow */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Zuweisen an *</label>
+                  <label className="text-sm font-medium">
+                    Zuweisen an<span className="ml-1 text-destructive">*</span>
+                  </label>
                   {useEmployees ? (
                     <Select value={assignedEmployeeId} onValueChange={handleEmployeeSelect}>
                       <SelectTrigger>
@@ -736,12 +733,12 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                   )}
                 </div>
 
-                {/* Priorität + Fälligkeit on one row */}
-                <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
+                {/* Priorität + Quelle */}
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Priorität</label>
                     <Select value={priority} onValueChange={v => handlePriorityChange(v as CallbackPriority)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {priorityOptions.map(o => (
                           <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -750,65 +747,9 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Fälligkeit</label>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {dueTimeOptions.map(opt => {
-                        const isActive = effectiveSla === opt.minutes
-                        return (
-                          <Button
-                            key={opt.minutes}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className={cn(
-                              'h-9 md:h-8 px-3 text-xs rounded-full',
-                              isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground border-primary',
-                            )}
-                            onClick={() => handleDueTimePick(opt.minutes)}
-                          >
-                            {opt.label}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                    {!manualDueOverride && !scheduledDueAtPreview && (
-                      <p className="text-[11px] text-muted-foreground">Automatisch nach Prioritaet</p>
-                    )}
-                    {scheduledDueAtPreview && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Exakt geplant fuer {scheduledDueAtPreview} Uhr
-                      </p>
-                    )}
-                    <div className="grid gap-2 pt-2 sm:grid-cols-2">
-                      <Input
-                        type="date"
-                        value={scheduledDate}
-                        min={new Date().toISOString().slice(0, 10)}
-                        onChange={(event) => {
-                          setScheduledDate(event.target.value)
-                          setManualDueOverride(true)
-                        }}
-                      />
-                      <Input
-                        type="time"
-                        value={scheduledTime}
-                        onChange={(event) => {
-                          setScheduledTime(event.target.value)
-                          setManualDueOverride(true)
-                        }}
-                      />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Optional: Datum und Uhrzeit setzen, wenn der Rueckruf nicht nur per SLA-Preset geplant werden soll.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
                     <label className="text-sm font-medium">Quelle</label>
                     <Select value={source} onValueChange={v => handleSourceChange(v as CallSource)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {sourceOptions.map(o => (
                           <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -816,25 +757,117 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Angenommen von *</label>
-                    <Select value={agentId} onValueChange={setAgentId}>
-                      <SelectTrigger><SelectValue placeholder="Agent wählen..." /></SelectTrigger>
-                      <SelectContent>
-                        {mockCallAgents.map(a => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.type === 'ki' ? `🤖 ${a.name}` : a.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                </div>
+
+                {/* Angenommen von */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Angenommen von<span className="ml-1 text-destructive">*</span>
+                  </label>
+                  <Select value={agentId} onValueChange={setAgentId}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Agent wählen..." /></SelectTrigger>
+                    <SelectContent>
+                      {mockCallAgents.map(a => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.type === 'ki' ? `🤖 ${a.name}` : a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Fälligkeit */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Fälligkeit</label>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {dueTimeOptions.map(opt => {
+                      const isActive = !showExactSchedule && effectiveSla === opt.minutes
+                      return (
+                        <Button
+                          key={opt.minutes}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            'h-9 md:h-8 px-3.5 text-xs rounded-full',
+                            isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground border-primary',
+                          )}
+                          onClick={() => handleDueTimePick(opt.minutes)}
+                        >
+                          {opt.label}
+                        </Button>
+                      )
+                    })}
                   </div>
+                  {!showExactSchedule && !manualDueOverride && (
+                    <p className="text-[11px] text-muted-foreground">Automatisch nach Priorität · ab jetzt gerechnet</p>
+                  )}
+                  {showExactSchedule ? (
+                    <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium">Genaue Fälligkeit</p>
+                        <button
+                          type="button"
+                          className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                          aria-label="Genaue Fälligkeit entfernen, zurück zur Schnellauswahl"
+                          onClick={() => {
+                            setScheduledDate('')
+                            setScheduledTime('')
+                            setShowExactSchedule(false)
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className="grid gap-2.5 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-medium text-muted-foreground">Datum</label>
+                          <Input
+                            type="date"
+                            value={scheduledDate}
+                            min={new Date().toISOString().slice(0, 10)}
+                            onChange={(event) => {
+                              setScheduledDate(event.target.value)
+                              setManualDueOverride(true)
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-medium text-muted-foreground">Uhrzeit</label>
+                          <Input
+                            type="time"
+                            value={scheduledTime}
+                            onChange={(event) => {
+                              setScheduledTime(event.target.value)
+                              setManualDueOverride(true)
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {scheduledDueAtPreview ? (
+                        <p className="text-[11px] font-medium text-primary">
+                          Fällig am {scheduledDueAtPreview} Uhr
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">
+                          Ersetzt die Schnellauswahl oben — bitte Datum und Uhrzeit angeben.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowExactSchedule(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                    >
+                      <CalendarClock className="h-3.5 w-3.5" />
+                      Genaue Fälligkeit festlegen (Datum &amp; Uhrzeit)
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <Separator />
-
-              {/* === Section 4: Anhänge === */}
+              {/* === Anhänge === */}
               <CallbackAttachmentUploader
                 mode="deferred"
                 stage="creation"
@@ -918,7 +951,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
               {isEmailCapable ? (
                 <div className="w-full space-y-3 pt-1">
                   <p className="text-sm text-muted-foreground">
-                    Die Benachrichtigungs-E-Mail wird automatisch versendet. Falls du die Adresse anpassen oder erneut senden möchtest, kannst du das hier tun.
+                    Prüfe die Empfänger-Adresse und sende die Benachrichtigungs-E-Mail. Du kannst die Adresse bei Bedarf anpassen.
                   </p>
                   <CallbackNotificationRecipientEmailField
                     defaultRecipientEmail={defaultRecipientEmail}
@@ -960,7 +993,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                             ? 'E-Mail-Versand nicht verfügbar'
                             : hasUnsavedRecipientEmailChanges
                               ? 'Speichern & Erinnerung senden'
-                              : 'Erinnerungs-E-Mail erneut senden'}
+                              : 'Erinnerungs-E-Mail senden'}
                     </Button>
                     <Button variant="outline" onClick={() => handleClose(false)} disabled={isSendingEmail}>
                       Später

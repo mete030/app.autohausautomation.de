@@ -3,11 +3,10 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Bot, FileText, Image as ImageIcon, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Paperclip, Shield, Bell, Mail, Send, Trash2 } from 'lucide-react'
+import { Bot, FileText, Image as ImageIcon, Phone, Globe, MessageCircle, PenLine, Clock, ArrowRightLeft, ChevronUp, CheckCircle, Paperclip, Shield, Bell, Mail, Send, Trash2, History } from 'lucide-react'
 import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
 import { cn, formatTimeAgo } from '@/lib/utils'
 import { callSourceConfig, callbackStatusConfig, callbackPriorityConfig, escalationLevelConfig } from '@/lib/constants'
@@ -275,7 +274,9 @@ export function TranscriptSheet({
         className={cn(
           'p-0 flex flex-col',
           isDesktop
-            ? 'sm:max-w-md md:max-w-[480px] lg:max-w-xl xl:max-w-2xl h-full'
+            // Dock below the fixed prototype banner (1.5rem, matches body pt-6)
+            // instead of spanning the full viewport behind it.
+            ? 'sm:max-w-md md:max-w-[480px] lg:max-w-xl xl:max-w-2xl top-6 bottom-0 h-auto rounded-tl-2xl'
             : 'h-[92dvh] rounded-t-2xl border-t',
         )}
       >
@@ -337,65 +338,70 @@ export function TranscriptSheet({
                   <SourceTypeIcon source={callback.source} className="h-3 w-3" />
                   {sourceCfg.label}
                 </span>
-                <span className="text-muted-foreground/40">|</span>
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {formatDuration(callback.callDuration)}
-                </span>
-                <span className="text-muted-foreground/40">|</span>
+                {callback.callDuration ? (
+                  <>
+                    <span className="text-muted-foreground/40">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDuration(callback.callDuration)}
+                    </span>
+                  </>
+                ) : null}
+                <span className="text-muted-foreground/40">·</span>
                 <span>{formatTimeAgo(callback.createdAt)}</span>
               </div>
 
               {/* Anliegen + Notizen */}
-              <div className="text-sm space-y-1">
-                <p>
-                  <span className="font-medium">Anliegen:</span>{' '}
-                  <span className="text-muted-foreground">{callback.reason}</span>
-                </p>
+              <div className="space-y-2.5">
+                <div className="space-y-0.5">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Anliegen</p>
+                  <p className="text-sm">{callback.reason}</p>
+                </div>
                 {callback.notes && (
-                  <p>
-                    <span className="font-medium">Notizen:</span>{' '}
-                    <span className="text-muted-foreground">{callback.notes}</span>
-                  </p>
+                  <div className="space-y-0.5">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Notizen</p>
+                    <p className="text-sm text-muted-foreground">{callback.notes}</p>
+                  </div>
                 )}
               </div>
 
               {/* Completion banner */}
               {isCompleted && callback.completionNotes && (
-                <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2">
-                  <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>{callback.completionNotes}</span>
+                <div className="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400">
+                  <CheckCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="font-medium uppercase tracking-wide text-[10px] text-emerald-700/80 dark:text-emerald-400/80">Ergebnis</p>
+                    <p>{callback.completionNotes}</p>
+                  </div>
                 </div>
               )}
 
               {/* Attachments */}
               {callbackAttachments.length > 0 && (
-                <>
-                  <Separator />
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold flex items-center gap-1.5">
-                      <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
-                      Anhänge
-                      <span className="text-xs font-normal text-muted-foreground">
-                        ({callbackAttachments.length})
-                      </span>
-                    </h4>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                    <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                    Anhänge
+                    <span className="text-xs font-normal text-muted-foreground">
+                      ({callbackAttachments.length})
+                    </span>
+                  </h4>
 
-                    {creationAttachments.length > 0 && (
-                      <AttachmentsList title="Bei Erstellung" attachments={creationAttachments} />
-                    )}
-                    {completionAttachments.length > 0 && (
-                      <AttachmentsList title="Bei Abschluss" attachments={completionAttachments} />
-                    )}
-                  </div>
-                </>
+                  {creationAttachments.length > 0 && (
+                    <AttachmentsList title="Bei Erstellung" attachments={creationAttachments} />
+                  )}
+                  {completionAttachments.length > 0 && (
+                    <AttachmentsList title="Bei Abschluss" attachments={completionAttachments} />
+                  )}
+                </div>
               )}
-
-              <Separator />
 
               {/* Transcript */}
               <div>
-                <h4 className="text-sm font-semibold mb-2">Gespräch / Zusammenfassung</h4>
+                <h4 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+                  <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  Gespräch / Zusammenfassung
+                </h4>
                 {callback.callTranscript ? (
                   <div className="bg-muted/40 rounded-lg p-3 text-sm leading-relaxed whitespace-pre-wrap">
                     {callback.callTranscript}
@@ -407,10 +413,11 @@ export function TranscriptSheet({
 
               {/* Verlauf (History) - combined section, only if content exists */}
               {hasHistory && (
-                <>
-                  <Separator />
                   <div className="space-y-2">
-                    <h4 className="text-sm font-semibold">Verlauf</h4>
+                    <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                      <History className="h-3.5 w-3.5 text-muted-foreground" />
+                      Verlauf
+                    </h4>
                     <div className="relative ml-2 border-l-2 border-muted pl-4 space-y-2.5">
                       {/* Reassignment */}
                       {callback.reassignedFrom && (
@@ -543,7 +550,6 @@ export function TranscriptSheet({
                       })}
                     </div>
                   </div>
-                </>
               )}
             </div>
           </ScrollArea>
@@ -555,7 +561,7 @@ export function TranscriptSheet({
             {!isCompleted && (
               <>
                 {isEmailCapable && (
-                  <div className="space-y-2 rounded-lg border border-dashed px-3 py-2.5">
+                  <div className="space-y-2.5 rounded-lg border bg-muted/30 px-3 py-2.5">
                     <div className="flex flex-col gap-2 text-xs text-muted-foreground md:flex-row md:items-start">
                       <div className="flex items-start gap-2 min-w-0 flex-1">
                         <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
@@ -628,32 +634,32 @@ export function TranscriptSheet({
                     />
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-2 md:flex md:gap-2.5">
+                <div className="flex flex-wrap gap-2">
                   {onReassign && (
-                    <Button variant="outline" className="h-10 md:h-10 md:text-sm md:flex-1" onClick={() => onReassign(callback.id)}>
+                    <Button variant="outline" className="h-10 grow basis-[calc(50%-0.25rem)] md:text-sm" onClick={() => onReassign(callback.id)}>
                       <ArrowRightLeft className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Zuweisen
                     </Button>
                   )}
                   {onEscalateToLevel ? (
-                    <Button variant="outline" className="h-10 md:h-10 md:text-sm md:flex-1" onClick={() => onEscalateToLevel(callback.id)}>
+                    <Button variant="outline" className="h-10 grow basis-[calc(50%-0.25rem)] md:text-sm" onClick={() => onEscalateToLevel(callback.id)}>
                       <Shield className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Eskalieren
                     </Button>
                   ) : onEscalate ? (
-                    <Button variant="outline" className="h-10 md:h-10 md:text-sm md:flex-1" onClick={() => onEscalate(callback.id)}>
+                    <Button variant="outline" className="h-10 grow basis-[calc(50%-0.25rem)] md:text-sm" onClick={() => onEscalate(callback.id)}>
                       <ChevronUp className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Eskalieren
                     </Button>
                   ) : null}
                   {onSetReminder && (
-                    <Button variant="outline" className="h-10 md:h-10 md:text-sm md:flex-1" onClick={() => onSetReminder(callback.id)}>
+                    <Button variant="outline" className="h-10 grow basis-[calc(50%-0.25rem)] md:text-sm" onClick={() => onSetReminder(callback.id)}>
                       <Bell className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Erinnerung
                     </Button>
                   )}
                   {onComplete && (
-                    <Button className="h-10 md:h-10 md:text-sm col-span-2 md:col-span-1 md:flex-1" onClick={() => onComplete(callback.id)}>
+                    <Button className="h-10 grow basis-[calc(50%-0.25rem)] md:text-sm" onClick={() => onComplete(callback.id)}>
                       <CheckCircle className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
                       Erledigt
                     </Button>

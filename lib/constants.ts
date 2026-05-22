@@ -292,10 +292,33 @@ export const mockEmployees: Employee[] = [
 ]
 
 export const mockEscalationRules: EscalationRule[] = [
-  // Stufe 1: Reminder an die zugewiesene Person selbst (kein expliziter Empfänger — nutzt die Zuweisung des Rückrufs).
-  { id: 'rule-1', name: 'Nach 2 Stunden: Reminder an die Person', triggerAfterMinutes: 120, fromLevel: 1, toLevel: 1, notifyChannels: ['app', 'email'], isActive: true },
-  // Stufe 2: LKD (Tobias Lohmüller, Nagold) — Standardempfänger gemäß wackenhut.de/kontakte.
-  { id: 'rule-2', name: 'Nach 4 Stunden: Reminder an LKD/Verkaufsleiter', triggerAfterMinutes: 240, fromLevel: 1, toLevel: 2, notifyChannels: ['app', 'email'], isActive: true, recipientEmployeeId: 'emp-tl' },
-  // Stufe 3: Standortverantwortlicher Nagold (Rainer Leenen) — Standardempfänger gemäß wackenhut.de/kontakte.
-  { id: 'rule-3', name: 'Nach 7 Stunden: Reminder an Standortverantwortlichen', triggerAfterMinutes: 420, fromLevel: 2, toLevel: 3, notifyChannels: ['app', 'email'], isActive: true, recipientEmployeeId: 'emp-rl' },
+  // Stufe 1 → 2: Erste Eskalation an den LKD, 30 Sekunden nachdem der Rückruf
+  // eingestellt und nicht erledigt wurde. Standardmäßig DEAKTIVIERT — die Regel
+  // darf erst eingeschaltet werden, wenn ein Empfänger (E-Mail) hinterlegt ist.
+  // Gilt ausschließlich für echte, in der DB persistierte Rückrufe.
+  {
+    id: 'rule-ldk-30s',
+    name: 'Eskalation an LKD nach 30 Sekunden',
+    triggerAfterMinutes: 1,
+    triggerAfterSeconds: 30,
+    fromLevel: 1,
+    toLevel: 2,
+    notifyChannels: ['app', 'email'],
+    isActive: false,
+    appliesToPersistedOnly: true,
+  },
+  // Stufe 2 → 3: Weitereskalation vom LKD an den Standortverantwortlichen,
+  // 1 Minute nachdem der Rückruf fällig wurde / nicht als erledigt markiert ist.
+  // Ebenfalls standardmäßig DEAKTIVIERT bis ein Empfänger hinterlegt ist.
+  {
+    id: 'rule-standort-1m',
+    name: 'Weitereskalation an Standortverantwortlichen nach 1 Minute',
+    triggerAfterMinutes: 1,
+    triggerAfterSeconds: 60,
+    fromLevel: 2,
+    toLevel: 3,
+    notifyChannels: ['app', 'email'],
+    isActive: false,
+    appliesToPersistedOnly: true,
+  },
 ]
