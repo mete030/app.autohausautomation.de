@@ -5,14 +5,6 @@ import { usePathname } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useHydrated } from '@/hooks/useHydrated'
 import { useIsTablet } from '@/lib/hooks/use-media-query'
 import { navigation } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -32,7 +24,6 @@ export function Header({
   const [darkMode, setDarkMode] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const mobileSearchRef = useRef<HTMLInputElement>(null)
-  const mounted = useHydrated()
   const pathname = usePathname() ?? '/'
   const isTablet = useIsTablet()
 
@@ -127,34 +118,15 @@ export function Header({
           <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
         </Button>
 
-        {/* User Menu */}
-        {mounted ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger className={userMenuTriggerClassName}>
-                <Avatar className="h-6 w-6">
-                <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-medium">
-                    TM
-                  </AvatarFallback>
-                </Avatar>
-              <span className="hidden lg:inline text-sm">Thomas M.</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem className="text-sm">Profil</DropdownMenuItem>
-              <DropdownMenuItem className="text-sm">Einstellungen</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-sm">Abmelden</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <button type="button" className={userMenuTriggerClassName}>
-            <Avatar className="h-6 w-6">
-              <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-medium">
-                TM
-              </AvatarFallback>
-            </Avatar>
-            <span className="hidden lg:inline text-sm">Thomas M.</span>
-          </button>
-        )}
+        {/* User: reine Namensanzeige, keine Interaktion */}
+        <div className={userMenuTriggerClassName}>
+          <Avatar className="h-6 w-6">
+            <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-medium">
+              VR
+            </AvatarFallback>
+          </Avatar>
+          <span className="hidden lg:inline text-sm">Verena Ratti</span>
+        </div>
       </div>
     </header>
 
