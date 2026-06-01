@@ -127,7 +127,7 @@ export function CallbackCompletionPage({ token, viewModel }: CallbackCompletionP
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium">
-                      Ergebnis des Rückrufs
+                      Lösung
                       <span className="ml-1 text-destructive">*</span>
                     </label>
                     <span
