@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { CALLBACK_NOTIFICATION_EMAIL_UNAVAILABLE_MESSAGE } from '@/lib/email/callback-email-config'
 import { getCallbackNotificationEmailServerConfig } from '@/lib/email/callback-email-server-config'
 import { renderEscalationNotificationEmail } from '@/lib/email/render-escalation-notification-email'
+import { resolveAppBaseUrl } from '@/lib/server/app-base-url'
 import {
   CALLBACK_PERSISTENCE_UNAVAILABLE_MESSAGE,
   isCallbackPersistenceConfigured,
@@ -93,7 +94,7 @@ export async function POST(
       recipientEmail: payload.recipientEmail,
       recipientName: payload.recipientName,
     })
-    const completionUrl = new URL('/callback-actions/complete', req.nextUrl.origin)
+    const completionUrl = new URL('/callback-actions/complete', resolveAppBaseUrl(req))
     completionUrl.searchParams.set('token', token)
 
     const email = renderEscalationNotificationEmail({
