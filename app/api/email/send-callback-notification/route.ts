@@ -10,6 +10,13 @@ import {
 import { mockEmployees } from '@/lib/constants'
 import type { Callback } from '@/lib/types'
 
+/**
+ * Fixed recipient for every callback reminder email. All reminders are routed to
+ * this single tester address, no matter which advisor the callback is assigned
+ * to and regardless of any recipient address provided by the client.
+ */
+const FIXED_NOTIFICATION_RECIPIENT_EMAIL = 'v.ratti@wackenhut.de'
+
 const requestSchema = z.object({
   callbackId: z.string().min(1),
   sentBy: z.string().min(1),
@@ -87,13 +94,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { recipientEmail, recipientName } = resolveRecipient(
+    // The recipient name still tracks the assigned advisor (used for the email
+    // greeting), but the recipient address is always forced to the fixed tester
+    // address — any client-provided override is intentionally ignored.
+    const { recipientName } = resolveRecipient(
       callback,
       payload.recipientEmail,
       payload.recipientName,
       emailConfig.fallbackRecipientEmail,
       emailConfig.fallbackRecipientName,
     )
+    const recipientEmail = FIXED_NOTIFICATION_RECIPIENT_EMAIL
 
     if (!recipientEmail) {
       return NextResponse.json(

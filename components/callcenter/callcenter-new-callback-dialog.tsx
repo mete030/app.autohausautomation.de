@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Plus, Search, User, X, Check, Phone, CheckCircle2, Mail, Loader2, CalendarClock } from 'lucide-react'
-import { CallbackNotificationRecipientEmailField } from '@/components/callcenter/callback-notification-recipient-email-field'
 import { CallbackAttachmentUploader, type LocalAttachment } from '@/components/callcenter/callback-attachment-uploader'
 import { cn } from '@/lib/utils'
 import {
@@ -19,7 +18,6 @@ import {
   employeeRoleConfig,
   employeeStatusConfig,
 } from '@/lib/constants'
-import { useCallbackNotificationRecipientEmail } from '@/lib/hooks/use-callback-notification-recipient-email'
 import { useBrowserNotifications } from '@/lib/hooks/use-browser-notifications'
 import {
   markCallbackNotificationActivitySeen,
@@ -52,7 +50,14 @@ interface CreateCallbackPayload {
   dueAt?: string
 }
 
-type DialogStep = 'form' | 'success' | 'emailSent'
+/**
+ * Reminder emails are always routed to this fixed tester address. The matching
+ * constant in the send-callback-notification API route enforces it server-side
+ * as well — this client copy is only used for the optimistic confirmation.
+ */
+const FIXED_NOTIFICATION_RECIPIENT_EMAIL = 'v.ratti@wackenhut.de'
+
+type DialogStep = 'form' | 'success'
 
 interface NewCallbackDialogProps {
   open: boolean
@@ -140,6 +145,9 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
   const [createError, setCreateError] = useState<string | null>(null)
   const [isSendingEmail, setIsSendingEmail] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
+  // Guards the one-shot automatic reminder send so re-renders (and React strict
+  // mode's double effect invocation) can't dispatch duplicate emails.
+  const autoSendTriggeredCallbackIdRef = useRef<string | null>(null)
 
   // Pending attachments selected before the callback is persisted.
   const [pendingAttachments, setPendingAttachments] = useState<LocalAttachment[]>([])
@@ -168,32 +176,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     return scheduledDueAt ? formatDueAtLabel(scheduledDueAt.toISOString()) : null
   }, [scheduledDate, scheduledTime])
 
-  // Determine the assigned employee and their default email — the dialog can
-  // send a reminder email to ANY advisor that has an email on record (no more
-  // hard-coded gating to a single recipient).
-  const assignedEmployeeRecord = useMemo(() => {
-    if (!createdCallback?.assignedEmployeeId) return null
-    return employees.find((e) => e.id === createdCallback.assignedEmployeeId) ?? null
-  }, [createdCallback?.assignedEmployeeId, employees])
-
-  const advisorDefaultEmail = assignedEmployeeRecord?.email ?? null
+  // The reminder email is only sendable once the callback has been persisted.
   const isEmailCapable = Boolean(createdCallback?.isPersisted)
-
-  const {
-    isAvailable: isNotificationEmailAvailable,
-    isLoading: isNotificationEmailAvailabilityLoading,
-    defaultRecipientEmail,
-    draftRecipientEmail,
-    normalizedDraftRecipientEmail,
-    hasUnsavedRecipientEmailChanges,
-    isDraftRecipientEmailValid,
-    setDraftRecipientEmail,
-    unavailableMessage: notificationEmailUnavailableMessage,
-  } = useCallbackNotificationRecipientEmail({
-    enabled: dialogStep === 'success' && isEmailCapable,
-    advisorDefaultEmail,
-    advisorName: createdCallback?.assignedAdvisor ?? null,
-  })
 
   // Group employees by role
   const groupedEmployees = useMemo(() => {
@@ -355,6 +339,7 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     setIsCreatingCallback(false)
     setEmailError(null)
     setIsSendingEmail(false)
+    autoSendTriggeredCallbackIdRef.current = null
     setPendingAttachments([])
     setUploadedCreationAttachments([])
   }
@@ -457,9 +442,8 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
         attachments: [...(cb.attachments ?? []), ...uploaded],
       }
       setCreatedCallback(finalCallback)
-      // Stay on the success step so the user can review/adjust the recipient
-      // address and explicitly send the notification email. The email is no
-      // longer sent automatically — that previously skipped this step.
+      // Move to the success step, which automatically sends the reminder email
+      // to the fixed recipient and then shows that recipient read-only.
       setDialogStep('success')
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'Rückruf konnte nicht erstellt werden.')
@@ -468,33 +452,37 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
     }
   }
 
-  const handleSendEmail = async () => {
-    if (
-      !createdCallback
-      || isNotificationEmailAvailable !== true
-      || !isDraftRecipientEmailValid
-    ) {
-      return
-    }
-
+  const autoSendNotification = useCallback(async (callback: Callback) => {
     setIsSendingEmail(true)
     setEmailError(null)
 
     try {
       const result = await sendCallbackNotificationEmail({
-        callbackId: createdCallback.id,
+        callbackId: callback.id,
         sentBy: currentUser ?? 'System',
-        recipientEmail: normalizedDraftRecipientEmail,
-        recipientName: createdCallback.assignedAdvisor,
+        // The recipient is forced server-side; we pass it through only so the
+        // confirmation can render the correct address immediately.
+        recipientEmail: FIXED_NOTIFICATION_RECIPIENT_EMAIL,
+        recipientName: callback.assignedAdvisor,
       })
-      applyEmailSendResult(createdCallback, result)
-      setDialogStep('emailSent')
+      applyEmailSendResult(callback, result)
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : 'Fehler beim Senden der E-Mail')
     } finally {
       setIsSendingEmail(false)
     }
-  }
+  }, [currentUser, applyEmailSendResult])
+
+  // Automatically send the reminder email once the callback has been persisted —
+  // there is no manual confirmation step anymore.
+  useEffect(() => {
+    if (dialogStep !== 'success') return
+    if (!createdCallback?.isPersisted) return
+    if (autoSendTriggeredCallbackIdRef.current === createdCallback.id) return
+
+    autoSendTriggeredCallbackIdRef.current = createdCallback.id
+    void autoSendNotification(createdCallback)
+  }, [dialogStep, createdCallback, autoSendNotification])
 
   const isValid = customerName.trim() && reason.trim() && assignedAdvisor && agentId
 
@@ -947,83 +935,45 @@ export function NewCallbackDialog({ open, onOpenChange, onCreate, advisorNames, 
                 </div>
               )}
 
-              {/* Email action area */}
+              {/* The reminder email is sent automatically — the recipient is shown read-only. */}
               {isEmailCapable ? (
                 <div className="w-full space-y-3 pt-1">
-                  <p className="text-sm text-muted-foreground">
-                    Prüfe die Empfänger-Adresse und sende die Benachrichtigungs-E-Mail. Du kannst die Adresse bei Bedarf anpassen.
-                  </p>
-                  <CallbackNotificationRecipientEmailField
-                    defaultRecipientEmail={defaultRecipientEmail}
-                    draftRecipientEmail={draftRecipientEmail}
-                    hasUnsavedRecipientEmailChanges={hasUnsavedRecipientEmailChanges}
-                    isDraftRecipientEmailValid={isDraftRecipientEmailValid}
-                    unavailableMessage={notificationEmailUnavailableMessage}
-                    label="Empfänger-E-Mail"
-                    description="Passe die Adresse bei Bedarf an — sie wird mit einem einzigen Klick aktualisiert und die Erinnerung verschickt."
-                    onDraftRecipientEmailChange={setDraftRecipientEmail}
-                    disabled={isSendingEmail}
-                  />
-                  {emailError && (
-                    <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
-                      {emailError}
-                    </p>
-                  )}
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button
-                      onClick={handleSendEmail}
-                      disabled={
-                        isSendingEmail
-                        || isNotificationEmailAvailabilityLoading
-                        || isNotificationEmailAvailable === false
-                        || !isDraftRecipientEmailValid
-                      }
-                      className="gap-1.5"
-                    >
-                      {isSendingEmail || isNotificationEmailAvailabilityLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
+                  {isSendingEmail ? (
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Erinnerungs-E-Mail wird automatisch gesendet...
+                    </div>
+                  ) : sentEmailRecipient ? (
+                    <div className="w-full text-left rounded-lg border border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20 p-3.5 space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                         <Mail className="h-4 w-4" />
-                      )}
-                      {isSendingEmail
-                        ? 'Erinnerungs-E-Mail wird gesendet...'
-                        : isNotificationEmailAvailabilityLoading
-                          ? 'E-Mail-Verfügbarkeit wird geprüft...'
-                          : isNotificationEmailAvailable === false
-                            ? 'E-Mail-Versand nicht verfügbar'
-                            : hasUnsavedRecipientEmailChanges
-                              ? 'Speichern & Erinnerung senden'
-                              : 'Erinnerungs-E-Mail senden'}
-                    </Button>
-                    <Button variant="outline" onClick={() => handleClose(false)} disabled={isSendingEmail}>
-                      Später
-                    </Button>
-                  </div>
+                        Erinnerungs-E-Mail gesendet
+                      </div>
+                      <div className="flex items-center justify-between gap-4 text-sm">
+                        <span className="text-muted-foreground">Empfänger</span>
+                        <span className="font-medium text-right">{sentEmailRecipient.email}</span>
+                      </div>
+                    </div>
+                  ) : emailError ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
+                        {emailError}
+                      </p>
+                      <Button
+                        onClick={() => { void autoSendNotification(createdCallback) }}
+                        variant="outline"
+                        className="gap-1.5"
+                      >
+                        <Mail className="h-4 w-4" />
+                        Erneut senden
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
-            </div>
-          </>
-        ) : dialogStep === 'emailSent' ? (
-          <>
-            <DialogHeader className="sr-only">
-              <DialogTitle>E-Mail gesendet</DialogTitle>
-              <DialogDescription>Die Benachrichtigungs-E-Mail wurde erfolgreich versendet.</DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col items-center text-center py-6 space-y-4">
-              <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30">
-                <Mail className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">E-Mail erfolgreich gesendet</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Die Benachrichtigung wurde an {sentEmailRecipient?.name ?? createdCallback?.assignedAdvisor} versendet.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Empfänger: <span className="font-medium text-foreground">{sentEmailRecipient?.email ?? normalizedDraftRecipientEmail}</span>
-                </p>
-              </div>
+
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => handleClose(false)}>
+                <Button variant="outline" onClick={() => handleClose(false)} disabled={isSendingEmail}>
                   Schließen
                 </Button>
               </div>
