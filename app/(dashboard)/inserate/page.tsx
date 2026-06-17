@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useListingStore } from '@/lib/stores/listing-store'
+import { getMarketSignal } from '@/lib/market-analysis'
 import { formatCurrency } from '@/lib/utils'
 import { priceCategoryConfig } from '@/lib/constants'
-import { Plus, Eye, MessageSquare, Star } from 'lucide-react'
+import { Plus, Eye, MessageSquare, Star, TrendingDown, Check } from 'lucide-react'
 import Link from 'next/link'
 import type { ListingStatus } from '@/lib/types'
 
@@ -85,6 +86,7 @@ export default function InseratePage() {
             {filterListings(tab).map(listing => {
               const priceConfig = priceCategoryConfig[listing.priceCategory]
               const previewImage = listing.images[0]
+              const marketSignal = getMarketSignal(listing)
               return (
                 <Link key={listing.id} href={`/inserate/${listing.id}`}>
                   <Card className="hover:shadow-md transition-shadow cursor-pointer mb-3">
@@ -118,6 +120,17 @@ export default function InseratePage() {
                             <Badge variant="outline" className={`${priceConfig.bg} ${priceConfig.color} border-0 text-[10px]`}>
                               {priceConfig.label}
                             </Badge>
+                            {marketSignal.abpreisung ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                <TrendingDown className="h-3 w-3" />
+                                Abpreisung empfohlen
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                <Check className="h-3 w-3" />
+                                Marktgerecht
+                              </span>
+                            )}
                             {listing.aiGenerated && (
                               <span className="flex items-center gap-1">
                                 <Star className="h-3 w-3 text-amber-500" />

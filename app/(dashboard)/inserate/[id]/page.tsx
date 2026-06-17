@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
+import { MarketComparisonCard } from '@/components/inserate/MarketComparisonCard'
 import {
   ArrowLeft, Eye, MessageSquare, Star, ExternalLink, Upload, Loader2,
   CheckCircle2, Send, Gauge, Calendar, Fuel, Cog, Settings2,
@@ -485,6 +486,9 @@ export default function InseratDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </CardContent>
           </Card>
+
+          {/* Marktabgleich · mobile.de — tagesaktuelles Preis-Radar */}
+          <MarketComparisonCard listing={listing} />
 
           {/* Actions */}
           <Card>

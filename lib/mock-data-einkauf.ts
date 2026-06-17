@@ -61,6 +61,47 @@ export interface MobileDeComparable {
   priceCategory: PriceCategory
 }
 
+// ─── Verwertungskanal (Endkunde vs. Auktion/Remarketing) ─────────────────────
+
+export type VerwertungChannel = 'endkunde' | 'auktion'
+export type EinkaufCondition = 'sehr_gut' | 'gut' | 'maengel' | 'unfallschaden'
+export type RuleSeverity = 'hard' | 'soft'
+
+export interface RoutingRule {
+  id: 'R1' | 'R2' | 'R3' | 'R4' | 'R5' | 'R6'
+  label: string
+  severity: RuleSeverity
+  triggered: boolean
+  actualText: string // z.B. "145.800 km" / "9 Jahre (EZ 06/2017)"
+  routesTo: VerwertungChannel | null
+}
+
+export interface ChannelDecision {
+  channel: VerwertungChannel // Engine-Empfehlung
+  recommendedChannel: VerwertungChannel // == channel vor Override
+  confidence: number
+  score: number // Summe der weichen Risiko-Punkte
+  rationale: string // einzeiliges deutsches Urteil
+  triggeredRules: RoutingRule[] // alle bewertet; .triggered markiert ausgelöste
+}
+
+export interface AuctionBenchmark {
+  platform: 'BCA' | 'Autobid.de' | 'MB Remarketing'
+  medianHammer: number
+  lowest: number
+  highest: number
+  count: number
+  note: string
+}
+
+export interface AuctionResult {
+  expectedHammerPrice: number // Ø erwarteter Zuschlag (Aggregat)
+  spread: number // expectedHammerPrice − sweetSpot
+  spreadPercent: number // Marge auf Auktionserlös (einstellig)
+  avgDaysToHammer: number
+  benchmarks: AuctionBenchmark[]
+}
+
 export interface EinkaufPricingResult {
   recommendedMin: number
   recommendedMax: number
@@ -91,6 +132,12 @@ export interface EinkaufPricingResult {
     percentile: number
     label: string
   }
+
+  // Verwertungskanal — fehlt bei Bestandsdaten => 'endkunde'. Der `auction`-Block
+  // trägt die B2B-Kennzahlen; mobileDe/historical/dat tragen im Auktionsfall
+  // B2B-kohärente Werte (gleiche Render-Komponenten, kanal-bewusste Labels).
+  channel?: VerwertungChannel
+  auction?: AuctionResult
 }
 
 // ─── Mock: VIN-Decode ────────────────────────────────────────────────────────
@@ -338,5 +385,287 @@ export const einkaufPricingResult: EinkaufPricingResult = {
   marketPosition: {
     percentile: 35,
     label: 'Unter Markt',
+  },
+
+  channel: 'endkunde',
+}
+
+// ─── Kanal-Labels (eine Quelle für alle kanal-bewussten Texte) ───────────────
+
+export const channelLabels = {
+  endkunde: {
+    tag: 'Endkundenfahrzeug',
+    accent: 'emerald' as const,
+    sellLabel: 'Erwart. Verkaufspreis',
+    spreadLabel: 'Erwart. Marge',
+    standzeitLabel: 'Ø Standzeit',
+    histTitle: 'Eigene Verkaufshistorie',
+    source3Title: 'mobile.de',
+    source3Sub: 'Median-Preis',
+    datTitle: 'DAT / Schwacke',
+    datSub: 'Bereinigter Marktwert',
+    cta: 'Inserat erstellen',
+    nextLabel: 'Verkauf',
+  },
+  auktion: {
+    tag: 'Auktions-/Remarketing-Fahrzeug',
+    accent: 'slate' as const,
+    sellLabel: 'Erwart. Auktionserlös',
+    spreadLabel: 'Erwart. Spread',
+    standzeitLabel: 'Ø Tage bis Zuschlag',
+    histTitle: 'Eigene Auktions-Einlieferungen',
+    source3Title: 'B2B-Remarketing',
+    source3Sub: 'Ø Zuschlag',
+    datTitle: 'Händler-Einkaufswert',
+    datSub: 'Bereinigter Händler-EK',
+    cta: 'Auktion einliefern',
+    nextLabel: 'Zuschlag',
+  },
+} as const
+
+// ─── Routing-Engine (deterministisch; liest live mileage + condition) ────────
+
+const ROUTING_REFERENCE_YEAR = 2026 // Demo-Bezugsjahr (entspricht currentDate)
+
+export function evaluateChannel(
+  v: EinkaufVehicleData,
+  mileage: number,
+  condition: EinkaufCondition,
+  vorhalter: number,
+): ChannelDecision {
+  const ezYear = Number(v.firstRegistration.split('/')[1]) || v.modelYear
+  const age = ROUTING_REFERENCE_YEAR - ezYear
+
+  const rules: RoutingRule[] = [
+    {
+      id: 'R1',
+      label: 'Alter > 5 Jahre',
+      severity: 'hard',
+      triggered: age > 5,
+      actualText: `${age} Jahre (EZ ${v.firstRegistration})`,
+      routesTo: 'auktion',
+    },
+    {
+      id: 'R2',
+      label: 'Laufleistung > 120.000 km',
+      severity: 'hard',
+      triggered: mileage > 120000,
+      actualText: `${mileage.toLocaleString('de-DE')} km`,
+      routesTo: 'auktion',
+    },
+    {
+      id: 'R3',
+      label: 'Unfallschaden',
+      severity: 'hard',
+      triggered: condition === 'unfallschaden',
+      actualText: condition === 'unfallschaden' ? 'gemeldet' : 'keiner',
+      routesTo: 'auktion',
+    },
+    {
+      id: 'R4',
+      label: 'Mängel vorhanden',
+      severity: 'soft',
+      triggered: condition === 'maengel',
+      actualText: condition === 'maengel' ? 'Steinschlag, Hagel' : '—',
+      routesTo: null,
+    },
+    {
+      id: 'R5',
+      label: '> 3 Vorhalter',
+      severity: 'soft',
+      triggered: vorhalter > 3,
+      actualText: `${vorhalter} Vorhalter`,
+      routesTo: null,
+    },
+    {
+      id: 'R6',
+      label: 'Alter × km-Kombi (> 3 J. & > 90.000 km)',
+      severity: 'soft',
+      triggered: age > 3 && mileage > 90000,
+      actualText: `${age} J. · ${mileage.toLocaleString('de-DE')} km`,
+      routesTo: null,
+    },
+  ]
+
+  const hard = rules.some((r) => r.severity === 'hard' && r.triggered)
+  const score = rules.filter((r) => r.severity === 'soft' && r.triggered).length
+  const channel: VerwertungChannel = hard || score >= 2 ? 'auktion' : 'endkunde'
+  const confidence = hard ? 96 : score >= 2 ? 81 : 92
+  const rationale =
+    channel === 'auktion'
+      ? 'Alter und Laufleistung liegen außerhalb des Endkunden-Profils — Verwertung über B2B-Händlerauktion empfohlen.'
+      : 'Junges, marktgängiges Fahrzeug — Endkundengeschäft mit voller Handelsmarge empfohlen.'
+
+  return { channel, recommendedChannel: channel, confidence, score, rationale, triggeredRules: rules }
+}
+
+// ─── Mock: Auktions-GLC (Demo-VIN B) ─────────────────────────────────────────
+
+export const einkaufVinMockAuktion: EinkaufVehicleData = {
+  vin: 'W1N2530841A442178',
+  make: 'Mercedes-Benz',
+  model: 'GLC 250 4MATIC',
+  modelYear: 2017,
+  firstRegistration: '06/2017',
+  color: 'Obsidianschwarz metallic',
+  fuelType: 'Benzin',
+  transmission: '9G-TRONIC',
+  power: 211,
+  displacement: 1991,
+  mileage: 145800,
+  serienausstattung: [
+    'LED High Performance Scheinwerfer',
+    'Klimaautomatik THERMATIC',
+    'Rückfahrkamera',
+    'Park-Assistent mit PARKTRONIC',
+    'Sitzheizung vorne',
+    'Tempomat mit Limiter',
+  ],
+  sonderausstattung: [
+    'Navigation Garmin MAP PILOT',
+    'Spiegel-Paket',
+    'Anhängerkupplung',
+    'Sitzkomfort-Paket',
+  ],
+  imageUrl: mercedesMedia.glcExterior,
+}
+
+// ─── Mock: Auktions-Historie (B2B-Einlieferungen) ────────────────────────────
+
+export const einkaufAuktionHistoricalSales: HistoricalSale[] = [
+  {
+    id: 'auk-1',
+    date: '2026-05-12',
+    vehicleDescription: 'GLC 220 d 4MATIC, EZ 04/2016, 158.000 km · BCA Hamburg',
+    mileageAtSale: 158000,
+    salePrice: 11800,
+    purchasePrice: 11000,
+    daysOnLot: 4,
+    margin: 800,
+    marginPercent: 6.8,
+  },
+  {
+    id: 'auk-2',
+    date: '2026-04-03',
+    vehicleDescription: 'GLC 250 4MATIC, EZ 02/2017, 142.000 km · Autobid.de',
+    mileageAtSale: 142000,
+    salePrice: 13100,
+    purchasePrice: 12300,
+    daysOnLot: 6,
+    margin: 800,
+    marginPercent: 6.1,
+  },
+  {
+    id: 'auk-3',
+    date: '2026-02-18',
+    vehicleDescription: 'GLC 220 d 4MATIC, EZ 03/2015, 172.000 km · BCA München',
+    mileageAtSale: 172000,
+    salePrice: 11400,
+    purchasePrice: 10700,
+    daysOnLot: 3,
+    margin: 700,
+    marginPercent: 6.1,
+  },
+  {
+    id: 'auk-4',
+    date: '2025-12-09',
+    vehicleDescription: 'GLC 250 4MATIC, EZ 01/2018, 128.000 km · MB Remarketing',
+    mileageAtSale: 128000,
+    salePrice: 13600,
+    purchasePrice: 12600,
+    daysOnLot: 8,
+    margin: 1000,
+    marginPercent: 7.4,
+  },
+  {
+    id: 'auk-5',
+    date: '2025-10-21',
+    vehicleDescription: 'GLC 300 4MATIC, EZ 09/2017, 135.000 km · Autobid.de',
+    mileageAtSale: 135000,
+    salePrice: 12800,
+    purchasePrice: 11900,
+    daysOnLot: 5,
+    margin: 900,
+    marginPercent: 7.0,
+  },
+]
+
+// ─── Mock: DAT-Händler-Einkaufswert (Auktion) ────────────────────────────────
+
+export const einkaufAuktionDATValuation: DATValuation = {
+  baseValue: 14900,
+  adjustments: [
+    { label: 'Kilometerlaufleistung', amount: -2100, reason: '145.800 km — deutlich über Klassenschnitt' },
+    { label: 'Fahrzeugalter (9,0 Jahre)', amount: -900, reason: 'Wertverfall X253-Generation' },
+    { label: 'Hagelschaden (leicht)', amount: -500, reason: 'Dach/Motorhaube, behebbar' },
+    { label: 'Steinschlag Windschutzscheibe', amount: -300, reason: 'Austausch erforderlich' },
+    { label: '4 Vorhalter', amount: -300, reason: 'Vermarktungsrisiko Endkunde' },
+    { label: 'Basis-Ausstattung', amount: -200, reason: 'Wenig werthaltige Extras' },
+    { label: 'Allgemeiner Zustand', amount: 400, reason: 'Technik einwandfrei, Scheckheft gepflegt' },
+  ],
+  totalAdjustment: -3900,
+  adjustedValue: 11000,
+  valuationDate: '2026-06-15',
+  condition: 'Befriedigend (Note 3)',
+  schwackeId: 'MB-GLC-250-4M-X253-2017',
+}
+
+// ─── Mock: B2B-Auktionsreferenzen ────────────────────────────────────────────
+
+export const einkaufAuctionBenchmarks: AuctionBenchmark[] = [
+  { platform: 'BCA', medianHammer: 12900, lowest: 10900, highest: 14200, count: 6, note: 'Hammer-Median der letzten 6 Auktionen' },
+  { platform: 'Autobid.de', medianHammer: 12400, lowest: 11100, highest: 13700, count: 23, note: 'Median aus 23 Online-Geboten' },
+  { platform: 'MB Remarketing', medianHammer: 13100, lowest: 12200, highest: 13900, count: 1, note: 'Werks-Rücknahme-Indikation, abzgl. Logistik 350 €' },
+]
+
+const einkaufAuktionComparables: MobileDeComparable[] = [
+  { id: 'auk-c1', title: 'GLC 220 d 4MATIC · BCA Hamburg', price: 10900, mileage: 172000, year: 2015, firstRegistration: '03/2015', location: 'BCA Hamburg', dealerName: 'BCA', daysListed: 2, priceCategory: 'zufriedenstellend' },
+  { id: 'auk-c2', title: 'GLC 220 d 4MATIC · Autobid.de', price: 11400, mileage: 158000, year: 2016, firstRegistration: '04/2016', location: 'Autobid.de', dealerName: 'Autobid.de', daysListed: 1, priceCategory: 'gut' },
+  { id: 'auk-c3', title: 'GLC 250 4MATIC · BCA München', price: 12700, mileage: 141000, year: 2017, firstRegistration: '02/2017', location: 'BCA München', dealerName: 'BCA', daysListed: 3, priceCategory: 'gut' },
+  { id: 'auk-c4', title: 'GLC 300 4MATIC · MB Remarketing', price: 13100, mileage: 135000, year: 2017, firstRegistration: '09/2017', location: 'MB Remarketing', dealerName: 'Mercedes-Benz Remarketing', daysListed: 1, priceCategory: 'gut' },
+  { id: 'auk-c5', title: 'GLC 250 4MATIC · Autobid.de', price: 13600, mileage: 128000, year: 2018, firstRegistration: '01/2018', location: 'Autobid.de', dealerName: 'Autobid.de', daysListed: 2, priceCategory: 'sehr_gut' },
+  { id: 'auk-c6', title: 'GLC 300 4MATIC · BCA Frankfurt', price: 14200, mileage: 121000, year: 2018, firstRegistration: '05/2018', location: 'BCA Frankfurt', dealerName: 'BCA', daysListed: 2, priceCategory: 'sehr_gut' },
+]
+
+// ─── Mock: Aggregiertes Auktions-Ergebnis ────────────────────────────────────
+
+export const einkaufAuktionPricingResult: EinkaufPricingResult = {
+  recommendedMin: 11200,
+  recommendedMax: 12400,
+  sweetSpot: 11800,
+  confidence: 88,
+
+  historical: {
+    averageSalePrice: 12540,
+    averagePurchasePrice: 11700,
+    averageMargin: 840,
+    averageMarginPercent: 6.7,
+    averageDaysOnLot: 5.2,
+    sales: einkaufAuktionHistoricalSales,
+  },
+
+  dat: einkaufAuktionDATValuation,
+
+  mobileDe: {
+    medianPrice: 12700,
+    averagePrice: 12650,
+    lowestPrice: 10900,
+    highestPrice: 14200,
+    count: 6,
+    comparables: einkaufAuktionComparables,
+  },
+
+  marketPosition: {
+    percentile: 55,
+    label: 'Im Markt (B2B)',
+  },
+
+  channel: 'auktion',
+  auction: {
+    expectedHammerPrice: 12700,
+    spread: 900,
+    spreadPercent: 7.1,
+    avgDaysToHammer: 5,
+    benchmarks: einkaufAuctionBenchmarks,
   },
 }

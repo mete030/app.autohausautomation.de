@@ -376,6 +376,55 @@ export interface Listing {
   dataSheet?: ListingDataSheet
 }
 
+// ---- Marktabgleich / mobile.de Preis-Radar ----
+// Tagesaktueller Abgleich vergleichbarer Fahrzeuge im Umkreis (Dummy-Daten).
+
+export type RecommendationAction = 'senken' | 'leicht_senken' | 'halten'
+
+export interface PriceRecommendation {
+  action: RecommendationAction
+  suggestedPrice: number
+  deltaEuro: number // suggested - current (negativ = Abpreisung)
+  reasons: string[]
+  targetCategory: PriceCategory // Preisbewertung, die mit dem empfohlenen Preis erreicht wird
+}
+
+export interface MarketComparable {
+  id: string
+  title: string
+  price: number
+  kilometerstand: number
+  erstzulassung: string // MM/YYYY
+  stadt: string
+  distanzKm: number
+  standzeitTage: number
+  haendler: string
+  deltaZuDir: number // comparable.price - eigener Preis
+}
+
+export interface MarketAnalysis {
+  standort: string
+  radiusKm: number
+  comparableCount: number
+  priceMin: number
+  priceMedian: number
+  priceMax: number
+  priceAvg: number
+  guenstigerAlsProzent: number // eigener Preis günstiger als X % der Fahrzeuge im Umkreis
+  standzeitTage: number
+  avgStandzeitMarkt: number
+  priceCategory: PriceCategory
+  deltaZuMedian: number // eigener Preis - Median
+  // Platzierung bei Sortierung nach Preis (aufsteigend): Platz 1 = günstigstes Fahrzeug
+  totalListings: number // alle Vergleichsfahrzeuge inkl. eigenem Inserat
+  currentRank: number // aktuelle Platzierung
+  projectedRank: number // Platzierung nach Übernahme der Empfehlung
+  recommendation: PriceRecommendation
+  comparables: MarketComparable[]
+  tickPrices: number[] // Preise aller Vergleichsfahrzeuge für den Verteilungs-Strip
+  aktualisiertUm: string // z.B. "06:14"
+}
+
 // ---- Nachrichten-Zentrale (Problem 4) ----
 
 export type MessageChannel = 'whatsapp' | 'email' | 'sms' | 'mobile_de' | 'messenger' | 'instagram' | 'telegram' | 'website' | 'website_chatbot'

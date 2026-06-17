@@ -23,14 +23,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { priceCategoryConfig } from '@/lib/constants'
 import {
   einkaufVinMock,
+  einkaufVinMockAuktion,
   einkaufPricingResult as PRICING_RESULT,
+  einkaufAuktionPricingResult as PRICING_RESULT_AUKTION,
+  evaluateChannel,
+  channelLabels,
   type EinkaufVehicleData,
   type EinkaufPricingResult,
+  type ChannelDecision,
+  type VerwertungChannel,
 } from '@/lib/mock-data-einkauf'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { einkaufPackageVehicles, type EinkaufPackageVehicle } from '@/lib/mock-data-paket'
+import { SingleVehicleResult } from './_components/SingleVehicleResult'
+import { RoutingBanner } from './_components/RoutingBanner'
+import { ListenplatzRechner } from './_components/ListenplatzRechner'
+import { PaketIdentify } from './_components/PaketIdentify'
+import { PaketConfirm } from './_components/PaketConfirm'
+import { PaketResult } from './_components/PaketResult'
+import { formatCurrency } from '@/lib/utils'
 import {
   ScanLine,
   Loader2,
@@ -38,10 +50,6 @@ import {
   Car,
   Settings2,
   Sparkles,
-  Clock,
-  ShieldCheck,
-  Globe,
-  BarChart3,
   RefreshCw,
   Check,
   Hash,
@@ -53,21 +61,13 @@ import {
   Pencil,
   Rocket,
   TrendingUp,
+  Gavel,
+  Layers,
 } from 'lucide-react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type InputMode = 'choose' | 'vin' | 'kba' | 'manual'
+type InputMode = 'choose' | 'vin' | 'kba' | 'manual' | 'paket'
 type EinkaufStep = 'identify' | 'vehicle_confirm' | 'computing' | 'results'
 type LookupStatus = 'idle' | 'loading' | 'found'
 type Condition = 'sehr_gut' | 'gut' | 'maengel' | 'unfallschaden'
@@ -167,6 +167,17 @@ export default function EinkaufPage() {
   const [pricingResult, setPricingResult] = useState<EinkaufPricingResult | null>(null)
   const [resultsView, setResultsView] = useState<ResultsView>('empfehlung')
 
+  // Verwertungskanal (Endkunde vs. Auktion/Remarketing)
+  const [channelDecision, setChannelDecision] = useState<ChannelDecision | null>(null)
+  const [overrideChannel, setOverrideChannel] = useState<VerwertungChannel | null>(null)
+  const [overrideNote, setOverrideNote] = useState('')
+
+  // Listenplatz-Rechner: gewählter Inseratspreis (Feature 1)
+  const [listPrice, setListPrice] = useState<number>(PRICING_RESULT.mobileDe.medianPrice)
+
+  // Paket-/Konvolut-Bewertung (Feature 3)
+  const [paketVehicles, setPaketVehicles] = useState<EinkaufPackageVehicle[]>([])
+
   // Inserat creation modal
   const [showInseratModal, setShowInseratModal] = useState(false)
   const [inseratPrice, setInseratPrice] = useState<string>('')
@@ -178,14 +189,29 @@ export default function EinkaufPage() {
   const models = selectedMake ? Object.keys(MAKE_MODEL_TREE[selectedMake] || {}) : []
   const variants = selectedMake && selectedModel ? (MAKE_MODEL_TREE[selectedMake]?.[selectedModel] || []) : []
 
+  // Effektiver Verwertungskanal (Engine-Empfehlung, ggf. manuell übersteuert)
+  const recommendedChannel: VerwertungChannel = channelDecision?.recommendedChannel ?? 'endkunde'
+  const channel: VerwertungChannel = overrideChannel ?? recommendedChannel
+  const isAuction = channel === 'auktion'
+  const L = channelLabels[channel]
+  const effectiveSellPrice = pricingResult
+    ? isAuction
+      ? pricingResult.auction?.expectedHammerPrice ?? pricingResult.mobileDe.medianPrice
+      : pricingResult.mobileDe.medianPrice
+    : 0
+
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   const resolveVehicle = () => {
     setLookupStatus('loading')
+    const isAuktionVin = vin.trim().toUpperCase() === einkaufVinMockAuktion.vin
+    const mock = isAuktionVin ? einkaufVinMockAuktion : einkaufVinMock
     setTimeout(() => {
-      setVehicleData(einkaufVinMock)
-      setSelectedEquipment([...einkaufVinMock.sonderausstattung])
-      setMileage(inputMode === 'manual' && manualMileage ? Number(manualMileage) : einkaufVinMock.mileage)
+      setVehicleData(mock)
+      setSelectedEquipment([...mock.sonderausstattung])
+      // Der Auktions-GLC hat leichte Mängel (Hagel/Steinschlag) — passend zur DAT-Bewertung.
+      setCondition(isAuktionVin ? 'maengel' : 'gut')
+      setMileage(inputMode === 'manual' && manualMileage ? Number(manualMileage) : mock.mileage)
       setLookupStatus('found')
       setStep('vehicle_confirm')
     }, 2200)
@@ -197,28 +223,84 @@ export default function EinkaufPage() {
     )
   }
 
+  // ── Paket-/Konvolut-Flow ──
+  const handleResolvePaket = () => {
+    setLookupStatus('loading')
+    setTimeout(() => {
+      setPaketVehicles(einkaufPackageVehicles.map((v) => ({ ...v })))
+      setLookupStatus('found')
+      setStep('vehicle_confirm')
+    }, 2200)
+  }
+
+  const handleCreatePaketInserat = (vehicle: EinkaufPackageVehicle) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(
+        'inserat-prefill',
+        JSON.stringify({
+          source: 'einkauf',
+          vin: vehicle.id,
+          suggestedPrice: String(vehicle.expectedSalePrice),
+          mileage: vehicle.mileage,
+          condition: vehicle.condition,
+          equipment: [],
+          channel: vehicle.channel,
+          createdAt: Date.now(),
+        }),
+      )
+    }
+    router.push('/inserate/neu')
+  }
+
   const handleComputePricing = () => {
+    const paket = inputMode === 'paket'
+    const isAuktionVin = vehicleData?.vin === einkaufVinMockAuktion.vin
     setStep('computing')
     setComputeProgress(0)
-    setComputePhase('Historische Verkaufsdaten werden analysiert...')
+    setComputePhase(
+      paket
+        ? `${paketVehicles.length} Fahrzeuge werden identifiziert...`
+        : 'Historische Verkaufsdaten werden analysiert...',
+    )
 
     setTimeout(() => {
       setComputeProgress(35)
-      setComputePhase('DAT/Schwacke-Bewertung wird abgerufen...')
+      setComputePhase(paket ? 'Historische Verkaufsdaten je Fahrzeug werden analysiert...' : 'DAT/Schwacke-Bewertung wird abgerufen...')
     }, 1000)
 
     setTimeout(() => {
       setComputeProgress(70)
-      setComputePhase('mobile.de Marktdaten werden verglichen...')
+      setComputePhase(
+        paket
+          ? 'Markt- & Verwertungskanal je Fahrzeug werden bestimmt...'
+          : isAuktionVin
+            ? 'B2B-Auktionsbenchmarks (BCA / Autobid.de / MB Remarketing) werden verglichen...'
+            : 'mobile.de Marktdaten werden verglichen...',
+      )
     }, 2000)
 
     setTimeout(() => {
       setComputeProgress(100)
-      setComputePhase('Preisempfehlung wird erstellt...')
+      setComputePhase(paket ? 'Paket-Kalkulation wird erstellt...' : 'Verwertungskanal & Preisempfehlung werden erstellt...')
     }, 2800)
 
     setTimeout(() => {
-      setPricingResult(PRICING_RESULT)
+      if (paket) {
+        setStep('results')
+        return
+      }
+      const result = isAuktionVin ? PRICING_RESULT_AUKTION : PRICING_RESULT
+      const decision = evaluateChannel(
+        vehicleData ?? einkaufVinMock,
+        mileage,
+        condition,
+        isAuktionVin ? 4 : 1,
+      )
+      setPricingResult(result)
+      setChannelDecision(decision)
+      setOverrideChannel(null)
+      setOverrideNote('')
+      setListPrice(result.mobileDe.medianPrice)
       setStep('results')
     }, 3500)
   }
@@ -244,16 +326,20 @@ export default function EinkaufPage() {
     setComputePhase('')
     setPricingResult(null)
     setResultsView('empfehlung')
+    setChannelDecision(null)
+    setOverrideChannel(null)
+    setOverrideNote('')
+    setListPrice(PRICING_RESULT.mobileDe.medianPrice)
+    setPaketVehicles([])
     setShowInseratModal(false)
     setInseratPrice('')
     setCreatingInserat(false)
     setInseratCreated(false)
   }
 
-  const handleOpenInseratModal = () => {
-    if (pricingResult) {
-      setInseratPrice(String(pricingResult.mobileDe.medianPrice))
-    }
+  const handleOpenInseratModal = (price?: number) => {
+    const seed = price ?? effectiveSellPrice
+    if (seed) setInseratPrice(String(Math.round(seed)))
     setInseratCreated(false)
     setShowInseratModal(true)
   }
@@ -273,10 +359,11 @@ export default function EinkaufPage() {
         JSON.stringify({
           source: 'einkauf',
           vin: vehicleData.vin,
-          suggestedPrice: inseratPrice || String(pricingResult.mobileDe.medianPrice),
+          suggestedPrice: inseratPrice || String(Math.round(effectiveSellPrice)),
           mileage,
           condition,
           equipment: selectedEquipment,
+          channel,
           createdAt: Date.now(),
         }),
       )
@@ -288,6 +375,7 @@ export default function EinkaufPage() {
     setInputMode(mode)
     setLookupStatus('idle')
     setVehicleData(null)
+    setPaketVehicles([])
     setStep('identify')
   }
 
@@ -296,19 +384,6 @@ export default function EinkaufPage() {
   const canLookupVin = vin.length >= 5 && lookupStatus === 'idle'
   const canLookupKba = hsn.length === 4 && tsn.length >= 3 && lookupStatus === 'idle'
   const canLookupManual = !!selectedMake && !!selectedModel && !!selectedVariant && lookupStatus === 'idle'
-
-  // ─── Chart data ────────────────────────────────────────────────────────────
-
-  const chartData = pricingResult
-    ? [
-        { source: 'Historisch (Ø EK)', value: pricingResult.historical.averagePurchasePrice },
-        { source: 'DAT bereinigt', value: pricingResult.dat.adjustedValue },
-        { source: 'mobile.de Median', value: pricingResult.mobileDe.medianPrice },
-        { source: 'Empfehlung (EK)', value: pricingResult.sweetSpot },
-      ]
-    : []
-
-  const chartColors = ['#2563eb', '#10b981', '#f97316', '#7c3aed']
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -328,7 +403,7 @@ export default function EinkaufPage() {
           <p className="text-center text-muted-foreground text-sm mb-8">
             Wie möchten Sie das Fahrzeug identifizieren?
           </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <button
               onClick={() => setInputMode('vin')}
               className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
@@ -367,6 +442,20 @@ export default function EinkaufPage() {
               <h3 className="font-semibold mb-1.5">Manuelle Auswahl</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Marke, Modell und Variante manuell auswählen
+              </p>
+              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+            </button>
+
+            <button
+              onClick={() => setInputMode('paket')}
+              className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                <Layers className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold mb-1.5">Paket bewerten</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Konvolut / Drehscheibe — mehrere Fahrzeuge gemeinsam bewerten
               </p>
               <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
             </button>
@@ -412,7 +501,23 @@ export default function EinkaufPage() {
               <List className="h-3.5 w-3.5" />
               Manuell
             </button>
+            <button
+              onClick={() => switchMode('paket')}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all sm:flex-none ${
+                inputMode === 'paket'
+                  ? 'bg-card shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Paket
+            </button>
           </div>
+
+          {/* ── Paket Mode ── */}
+          {inputMode === 'paket' && (
+            <PaketIdentify onRecognize={handleResolvePaket} recognizing={lookupStatus === 'loading'} />
+          )}
 
           {/* ── VIN Mode ── */}
           {inputMode === 'vin' && (
@@ -455,18 +560,29 @@ export default function EinkaufPage() {
                   </div>
                 )}
                 {lookupStatus === 'idle' && (
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="space-y-2.5">
                     <p className="text-xs text-muted-foreground">
                       17-stellige Fahrgestellnummer eingeben. Zu finden im Fahrzeugschein (Feld E) oder an der Windschutzscheibe.
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setVin(einkaufVinMock.vin)}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2 shrink-0"
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      Demo-VIN nutzen
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground">Demo-Fahrzeuge:</span>
+                      <button
+                        type="button"
+                        onClick={() => setVin(einkaufVinMock.vin)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/60 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        Endkunden-GLC · 2023 · 32.400 km
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVin(einkaufVinMockAuktion.vin)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-300/60 bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-300"
+                      >
+                        <Gavel className="h-3 w-3" />
+                        Auktions-GLC · 2017 · 145.800 km
+                      </button>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -689,8 +805,15 @@ export default function EinkaufPage() {
         </div>
       )}
 
+      {/* ═══ Step 2 (Paket): Erkannte Fahrzeuge bestätigen ═══ */}
+      {step === 'vehicle_confirm' && inputMode === 'paket' && (
+        <div className="animate-in fade-in slide-in-from-top-3 duration-500">
+          <PaketConfirm vehicles={paketVehicles} onChange={setPaketVehicles} onCompute={handleComputePricing} />
+        </div>
+      )}
+
       {/* ═══ Step 2: Vehicle Confirmation + Equipment ═══ */}
-      {step === 'vehicle_confirm' && vehicleData && (
+      {step === 'vehicle_confirm' && inputMode !== 'paket' && vehicleData && (
         <div className="space-y-5 animate-in fade-in slide-in-from-top-3 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Left: Vehicle Summary */}
@@ -844,8 +967,16 @@ export default function EinkaufPage() {
         </Card>
       )}
 
+      {/* ═══ Step 4 (Paket): Paket-Ergebnis ═══ */}
+      {step === 'results' && inputMode === 'paket' && (
+        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h2 className="text-lg font-semibold">Ergebnis: Paket-Bewertung</h2>
+          <PaketResult vehicles={paketVehicles} onReset={handleReset} onCreateInserat={handleCreatePaketInserat} />
+        </div>
+      )}
+
       {/* ═══ Step 4: Results ═══ */}
-      {step === 'results' && pricingResult && (
+      {step === 'results' && inputMode !== 'paket' && pricingResult && (
         <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* View toggle */}
           <div className="flex items-center justify-between">
@@ -874,306 +1005,34 @@ export default function EinkaufPage() {
             </div>
           </div>
 
-          {/* ── Recommendation View ── */}
-          {resultsView === 'empfehlung' && (
-            <div className="space-y-5 animate-in fade-in duration-300">
-              {/* Hero Price Card */}
-              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
-                <CardContent className="p-6 sm:p-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-6 items-center">
-                    <div className="text-center lg:text-left">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                        Empfohlener Einkaufspreis
-                      </p>
-                      <div className="flex items-baseline gap-2 justify-center lg:justify-start">
-                        <span className="text-4xl sm:text-5xl font-bold tracking-tight tabular-nums">
-                          {formatCurrency(pricingResult.sweetSpot)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Bandbreite: {formatCurrency(pricingResult.recommendedMin)} &ndash; {formatCurrency(pricingResult.recommendedMax)}
-                      </p>
-                      <div className="flex items-center gap-2 mt-3 justify-center lg:justify-start">
-                        <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                          {pricingResult.confidence}% Konfidenz
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {pricingResult.marketPosition.label}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <Separator orientation="vertical" className="hidden lg:block h-24" />
-                    <Separator className="lg:hidden" />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Erwart. Verkaufspreis</p>
-                        <p className="text-xl font-bold tabular-nums mt-0.5">
-                          {formatCurrency(pricingResult.mobileDe.medianPrice)}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Erwart. Marge</p>
-                        <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-                          {formatCurrency(pricingResult.mobileDe.medianPrice - pricingResult.sweetSpot)}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Ø Marge (historisch)</p>
-                        <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-                          {pricingResult.historical.averageMarginPercent.toFixed(1)}%
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Ø Standzeit</p>
-                        <p className="text-xl font-bold tabular-nums mt-0.5">
-                          {pricingResult.historical.averageDaysOnLot.toFixed(0)} Tage
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Three Source Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="border-border/60 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
-                        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium">Historische Daten</span>
-                        <p className="text-[10px] text-muted-foreground">{pricingResult.historical.sales.length} Verkäufe</p>
-                      </div>
-                    </div>
-                    <div className="text-2xl font-bold tabular-nums">
-                      {formatCurrency(pricingResult.historical.averageSalePrice)}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Ø Verkaufspreis</p>
-                    <div className="mt-3 pt-2.5 border-t border-border/40">
-                      <span className="text-xs text-muted-foreground">
-                        Ø {pricingResult.historical.averageDaysOnLot.toFixed(0)} Tage Standzeit
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/60 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
-                        <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium">DAT / Schwacke</span>
-                        <p className="text-[10px] text-muted-foreground">Offiziell</p>
-                      </div>
-                    </div>
-                    <div className="text-2xl font-bold tabular-nums">
-                      {formatCurrency(pricingResult.dat.adjustedValue)}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Bereinigter Marktwert</p>
-                    <div className="mt-3 pt-2.5 border-t border-border/40">
-                      <span className="text-xs text-muted-foreground">
-                        Basis {formatCurrency(pricingResult.dat.baseValue)} + {pricingResult.dat.adjustments.length} Korrekturen
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/60 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center">
-                        <Globe className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium">mobile.de</span>
-                        <p className="text-[10px] text-muted-foreground">{pricingResult.mobileDe.count} Angebote</p>
-                      </div>
-                    </div>
-                    <div className="text-2xl font-bold tabular-nums">
-                      {formatCurrency(pricingResult.mobileDe.medianPrice)}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Median-Preis</p>
-                    <div className="mt-3 pt-2.5 border-t border-border/40">
-                      <span className="text-xs text-muted-foreground">
-                        {formatCurrency(pricingResult.mobileDe.lowestPrice)} &ndash; {formatCurrency(pricingResult.mobileDe.highestPrice)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Chart */}
-              <Card className="border-border/60">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                    Preisvergleich
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="h-[280px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={chartData}
-                      layout="vertical"
-                      margin={{ left: 10, right: 30, top: 10, bottom: 10 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                      <XAxis
-                        type="number"
-                        tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                        tick={{ fontSize: 11 }}
-                        domain={[35000, 60000]}
-                      />
-                      <YAxis type="category" dataKey="source" tick={{ fontSize: 11 }} width={130} />
-                      <RechartsTooltip formatter={(v) => formatCurrency(Number(v))} labelStyle={{ fontWeight: 600 }} />
-                      <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={32}>
-                        {chartData.map((_, index) => (
-                          <Cell key={index} fill={chartColors[index]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
+          {/* ── Verwertungskanal-Banner (spannt Empfehlung + Detailanalyse) ── */}
+          {channelDecision && (
+            <RoutingBanner
+              decision={channelDecision}
+              overrideChannel={overrideChannel}
+              onOverrideChange={setOverrideChannel}
+              note={overrideNote}
+              onNoteChange={setOverrideNote}
+            />
           )}
 
-          {/* ── Detail View ── */}
-          {resultsView === 'details' && (
-            <div className="space-y-5 animate-in fade-in duration-300">
-              {/* Historical */}
-              <Card className="border-border/60">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    Eigene Verkaufshistorie ({pricingResult.historical.sales.length} vergleichbare Fahrzeuge)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-left text-muted-foreground">
-                          <th className="pb-2 pr-4 font-medium">Datum</th>
-                          <th className="pb-2 pr-4 font-medium">Fahrzeug</th>
-                          <th className="pb-2 pr-4 font-medium text-right">km</th>
-                          <th className="pb-2 pr-4 font-medium text-right">EK</th>
-                          <th className="pb-2 pr-4 font-medium text-right">VK</th>
-                          <th className="pb-2 pr-4 font-medium text-right">Marge</th>
-                          <th className="pb-2 font-medium text-right">Tage</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pricingResult.historical.sales.map(sale => (
-                          <tr key={sale.id} className="border-b border-border/40">
-                            <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">{formatDate(sale.date)}</td>
-                            <td className="py-2.5 pr-4 text-xs max-w-[200px] truncate">{sale.vehicleDescription}</td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">{sale.mileageAtSale.toLocaleString('de-DE')}</td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">{formatCurrency(sale.purchasePrice)}</td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">{formatCurrency(sale.salePrice)}</td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
-                              {formatCurrency(sale.margin)} ({sale.marginPercent.toFixed(1)}%)
-                            </td>
-                            <td className="py-2.5 text-right tabular-nums">{sale.daysOnLot}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 border-border font-medium">
-                          <td className="pt-2.5 pr-4">Durchschnitt</td>
-                          <td className="pt-2.5 pr-4" />
-                          <td className="pt-2.5 pr-4 text-right tabular-nums">&mdash;</td>
-                          <td className="pt-2.5 pr-4 text-right tabular-nums">{formatCurrency(pricingResult.historical.averagePurchasePrice)}</td>
-                          <td className="pt-2.5 pr-4 text-right tabular-nums">{formatCurrency(pricingResult.historical.averageSalePrice)}</td>
-                          <td className="pt-2.5 pr-4 text-right tabular-nums text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                            {formatCurrency(pricingResult.historical.averageMargin)} ({pricingResult.historical.averageMarginPercent.toFixed(1)}%)
-                          </td>
-                          <td className="pt-2.5 text-right tabular-nums">{pricingResult.historical.averageDaysOnLot.toFixed(0)}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* DAT */}
-              <Card className="border-border/60">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    DAT / Schwacke Bewertung
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  <div className="flex justify-between items-center text-sm py-2.5 border-b border-border/40">
-                    <span className="font-medium">Grundwert (DAT)</span>
-                    <span className="font-bold tabular-nums">{formatCurrency(pricingResult.dat.baseValue)}</span>
-                  </div>
-                  {pricingResult.dat.adjustments.map((adj, i) => (
-                    <div key={i} className="flex justify-between items-center text-sm py-2 border-b border-border/20">
-                      <div>
-                        <span>{adj.label}</span>
-                        <p className="text-[10px] text-muted-foreground">{adj.reason}</p>
-                      </div>
-                      <span className={`font-medium tabular-nums shrink-0 ml-4 ${adj.amount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                        {adj.amount >= 0 ? '+' : ''}{formatCurrency(adj.amount)}
-                      </span>
-                    </div>
-                  ))}
-                  <Separator className="my-2" />
-                  <div className="flex justify-between items-center text-sm py-2.5">
-                    <span className="font-semibold">Bereinigter Marktwert</span>
-                    <span className="text-lg font-bold tabular-nums">{formatCurrency(pricingResult.dat.adjustedValue)}</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground pt-1">
-                    Zustand: {pricingResult.dat.condition} &middot; Schwacke-ID: {pricingResult.dat.schwackeId} &middot; Stand: {formatDate(pricingResult.dat.valuationDate)}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* mobile.de */}
-              <Card className="border-border/60">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                    mobile.de Vergleichsangebote ({pricingResult.mobileDe.count})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {pricingResult.mobileDe.comparables.map(comp => {
-                      const cat = priceCategoryConfig[comp.priceCategory]
-                      return (
-                        <div key={comp.id} className="rounded-lg border border-border/60 p-3 hover:shadow-sm transition-shadow">
-                          <p className="text-sm font-medium line-clamp-2 mb-2 min-h-[2.5rem]">{comp.title}</p>
-                          <div className="text-xl font-bold tabular-nums mb-1">{formatCurrency(comp.price)}</div>
-                          <div className="flex flex-wrap gap-x-1.5 text-[10px] text-muted-foreground">
-                            <span>{comp.mileage.toLocaleString('de-DE')} km</span>
-                            <span>&middot;</span>
-                            <span>EZ {comp.firstRegistration}</span>
-                            <span>&middot;</span>
-                            <span>{comp.location}</span>
-                          </div>
-                          <div className="mt-2.5 flex items-center justify-between">
-                            <Badge variant="secondary" className={`${cat.bg} ${cat.color} text-[10px]`}>
-                              {cat.label}
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground">{comp.daysListed}d online</span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          {/* ── Einzelfahrzeug-Ergebnis (Empfehlung + Detailanalyse) ── */}
+          {/* Listenplatz-Rechner nur für Endkunden-Fahrzeuge (eine B2B-Auktion hat keinen mobile.de-Listenplatz) */}
+          <SingleVehicleResult
+            result={pricingResult}
+            resultsView={resultsView}
+            channel={channel}
+            empfehlungInsert={
+              channel === 'endkunde' ? (
+                <ListenplatzRechner
+                  listPrice={listPrice}
+                  onListPriceChange={setListPrice}
+                  sweetSpot={pricingResult.sweetSpot}
+                  onInserat={(p) => handleOpenInseratModal(p)}
+                />
+              ) : undefined
+            }
+          />
 
           {/* Action Bar */}
           <Card className="border-border/60 bg-gradient-to-r from-muted/40 via-muted/20 to-primary/[0.04]">
@@ -1181,7 +1040,7 @@ export default function EinkaufPage() {
               <div className="min-w-0">
                 <p className="text-sm font-medium">Nächster Schritt</p>
                 <p className="text-xs text-muted-foreground">
-                  Ankauf zu {formatCurrency(pricingResult.sweetSpot)} &middot; Verkauf zu ~{formatCurrency(pricingResult.mobileDe.medianPrice)} &middot; Marge {formatCurrency(pricingResult.mobileDe.medianPrice - pricingResult.sweetSpot)}
+                  Ankauf zu {formatCurrency(pricingResult.sweetSpot)} &middot; {L.nextLabel} zu ~{formatCurrency(effectiveSellPrice)} &middot; {L.spreadLabel} {formatCurrency(effectiveSellPrice - pricingResult.sweetSpot)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 sm:flex-nowrap">
@@ -1194,11 +1053,11 @@ export default function EinkaufPage() {
                   Ankauf einleiten
                 </Button>
                 <Button
-                  onClick={handleOpenInseratModal}
+                  onClick={() => handleOpenInseratModal()}
                   className="shrink-0 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-500/20"
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Inserat erstellen
+                  {isAuction ? <Gavel className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {L.cta}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -1209,17 +1068,17 @@ export default function EinkaufPage() {
 
       {/* ═══ Floating Action Button (FAB) — only on results step ═══ */}
       {/* Positioned to avoid overlap with the global voice mic button */}
-      {step === 'results' && pricingResult && !showInseratModal && (
+      {step === 'results' && inputMode !== 'paket' && pricingResult && !showInseratModal && (
         <button
-          onClick={handleOpenInseratModal}
+          onClick={() => handleOpenInseratModal()}
           className="group fixed right-3 bottom-[calc(var(--mobile-float-offset,1rem)+4rem)] z-40 flex items-center gap-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3.5 text-sm font-semibold text-white shadow-xl shadow-indigo-500/30 ring-1 ring-white/10 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/40 hover:scale-[1.03] active:scale-[0.98] animate-in fade-in slide-in-from-bottom-4 sm:right-[5.25rem] sm:bottom-6"
-          aria-label="Inserat aus dieser Bewertung erstellen"
+          aria-label={`${L.cta} aus dieser Bewertung`}
         >
           <span className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-60" />
           <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
-            <Sparkles className="h-4 w-4" />
+            {isAuction ? <Gavel className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
           </span>
-          <span className="relative">Inserat erstellen</span>
+          <span className="relative">{L.cta}</span>
           <ArrowRight className="relative h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
         </button>
       )}
@@ -1309,7 +1168,7 @@ export default function EinkaufPage() {
                       />
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-                      Basis: mobile.de Median ({formatCurrency(pricingResult.mobileDe.medianPrice)}) &middot; Erwartete Marge bei EK {formatCurrency(pricingResult.sweetSpot)}: <span className="text-emerald-600 dark:text-emerald-400 font-medium">{formatCurrency(Number(inseratPrice || 0) - pricingResult.sweetSpot)}</span>
+                      Basis: {isAuction ? 'Ø Zuschlag' : 'mobile.de Median'} ({formatCurrency(effectiveSellPrice)}) &middot; Erwartete {isAuction ? 'Spread' : 'Marge'} bei EK {formatCurrency(pricingResult.sweetSpot)}: <span className="text-emerald-600 dark:text-emerald-400 font-medium">{formatCurrency(Number(inseratPrice || 0) - pricingResult.sweetSpot)}</span>
                     </p>
                   </div>
 

@@ -115,12 +115,14 @@ export const channelConfig = {
   website_chatbot: { label: 'Website Chatbot',  color: 'bg-teal-500',   textColor: 'text-white' },
 } as const
 
+// Labels = mobile.de-Wording (Preisbewertung). Dark-Mode-Textfarben ergänzt,
+// damit die Badges im Dark Mode ausreichend Kontrast haben.
 export const priceCategoryConfig = {
-  sehr_gut: { label: 'Sehr gut', color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-  gut: { label: 'Gut', color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20' },
-  zufriedenstellend: { label: 'Zufriedenstellend', color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-  erhoht: { label: 'Erhöht', color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/20' },
-  stark_erhoht: { label: 'Stark erhöht', color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20' },
+  sehr_gut: { label: 'Sehr guter Preis', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+  gut: { label: 'Guter Preis', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20' },
+  zufriedenstellend: { label: 'Fairer Preis', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+  erhoht: { label: 'Erhöhter Preis', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+  stark_erhoht: { label: 'Hoher Preis', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20' },
 } as const
 
 export const kycStatusConfig = {
