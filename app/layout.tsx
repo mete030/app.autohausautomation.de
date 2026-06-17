@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { PrototypeIndicator } from "@/components/layout/prototype-indicator"
 
@@ -39,6 +40,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased pt-6`}>
         {children}
         <PrototypeIndicator />
+        <Analytics />
       </body>
     </html>
   )
