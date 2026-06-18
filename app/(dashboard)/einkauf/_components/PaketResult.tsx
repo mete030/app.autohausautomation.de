@@ -15,6 +15,7 @@ import {
   evaluatePackageBundle,
   allocateBundle,
   paketVerdictConfig,
+  CONDITION_DAT_LABEL,
   type EinkaufPackageVehicle,
 } from '@/lib/mock-data-paket'
 import { formatCurrency } from '@/lib/utils'
@@ -42,6 +43,9 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
   // ── Drill-down into a single vehicle ──
   if (drillIndex !== null && vehicles[drillIndex]) {
     const v = vehicles[drillIndex]
+    // Zustand der (ggf. bearbeiteten) Liste in die Detailbewertung spiegeln —
+    // ohne das geteilte Mock-Objekt zu mutieren.
+    const detail = { ...v.detail, dat: { ...v.detail.dat, condition: CONDITION_DAT_LABEL[v.condition] } }
     return (
       <div className="space-y-5 animate-in fade-in duration-300">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -84,7 +88,7 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
             </p>
           </div>
         </div>
-        <SingleVehicleResult result={v.detail} resultsView={drillView} channel={v.channel} />
+        <SingleVehicleResult result={detail} resultsView={drillView} channel={v.channel} />
         <div className="flex justify-end">
           <Button
             onClick={() => onCreateInserat(v)}

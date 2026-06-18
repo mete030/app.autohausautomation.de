@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -199,6 +199,41 @@ export default function EinkaufPage() {
       ? pricingResult.auction?.expectedHammerPrice ?? pricingResult.mobileDe.medianPrice
       : pricingResult.mobileDe.medianPrice
     : 0
+
+  // ─── Browser-Zurück = Schritt zurück im Assistenten (statt Tab verlassen) ────
+  // Die Einkaufsmaske ist ein Single-URL-Assistent; ohne diesen Guard würde der
+  // Zurück-Button die ganze Seite verlassen (z.B. zurück zu /inserate).
+  const stepRef = useRef(step)
+  const backGuardRef = useRef(false)
+
+  useEffect(() => {
+    stepRef.current = step
+  }, [step])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const inFlow = inputMode !== 'choose'
+    if (inFlow && !backGuardRef.current) {
+      window.history.pushState({ einkaufGuard: true }, '')
+      backGuardRef.current = true
+    } else if (!inFlow) {
+      backGuardRef.current = false
+    }
+  }, [inputMode, step])
+
+  useEffect(() => {
+    const onPop = () => {
+      if (!backGuardRef.current) return // kein aktiver Flow → Seite normal verlassen
+      backGuardRef.current = false // dieser Guard-Eintrag ist verbraucht
+      const s = stepRef.current
+      if (s === 'results' || s === 'computing') setStep('vehicle_confirm')
+      else if (s === 'vehicle_confirm') setStep('identify')
+      else setInputMode('choose')
+      // Der Install-Effekt setzt bei Bedarf einen neuen Guard.
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 

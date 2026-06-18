@@ -68,6 +68,15 @@ export const PAKET_GRENZWERTIG_PCT = 10
 const round = (n: number) => Math.round(n)
 const pct = (margin: number, vk: number) => (vk ? Math.round((margin / vk) * 1000) / 10 : 0)
 
+// Zustand (subjektiv) → DAT-Notenstufe — eine Quelle, damit Liste und
+// Detailbewertung denselben Zustand zeigen.
+export const CONDITION_DAT_LABEL: Record<EinkaufCondition, string> = {
+  sehr_gut: 'Sehr gut (Note 1)',
+  gut: 'Gut (Note 2)',
+  maengel: 'Befriedigend (Note 3)',
+  unfallschaden: 'Mangelhaft (Note 4)',
+}
+
 // ─── Generator für vereinfachte Einzelfahrzeug-Detailergebnisse ──────────────
 
 function makeQuickDetail(o: {
@@ -79,8 +88,9 @@ function makeQuickDetail(o: {
   vk: number
   confidence: number
   channel: VerwertungChannel
+  condition: EinkaufCondition
 }): EinkaufPricingResult {
-  const { model, ez, year, mileage, sweetSpot, vk, confidence, channel } = o
+  const { model, ez, year, mileage, sweetSpot, vk, confidence, channel, condition } = o
   const isAuction = channel === 'auktion'
 
   const sales: HistoricalSale[] = [0, 1, 2].map((i) => {
@@ -151,7 +161,7 @@ function makeQuickDetail(o: {
       totalAdjustment,
       adjustedValue: datBase + totalAdjustment,
       valuationDate: '2026-06-15',
-      condition: isAuction ? 'Befriedigend (Note 3)' : 'Gut (Note 2)',
+      condition: CONDITION_DAT_LABEL[condition],
       schwackeId: `MB-${model.replace(/\s+/g, '-')}-${year}`,
     },
     mobileDe: {
@@ -197,7 +207,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     firstRegistration: '04/2023',
     fuelType: 'Benzin',
     mileage: 38000,
-    condition: 'gut',
+    condition: 'sehr_gut',
     equipmentSummary: 'AMG Line · LED · Kamera',
     imageUrl: mercedesMedia.glcFrontLeftLot,
     sweetSpot: 35000,
@@ -208,7 +218,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     channelReason: 'Jung (2023) & 38.000 km — volle Handelsmarge im Endkundengeschäft.',
     daysOnLot: 21,
     simplified: true,
-    detail: makeQuickDetail({ model: 'GLC 200 4MATIC', ez: '04/2023', year: 2023, mileage: 38000, sweetSpot: 35000, vk: 41400, confidence: 89, channel: 'endkunde' }),
+    detail: makeQuickDetail({ model: 'GLC 200 4MATIC', ez: '04/2023', year: 2023, mileage: 38000, sweetSpot: 35000, vk: 41400, confidence: 89, channel: 'endkunde', condition: 'sehr_gut' }),
   },
   {
     id: 'pkg-2',
@@ -228,7 +238,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     channelReason: 'EZ 2022 & 64.000 km — innerhalb des Endkunden-Profils.',
     daysOnLot: 25,
     simplified: true,
-    detail: makeQuickDetail({ model: 'GLC 220 d 4MATIC', ez: '09/2022', year: 2022, mileage: 64000, sweetSpot: 38000, vk: 45000, confidence: 88, channel: 'endkunde' }),
+    detail: makeQuickDetail({ model: 'GLC 220 d 4MATIC', ez: '09/2022', year: 2022, mileage: 64000, sweetSpot: 38000, vk: 45000, confidence: 88, channel: 'endkunde', condition: 'gut' }),
   },
   {
     id: 'pkg-3',
@@ -257,7 +267,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     firstRegistration: '03/2019',
     fuelType: 'Diesel',
     mileage: 138000,
-    condition: 'gut',
+    condition: 'maengel',
     equipmentSummary: 'Basis · Navi · AHK',
     imageUrl: mercedesMedia.glcRearRightLot,
     sweetSpot: 17000,
@@ -268,7 +278,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     channelReason: 'Alter 7 J. (EZ 2019) & 138.000 km → Pflicht-Routing Auktion (R1 + R2).',
     daysOnLot: 6,
     simplified: true,
-    detail: makeQuickDetail({ model: 'GLC 220 d 4MATIC', ez: '03/2019', year: 2019, mileage: 138000, sweetSpot: 17000, vk: 18300, confidence: 84, channel: 'auktion' }),
+    detail: makeQuickDetail({ model: 'GLC 220 d 4MATIC', ez: '03/2019', year: 2019, mileage: 138000, sweetSpot: 17000, vk: 18300, confidence: 84, channel: 'auktion', condition: 'maengel' }),
   },
 ]
 
