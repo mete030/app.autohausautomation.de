@@ -8,18 +8,14 @@ import {
   Clock,
   ChevronDown,
   Check,
+  RotateCcw,
   Inbox,
-  Car as CarIcon,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { formatTimeAgo, formatDateTime } from '@/lib/utils'
+import { cn, formatTimeAgo, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  kiCategoryConfig,
-  kiStatusConfig,
-} from '@/lib/ki-rezeptionist/ki-reception-config'
-import type { KiReceptionCallDto } from '@/lib/ki-rezeptionist/types'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { kiCategoryConfig, kiStatusConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
+import type { KiReceptionCallDto, KiReceptionCategory } from '@/lib/ki-rezeptionist/types'
 
 type FilterMode = 'offen' | 'erledigt' | 'alle'
 
@@ -83,25 +79,24 @@ export default function KiRezeptionistPageClient() {
     }
   }, [calls])
 
-  const markDone = useCallback(
-    async (id: string) => {
-      setBusyId(id)
-      try {
-        const res = await fetch(`/api/ki-rezeptionist/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'erledigt', completedBy: 'Dashboard' }),
-        })
-        if (res.ok) {
-          const { call } = await res.json()
-          setCalls((prev) => prev.map((c) => (c.id === id ? call : c)))
-        }
-      } finally {
-        setBusyId(null)
+  const toggleDone = useCallback(async (id: string, done: boolean) => {
+    setBusyId(id)
+    try {
+      const res = await fetch(`/api/ki-rezeptionist/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          done ? { status: 'erledigt', completedBy: 'Dashboard' } : { status: 'offen' },
+        ),
+      })
+      if (res.ok) {
+        const { call } = await res.json()
+        setCalls((prev) => prev.map((c) => (c.id === id ? call : c)))
       }
-    },
-    [],
-  )
+    } finally {
+      setBusyId(null)
+    }
+  }, [])
 
   return (
     <div className="space-y-4 md:space-y-5">
@@ -183,8 +178,8 @@ export default function KiRezeptionistPageClient() {
               call={call}
               expanded={expandedId === call.id}
               busy={busyId === call.id}
-              onToggle={() => setExpandedId(expandedId === call.id ? null : call.id)}
-              onMarkDone={() => void markDone(call.id)}
+              onToggleExpand={() => setExpandedId(expandedId === call.id ? null : call.id)}
+              onToggleDone={() => void toggleDone(call.id, call.status !== 'erledigt')}
             />
           ))}
         </div>
@@ -204,67 +199,154 @@ function KpiCard({ label, value, accent }: { label: string; value: number; accen
   )
 }
 
+/** Things/Linear-Stil Erledigt-Toggle: leerer Kreis → Hover ✓ → grün erledigt. */
+function CompletionToggle({
+  done,
+  busy,
+  onToggle,
+}: {
+  done: boolean
+  busy: boolean
+  onToggle: () => void
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
+          aria-label={done ? 'Als offen markieren' : 'Als erledigt markieren'}
+          className={cn(
+            'group/cb relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border transition-all',
+            done
+              ? 'border-emerald-500 bg-emerald-500 text-white'
+              : 'border-muted-foreground/30 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40',
+            busy && 'opacity-50',
+          )}
+        >
+          <Check
+            strokeWidth={3}
+            className={cn(
+              'h-4 w-4 transition-opacity',
+              done
+                ? 'opacity-100'
+                : 'text-emerald-500 opacity-0 group-hover/cb:opacity-100',
+            )}
+          />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="text-xs">
+        {done ? 'Wieder öffnen' : 'Als erledigt markieren'}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function CategoryChip({ category, dimmed }: { category: KiReceptionCategory; dimmed?: boolean }) {
+  const cat = kiCategoryConfig[category]
+  const Icon = cat.icon
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
+        dimmed ? 'bg-muted text-muted-foreground' : cat.color,
+      )}
+    >
+      <Icon className="h-3 w-3" />
+      {cat.label}
+    </span>
+  )
+}
+
 function CallRow({
   call,
   expanded,
   busy,
-  onToggle,
-  onMarkDone,
+  onToggleExpand,
+  onToggleDone,
 }: {
   call: KiReceptionCallDto
   expanded: boolean
   busy: boolean
-  onToggle: () => void
-  onMarkDone: () => void
+  onToggleExpand: () => void
+  onToggleDone: () => void
 }) {
   const cat = kiCategoryConfig[call.category]
-  const status = kiStatusConfig[call.status]
-  const CatIcon = cat.icon ?? CarIcon
   const duration = formatDuration(call.callDurationSec)
   const isDone = call.status === 'erledigt'
+  const inProgress = call.status === 'in_bearbeitung'
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-      {/* Row header */}
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/40 md:px-4"
-      >
-        <span
-          className={cn('flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg', cat.color)}
-        >
-          <CatIcon className="h-[18px] w-[18px]" />
-        </span>
+    <div
+      className={cn(
+        'overflow-hidden rounded-xl border border-border/60 bg-card transition-all',
+        isDone ? 'opacity-65' : 'hover:border-border',
+      )}
+    >
+      {/* Row */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5 md:gap-3 md:px-4 md:py-3">
+        <CompletionToggle done={isDone} busy={busy} onToggle={onToggleDone} />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="truncate font-medium">{call.customerName}</span>
-            <Badge variant="secondary" className={cn('hidden sm:inline-flex', cat.color)}>
-              {cat.label}
-            </Badge>
+        {/* Klickbarer Mittelteil → Details aufklappen */}
+        <button type="button" onClick={onToggleExpand} className="min-w-0 flex-1 text-left">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span
+              className={cn(
+                'truncate font-medium',
+                isDone && 'text-muted-foreground line-through decoration-muted-foreground/40',
+              )}
+            >
+              {call.customerName}
+            </span>
+            <CategoryChip category={call.category} dimmed={isDone} />
+            {inProgress && (
+              <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', kiStatusConfig.in_bearbeitung.color)}>
+                In Bearbeitung
+              </span>
+            )}
           </div>
-          <p className="truncate text-[13px] text-muted-foreground">
-            {call.summary || 'Keine Zusammenfassung'}
+          <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+            {call.summary || 'Kein Anliegen erkannt'}
           </p>
-        </div>
+        </button>
 
-        <div className="hidden flex-shrink-0 flex-col items-end gap-1 sm:flex">
-          <Badge variant="secondary" className={status.color}>
-            {status.label}
-          </Badge>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        {/* Rechte Aktionen */}
+        <div className="flex flex-shrink-0 items-center gap-1 md:gap-1.5">
+          <span className="hidden items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:flex">
             <Clock className="h-3 w-3" />
             {formatTimeAgo(call.receivedAt)}
           </span>
-        </div>
 
-        <ChevronDown
-          className={cn(
-            'h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform',
-            expanded && 'rotate-180',
+          {call.customerPhone && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={`tel:${call.customerPhone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Zurückrufen"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Phone className="h-[18px] w-[18px]" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">Zurückrufen</TooltipContent>
+            </Tooltip>
           )}
-        />
-      </button>
+
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-label={expanded ? 'Zuklappen' : 'Details'}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
+          </button>
+        </div>
+      </div>
 
       {/* Expanded detail */}
       {expanded && (
@@ -319,17 +401,24 @@ function CallRow({
                 </a>
               </Button>
             )}
-            {!isDone && (
-              <Button size="sm" onClick={onMarkDone} disabled={busy}>
+            {!isDone ? (
+              <Button size="sm" onClick={onToggleDone} disabled={busy}>
                 <Check className="h-4 w-4" />
                 {busy ? 'Wird gespeichert …' : 'Als erledigt markieren'}
               </Button>
-            )}
-            {isDone && call.completedAt && (
-              <span className="text-xs text-muted-foreground">
-                Erledigt {formatTimeAgo(call.completedAt)}
-                {call.completedBy ? ` · ${call.completedBy}` : ''}
-              </span>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" onClick={onToggleDone} disabled={busy}>
+                  <RotateCcw className="h-4 w-4" />
+                  Wieder öffnen
+                </Button>
+                {call.completedAt && (
+                  <span className="text-xs text-muted-foreground">
+                    Erledigt {formatTimeAgo(call.completedAt)}
+                    {call.completedBy ? ` · ${call.completedBy}` : ''}
+                  </span>
+                )}
+              </>
             )}
           </div>
         </div>
