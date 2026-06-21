@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
+import { Prisma } from '@prisma/client'
 import { isCallbackPersistenceConfigured } from '@/lib/server/callback-persistence-config'
 import { parseFamulorPayload } from '@/lib/server/famulor-webhook'
 import { upsertKiReceptionCallFromWebhook } from '@/lib/server/ki-reception-records'
@@ -8,15 +10,27 @@ export const runtime = 'nodejs'
 // Webhook-Daten dürfen nicht gecacht werden.
 export const dynamic = 'force-dynamic'
 
+// Famulor-Payloads sind klein; größere ablehnen (DoS + Datenminimierung).
+const MAX_BODY_BYTES = 1_000_000
+
+/** Konstantzeit-Vergleich des Secrets (Art. 32 DSGVO). */
+function secretsMatch(provided: string | null, expected: string): boolean {
+  if (!provided) return false
+  const a = Buffer.from(provided)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
+}
+
 /**
  * Famulor → KI-Rezeptionist Webhook.
  *
- * Auth: gemeinsamer Schlüssel als `?key=<SECRET>` (oder Header
- * `x-webhook-secret`), abgeglichen mit FAMULOR_WEBHOOK_SECRET.
+ * Auth: gemeinsamer Schlüssel bevorzugt als Header `x-webhook-secret`,
+ * ersatzweise als `?key=` (Famulor erlaubt aktuell nur eine URL).
  *
- * Verhalten: Der rohe Payload wird IMMER geloggt und (bei Erfolg) als
- * rawPayload gespeichert — so ist der Endpoint selbst-dokumentierend und wir
- * sehen nach dem ersten echten Anruf die exakte Famulor-Struktur.
+ * WICHTIG (AVV/DSGVO): Es werden NUR Metadaten geloggt — niemals PII.
+ * Der vollständige Roh-Payload liegt ausschließlich in der DB-Spalte
+ * `rawPayload` (EU, fra1, im AVV-Geltungsbereich).
  */
 export async function POST(req: NextRequest) {
   const expectedSecret = process.env.FAMULOR_WEBHOOK_SECRET?.trim()
@@ -29,35 +43,73 @@ export async function POST(req: NextRequest) {
   }
 
   const providedSecret =
-    req.nextUrl.searchParams.get('key') ?? req.headers.get('x-webhook-secret')
-  if (providedSecret !== expectedSecret) {
+    req.headers.get('x-webhook-secret') ?? req.nextUrl.searchParams.get('key')
+  if (!secretsMatch(providedSecret, expectedSecret)) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Body-Größe begrenzen — erst per Content-Length, dann hart nach dem Lesen.
+  const declaredLength = Number(req.headers.get('content-length') ?? 0)
+  if (declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ ok: false, error: 'Payload zu groß.' }, { status: 413 })
+  }
+
+  const rawText = await req.text()
+  if (Buffer.byteLength(rawText) > MAX_BODY_BYTES) {
+    return NextResponse.json({ ok: false, error: 'Payload zu groß.' }, { status: 413 })
   }
 
   let raw: unknown
   try {
-    raw = await req.json()
+    raw = JSON.parse(rawText)
   } catch {
     return NextResponse.json({ ok: false, error: 'Ungültiges JSON.' }, { status: 400 })
   }
-
-  // Roh-Payload immer loggen (in Vercel-Logs sichtbar), auch wenn das Mapping
-  // noch nicht perfekt ist.
-  console.log('[famulor-webhook] payload:', JSON.stringify(raw))
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return NextResponse.json({ ok: false, error: 'Erwartet JSON-Objekt.' }, { status: 400 })
+  }
 
   if (!isCallbackPersistenceConfigured()) {
-    // Kein DB-Zugang: Anfrage trotzdem als empfangen quittieren, damit Famulor
-    // nicht endlos retry't. Der Payload steht im Log.
-    console.warn('[famulor-webhook] DATABASE_URL fehlt — Payload nur geloggt, nicht gespeichert.')
+    // Ohne DB können wir nicht speichern — quittieren (kein PII-Log).
+    console.warn('[famulor-webhook] DATABASE_URL fehlt — Anruf NICHT gespeichert.')
     return NextResponse.json({ ok: true, persisted: false }, { status: 200 })
   }
 
   try {
     const parsed = parseFamulorPayload(raw)
     const call = await upsertKiReceptionCallFromWebhook({ ...parsed, rawPayload: raw })
+    // Nur Metadaten — KEINE PII.
+    console.log('[famulor-webhook] empfangen', {
+      id: call.id,
+      externalCallId: parsed.externalCallId,
+      category: parsed.category,
+      hasTranscript: Boolean(parsed.transcript),
+      hasRecording: Boolean(parsed.recordingUrl),
+      bytes: rawText.length,
+    })
     return NextResponse.json({ ok: true, persisted: true, id: call.id }, { status: 200 })
   } catch (error) {
-    console.error('[famulor-webhook] Speichern fehlgeschlagen:', error)
+    // Famulor retry't bei 5xx — daher Fehlerarten unterscheiden.
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        // Unique-Konflikt = Anruf bereits erfasst → idempotent OK.
+        return NextResponse.json(
+          { ok: true, persisted: true, duplicate: true },
+          { status: 200 },
+        )
+      }
+      if (error.code === 'P1001' || error.code === 'P1017') {
+        console.error('[famulor-webhook] DB nicht erreichbar:', error.code)
+        return NextResponse.json(
+          { ok: false, error: 'DB nicht erreichbar.' },
+          { status: 503 },
+        )
+      }
+    }
+    console.error(
+      '[famulor-webhook] Speichern fehlgeschlagen:',
+      error instanceof Error ? error.message : 'unbekannt',
+    )
     return NextResponse.json(
       { ok: false, error: 'Verarbeitung fehlgeschlagen.' },
       { status: 500 },
@@ -67,7 +119,11 @@ export async function POST(req: NextRequest) {
 
 export function GET() {
   return NextResponse.json(
-    { ok: false, error: 'Diesen Endpoint nur per POST (Famulor-Webhook) aufrufen.' },
+    {
+      ok: false,
+      error: 'Diesen Endpoint nur per POST (Famulor-Webhook) aufrufen.',
+      build: 'hardened-1',
+    },
     { status: 405 },
   )
 }

@@ -125,17 +125,23 @@ export async function updateKiReceptionCall(
   const existing = await prisma.kiReceptionCallRecord.findUnique({ where: { id } })
   if (!existing) return null
 
-  const markingDone = patch.status === 'erledigt' && existing.status !== 'erledigt'
+  // Abschluss-Felder werden ausschließlich kohärent über den Status gesetzt —
+  // niemals completedBy ohne status='erledigt' (sonst halb-erledigte Zeilen).
+  const data: Prisma.KiReceptionCallRecordUpdateInput = {}
+  if (patch.assignedTo !== undefined) data.assignedTo = patch.assignedTo
+  if (patch.completionNotes !== undefined) data.completionNotes = patch.completionNotes
+  if (patch.status) {
+    data.status = patch.status
+    if (patch.status === 'erledigt') {
+      if (existing.status !== 'erledigt') data.completedAt = new Date()
+      data.completedBy = patch.completedBy ?? existing.completedBy ?? 'Dashboard'
+    } else {
+      // Wieder geöffnet → Abschluss-Felder zurücksetzen.
+      data.completedAt = null
+      data.completedBy = null
+    }
+  }
 
-  const record = await prisma.kiReceptionCallRecord.update({
-    where: { id },
-    data: {
-      ...(patch.status ? { status: patch.status } : {}),
-      ...(patch.assignedTo !== undefined ? { assignedTo: patch.assignedTo } : {}),
-      ...(patch.completionNotes !== undefined ? { completionNotes: patch.completionNotes } : {}),
-      ...(patch.completedBy !== undefined ? { completedBy: patch.completedBy } : {}),
-      ...(markingDone ? { completedAt: new Date() } : {}),
-    },
-  })
+  const record = await prisma.kiReceptionCallRecord.update({ where: { id }, data })
   return mapRecordToDto(record)
 }

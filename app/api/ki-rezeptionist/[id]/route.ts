@@ -35,16 +35,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params
+
+  let body: unknown
   try {
-    const patch = patchSchema.parse(await req.json())
-    const call = await updateKiReceptionCall(id, patch)
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Ungültiges JSON.' }, { status: 400 })
+  }
+
+  const parsed = patchSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Ungültige Daten.' }, { status: 400 })
+  }
+
+  try {
+    const call = await updateKiReceptionCall(id, parsed.data)
     if (!call) return NextResponse.json({ error: 'Nicht gefunden.' }, { status: 404 })
     return NextResponse.json({ call })
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Ungültige Daten.' }, { status: 400 })
-    }
-    console.error('[ki-rezeptionist] update failed:', error)
+    console.error(
+      '[ki-rezeptionist] update failed:',
+      error instanceof Error ? error.message : 'unbekannt',
+    )
     return NextResponse.json({ error: 'Aktualisierung fehlgeschlagen.' }, { status: 500 })
   }
 }
