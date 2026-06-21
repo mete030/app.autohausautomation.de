@@ -116,3 +116,52 @@ model CallbackEmailActionRecord {
   @@index([callbackId, actionType])
   @@index([expiresAt])
 }
+
+// =====================================================================
+// KI-Rezeptionist (Famulor) — VOLLSTÄNDIG ISOLIERT.
+// Eigene Tabelle, keine Relation zu CallbackRecord. /callcenter liest
+// ausschließlich CallbackRecord und kann diese Zeilen daher nie sehen.
+// =====================================================================
+
+enum KiReceptionStatus {
+  offen
+  in_bearbeitung
+  erledigt
+}
+
+enum KiReceptionCategory {
+  neuwagen
+  gebrauchtwagen
+  probefahrt
+  finanzierung_leasing
+  inzahlungnahme
+  werkstatt_service
+  beschwerde
+  sonstiges
+}
+
+model KiReceptionCallRecord {
+  id              String              @id @default(cuid())
+  externalCallId  String?             @unique // Famulor Call-ID → Idempotenz bei Webhook-Retries
+  customerName    String              @default("Unbekannt")
+  customerPhone   String              @default("")
+  category        KiReceptionCategory @default(sonstiges)
+  summary         String              @default("") // Kurz-Zusammenfassung der KI
+  vehicle         String? // genanntes Wunschmodell/Fahrzeug
+  desiredAppt     String? // Wunschtermin (Probefahrt/Werkstatt)
+  transcript      String?
+  recordingUrl    String?
+  callDurationSec Int?
+  status          KiReceptionStatus   @default(offen)
+  assignedTo      String? // optionaler Bearbeiter; null = offener Vertriebs-Pool
+  completionNotes String?
+  completedAt     DateTime?
+  completedBy     String?
+  receivedAt      DateTime            @default(now()) // wann der Anruf reinkam
+  rawPayload      Json? // roher Famulor-Webhook (Debug/Audit)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([status, receivedAt])
+  @@index([category])
+}

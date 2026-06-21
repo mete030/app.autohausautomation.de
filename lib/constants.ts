@@ -7,6 +7,7 @@ import {
   ReceiptText,
   MessageSquare,
   ShieldCheck,
+  Bot,
   type LucideIcon,
 } from 'lucide-react'
 import type { CallAgent, Employee, EscalationRule, SlaConfig } from '@/lib/types'
@@ -27,6 +28,7 @@ export const featureVisibility = {
   fahrzeuge: false,
   einkauf: true,
   inserate: true,
+  kiRezeptionist: true,
 } as const
 
 export const navigation: NavItem[] = [
@@ -58,6 +60,13 @@ export const navigation: NavItem[] = [
           { title: 'Übersicht', href: '/inserate' },
           { title: 'Neues Inserat', href: '/inserate/neu' },
         ],
+      }]
+    : []),
+  ...(featureVisibility.kiRezeptionist
+    ? [{
+        title: 'KI-Rezeptionist',
+        href: '/ki-rezeptionist',
+        icon: Bot,
       }]
     : []),
   ...(featureVisibility.fahrzeuge
