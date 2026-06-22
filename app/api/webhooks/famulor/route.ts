@@ -122,7 +122,7 @@ export function GET() {
     {
       ok: false,
       error: 'Diesen Endpoint nur per POST (Famulor-Webhook) aufrufen.',
-      build: 'v2-ui',
+      build: 'v3-timer',
     },
     { status: 405 },
   )

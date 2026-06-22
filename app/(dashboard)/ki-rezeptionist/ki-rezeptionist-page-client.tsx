@@ -11,7 +11,9 @@ import {
   RotateCcw,
   Inbox,
 } from 'lucide-react'
-import { cn, formatTimeAgo, formatDateTime } from '@/lib/utils'
+import { cn, formatTimeAgo } from '@/lib/utils'
+import { format } from 'date-fns'
+import { de } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { kiCategoryConfig, kiStatusConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
@@ -30,6 +32,51 @@ function formatDuration(sec?: number): string | null {
   const m = Math.floor(sec / 60)
   const s = sec % 60
   return `${m}:${s.toString().padStart(2, '0')} min`
+}
+
+/** Exakter Zeitstempel, sekundengenau: „22.06.2026, 20:36:01". */
+function formatExact(iso: string): string {
+  return format(new Date(iso), 'dd.MM.yyyy, HH:mm:ss', { locale: de })
+}
+
+/** Aktuelle Zeit, aktualisiert jede Sekunde (isolierter Re-Render). */
+function useNowTick(): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return now
+}
+
+/** Live hochzählende Wartezeit seit Anrufeingang, eingefärbt nach Anliegen-Zielzeit. */
+function WaitingSince({ receivedAt, slaMinutes }: { receivedAt: string; slaMinutes: number }) {
+  const now = useNowTick()
+  const totalSec = Math.max(0, Math.floor((now - new Date(receivedAt).getTime()) / 1000))
+  const d = Math.floor(totalSec / 86400)
+  const h = Math.floor((totalSec % 86400) / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+
+  const parts: string[] = []
+  if (d > 0) parts.push(`${d} Tg.`)
+  if (d > 0 || h > 0) parts.push(`${h} Std.`)
+  if (d > 0 || h > 0 || m > 0) parts.push(`${m} Min.`)
+  parts.push(`${s.toString().padStart(2, '0')} Sek.`)
+
+  const ratio = slaMinutes > 0 ? totalSec / 60 / slaMinutes : 0
+  const color =
+    ratio >= 1
+      ? 'text-red-600 dark:text-red-400'
+      : ratio >= 0.5
+        ? 'text-amber-600 dark:text-amber-400'
+        : 'text-foreground'
+
+  return (
+    <span className={cn('tabular-nums font-semibold', color)} title={`Zielzeit: ${slaMinutes} Min.`}>
+      {parts.join(' ')}
+    </span>
+  )
 }
 
 export default function KiRezeptionistPageClient() {
@@ -314,37 +361,55 @@ function CallRow({
           </p>
         </button>
 
-        {/* Rechte Aktionen */}
-        <div className="flex flex-shrink-0 items-center gap-1 md:gap-1.5">
-          <span className="hidden items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:flex">
-            <Clock className="h-3 w-3" />
-            {formatTimeAgo(call.receivedAt)}
-          </span>
-
-          {call.customerPhone && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  href={`tel:${call.customerPhone}`}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label="Zurückrufen"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary/10"
-                >
-                  <Phone className="h-[18px] w-[18px]" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent className="text-xs">Zurückrufen</TooltipContent>
-            </Tooltip>
+        {/* Rechte Spalten: Wartet-seit · Eingegangen · Aktionen */}
+        <div className="flex flex-shrink-0 items-center gap-3 md:gap-5">
+          {!isDone && (
+            <div className="text-right">
+              <p className="hidden whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:block">
+                Wartet auf Rückruf seit
+              </p>
+              <div className="flex items-center justify-end gap-1 text-[13px]">
+                <Clock className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                <WaitingSince receivedAt={call.receivedAt} slaMinutes={cat.slaMinutes} />
+              </div>
+            </div>
           )}
 
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            aria-label={expanded ? 'Zuklappen' : 'Details'}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
-          >
-            <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
-          </button>
+          <div className="hidden text-right md:block">
+            <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Eingegangen
+            </p>
+            <p className="whitespace-nowrap text-[13px] tabular-nums text-muted-foreground">
+              {formatExact(call.receivedAt)}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-0.5">
+            {call.customerPhone && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a
+                    href={`tel:${call.customerPhone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Zurückrufen"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary/10"
+                  >
+                    <Phone className="h-[18px] w-[18px]" />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">Zurückrufen</TooltipContent>
+              </Tooltip>
+            )}
+
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              aria-label={expanded ? 'Zuklappen' : 'Details'}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+            >
+              <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -365,7 +430,7 @@ function CallRow({
                 )
               }
             />
-            <DetailItem label="Eingegangen" value={formatDateTime(call.receivedAt)} />
+            <DetailItem label="Eingegangen" value={formatExact(call.receivedAt)} />
             <DetailItem label="Dauer" value={duration ?? '—'} />
             {call.vehicle && <DetailItem label="Fahrzeug" value={call.vehicle} />}
             {call.desiredAppt && <DetailItem label="Wunschtermin" value={call.desiredAppt} />}
