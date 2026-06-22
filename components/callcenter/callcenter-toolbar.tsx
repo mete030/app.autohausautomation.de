@@ -141,9 +141,12 @@ export function CallcenterToolbar({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="alle">Alle Quellen</SelectItem>
-        {Object.entries(callSourceConfig).map(([value, cfg]) => (
-          <SelectItem key={value} value={value}>{cfg.label}</SelectItem>
-        ))}
+        {Object.entries(callSourceConfig)
+          // KI-Agent als Quelle vorerst ausgeblendet (noch nicht produktiv).
+          .filter(([value]) => value !== 'ki_agent')
+          .map(([value, cfg]) => (
+            <SelectItem key={value} value={value}>{cfg.label}</SelectItem>
+          ))}
       </SelectContent>
     </Select>
   )

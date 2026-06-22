@@ -19,6 +19,8 @@ export interface UpsertKiCallInput {
   transcript?: string | null
   recordingUrl?: string | null
   callDurationSec?: number | null
+  /** Tatsächlicher Anrufzeitpunkt (ISO) — nur beim Anlegen gesetzt. */
+  receivedAt?: string | null
   rawPayload?: unknown
 }
 
@@ -83,16 +85,23 @@ export async function upsertKiReceptionCallFromWebhook(
     ...(rawPayload !== undefined ? { rawPayload } : {}),
   }
 
+  // Anrufzeitpunkt nur beim ANLEGEN setzen — ein Webhook-Retry (Update) darf
+  // die Zeitleiste (Eingegangen / Live-Wartezeit) nicht verschieben.
+  const createdAtField =
+    input.receivedAt && !Number.isNaN(new Date(input.receivedAt).getTime())
+      ? { receivedAt: new Date(input.receivedAt) }
+      : {}
+
   if (input.externalCallId) {
     const record = await prisma.kiReceptionCallRecord.upsert({
       where: { externalCallId: input.externalCallId },
       update: content,
-      create: { externalCallId: input.externalCallId, ...content },
+      create: { externalCallId: input.externalCallId, ...content, ...createdAtField },
     })
     return mapRecordToDto(record)
   }
 
-  const record = await prisma.kiReceptionCallRecord.create({ data: content })
+  const record = await prisma.kiReceptionCallRecord.create({ data: { ...content, ...createdAtField } })
   return mapRecordToDto(record)
 }
 
@@ -144,4 +153,25 @@ export async function updateKiReceptionCall(
 
   const record = await prisma.kiReceptionCallRecord.update({ where: { id }, data })
   return mapRecordToDto(record)
+}
+
+/**
+ * Löscht einen erfassten Anruf endgültig. Gibt `false` zurück, wenn kein
+ * Datensatz mit dieser ID existiert (z. B. bereits gelöscht) — der Aufrufer
+ * kann das als idempotenten Erfolg behandeln.
+ */
+export async function deleteKiReceptionCall(id: string): Promise<boolean> {
+  const prisma = getPrismaClient()
+  try {
+    await prisma.kiReceptionCallRecord.delete({ where: { id } })
+    return true
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025' // "Record to delete does not exist."
+    ) {
+      return false
+    }
+    throw error
+  }
 }

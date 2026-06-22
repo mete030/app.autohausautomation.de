@@ -87,6 +87,14 @@ export async function POST(req: NextRequest) {
       hasRecording: Boolean(parsed.recordingUrl),
       bytes: rawText.length,
     })
+    // Frühwarnung: Anruf ohne Transkript → meist Plattform-Konfiguration
+    // (Transkript im Post-Call-Webhook nicht aktiviert) oder unbekanntes Feld.
+    if (!parsed.transcript) {
+      console.warn('[famulor-webhook] KEIN Transkript im Payload', {
+        id: call.id,
+        externalCallId: parsed.externalCallId,
+      })
+    }
     return NextResponse.json({ ok: true, persisted: true, id: call.id }, { status: 200 })
   } catch (error) {
     // Famulor retry't bei 5xx — daher Fehlerarten unterscheiden.

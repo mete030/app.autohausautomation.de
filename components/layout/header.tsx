@@ -122,10 +122,10 @@ export function Header({
         <div className={userMenuTriggerClassName}>
           <Avatar className="h-6 w-6">
             <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-medium">
-              VR
+              RL
             </AvatarFallback>
           </Avatar>
-          <span className="hidden lg:inline text-sm">Verena Ratti</span>
+          <span className="hidden lg:inline text-sm">Rainer Leenen</span>
         </div>
       </div>
     </header>

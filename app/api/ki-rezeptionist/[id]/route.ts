@@ -5,6 +5,7 @@ import {
   isCallbackPersistenceConfigured,
 } from '@/lib/server/callback-persistence-config'
 import {
+  deleteKiReceptionCall,
   getKiReceptionCallById,
   updateKiReceptionCall,
 } from '@/lib/server/ki-reception-records'
@@ -58,5 +59,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       error instanceof Error ? error.message : 'unbekannt',
     )
     return NextResponse.json({ error: 'Aktualisierung fehlgeschlagen.' }, { status: 500 })
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!isCallbackPersistenceConfigured()) {
+    return NextResponse.json({ error: CALLBACK_PERSISTENCE_UNAVAILABLE_MESSAGE }, { status: 503 })
+  }
+
+  const { id } = await params
+
+  try {
+    // `false` = bereits weg → idempotent als Erfolg quittieren.
+    await deleteKiReceptionCall(id)
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error(
+      '[ki-rezeptionist] delete failed:',
+      error instanceof Error ? error.message : 'unbekannt',
+    )
+    return NextResponse.json({ error: 'Löschen fehlgeschlagen.' }, { status: 500 })
   }
 }

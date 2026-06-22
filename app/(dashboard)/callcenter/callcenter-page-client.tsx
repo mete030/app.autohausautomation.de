@@ -25,7 +25,6 @@ import { CallcenterNotificationPermissionBanner } from '@/components/callcenter/
 import { CallcenterAutoEscalationProvider } from '@/components/callcenter/callcenter-auto-escalation-provider'
 import { CallcenterRoleSwitcher, type CallcenterRole } from '@/components/callcenter/callcenter-role-switcher'
 import { CallcenterLiveDashboard } from '@/components/callcenter/callcenter-live-dashboard'
-import { CallcenterVoiceTestDialog } from '@/components/callcenter/callcenter-voice-test-dialog'
 import { CallcenterMorningSummaryDialog } from '@/components/callcenter/callcenter-morning-summary-dialog'
 import { employeeRoleConfig, mockCallAgents } from '@/lib/constants'
 import type { CallbackPriority } from '@/lib/types'
@@ -357,7 +356,6 @@ export default function CallcenterPageClient() {
         </div>
         <div className="flex items-center gap-2 md:gap-2.5 md:flex-shrink-0 flex-wrap md:flex-nowrap">
           {role === 'admin' && <CallcenterMorningSummaryDialog />}
-          {role === 'admin' && <CallcenterVoiceTestDialog />}
           <CallcenterRoleSwitcher
             role={role}
             onRoleChange={handleRoleChange}
