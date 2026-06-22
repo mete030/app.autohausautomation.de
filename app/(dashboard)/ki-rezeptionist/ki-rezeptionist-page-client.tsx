@@ -335,56 +335,58 @@ function CallRow({
       )}
     >
       {/* Row */}
-      <div className="flex items-center gap-2.5 px-3 py-2.5 md:gap-3 md:px-4 md:py-3">
-        <CompletionToggle done={isDone} busy={busy} onToggle={onToggleDone} />
+      <div className="px-3 py-2.5 md:px-4 md:py-3">
+        <div className="flex items-start gap-2.5 md:items-center md:gap-3">
+          <CompletionToggle done={isDone} busy={busy} onToggle={onToggleDone} />
 
-        {/* Klickbarer Mittelteil → Details aufklappen */}
-        <button type="button" onClick={onToggleExpand} className="min-w-0 flex-1 text-left">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span
-              className={cn(
-                'truncate font-medium',
-                isDone && 'text-muted-foreground line-through decoration-muted-foreground/40',
-              )}
-            >
-              {call.customerName}
-            </span>
-            <CategoryChip category={call.category} dimmed={isDone} />
-            {inProgress && (
-              <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', kiStatusConfig.in_bearbeitung.color)}>
-                In Bearbeitung
+          {/* Klickbarer Mittelteil → Details aufklappen */}
+          <button type="button" onClick={onToggleExpand} className="min-w-0 flex-1 text-left">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span
+                className={cn(
+                  'truncate font-medium',
+                  isDone && 'text-muted-foreground line-through decoration-muted-foreground/40',
+                )}
+              >
+                {call.customerName}
               </span>
-            )}
-          </div>
-          <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
-            {call.summary || 'Kein Anliegen erkannt'}
-          </p>
-        </button>
-
-        {/* Rechte Spalten: Wartet-seit · Eingegangen · Aktionen */}
-        <div className="flex flex-shrink-0 items-center gap-3 md:gap-5">
-          {!isDone && (
-            <div className="text-right">
-              <p className="hidden whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:block">
-                Wartet auf Rückruf seit
-              </p>
-              <div className="flex items-center justify-end gap-1 text-[13px]">
-                <Clock className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-                <WaitingSince receivedAt={call.receivedAt} slaMinutes={cat.slaMinutes} />
-              </div>
+              <CategoryChip category={call.category} dimmed={isDone} />
+              {inProgress && (
+                <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', kiStatusConfig.in_bearbeitung.color)}>
+                  In Bearbeitung
+                </span>
+              )}
             </div>
-          )}
+            <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+              {call.summary || 'Kein Anliegen erkannt'}
+            </p>
+          </button>
 
-          <div className="hidden text-right md:block">
-            <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Eingegangen
-            </p>
-            <p className="whitespace-nowrap text-[13px] tabular-nums text-muted-foreground">
-              {formatExact(call.receivedAt)}
-            </p>
+          {/* Desktop-Spalten (ab md): Wartet-seit · Eingegangen */}
+          <div className="hidden flex-shrink-0 items-center gap-5 md:flex">
+            {!isDone && (
+              <div className="text-right">
+                <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Wartet auf Rückruf seit
+                </p>
+                <div className="flex items-center justify-end gap-1 text-[13px]">
+                  <Clock className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                  <WaitingSince receivedAt={call.receivedAt} slaMinutes={cat.slaMinutes} />
+                </div>
+              </div>
+            )}
+            <div className="text-right">
+              <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Eingegangen
+              </p>
+              <p className="whitespace-nowrap text-[13px] tabular-nums text-muted-foreground">
+                {formatExact(call.receivedAt)}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-0.5">
+          {/* Aktionen (immer sichtbar) */}
+          <div className="flex flex-shrink-0 items-center gap-0.5">
             {call.customerPhone && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -410,6 +412,20 @@ function CallRow({
               <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
             </button>
           </div>
+        </div>
+
+        {/* Mobile-Meta (unter md): Wartezeit + Eingegangen als eigene Zeile */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 pl-[2.375rem] text-xs md:hidden">
+          {!isDone && (
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+              <span className="text-muted-foreground">Wartet seit</span>
+              <WaitingSince receivedAt={call.receivedAt} slaMinutes={cat.slaMinutes} />
+            </span>
+          )}
+          <span className="whitespace-nowrap text-muted-foreground">
+            Eingegangen {formatExact(call.receivedAt)}
+          </span>
         </div>
       </div>
 
