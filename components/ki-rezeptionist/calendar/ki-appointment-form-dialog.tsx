@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2, CalendarPlus, Save } from 'lucide-react'
+import { Trash2, CalendarPlus, Save, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,12 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { KiConversationView } from '@/components/ki-rezeptionist/ki-conversation-view'
 import {
   KI_SERVICES,
   KI_STAFF,
   KI_DEFAULT_LOCATION,
 } from '@/lib/ki-rezeptionist/calendar-config'
 import type { KiAppointmentDto } from '@/lib/ki-rezeptionist/appointment-types'
+import type { KiReceptionCallDto } from '@/lib/ki-rezeptionist/types'
 
 const FIELD =
   'h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
@@ -38,6 +41,10 @@ export interface AppointmentPrefill {
   customerPhone?: string
   service?: string
   notesPublic?: string
+  /** Quell-Anruf des Wunschtermins → Konversations-Tab + Verknüpfung beim Bestätigen. */
+  sourceCallId?: string
+  /** Bereits geladener Quell-Anruf (vom Kalender mitgegeben) — spart einen Fetch. */
+  call?: KiReceptionCallDto | null
 }
 
 interface Props {
@@ -75,12 +82,20 @@ export function KiAppointmentFormDialog({
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<'termin' | 'konversation'>('termin')
+  const [linkedCall, setLinkedCall] = useState<KiReceptionCallDto | null>(null)
+  const [callLoading, setCallLoading] = useState(false)
+
+  const sourceCallId = appointment?.sourceCallId ?? prefill?.sourceCallId ?? null
+  const hasConversation = Boolean(prefill?.call) || Boolean(sourceCallId)
+  const location = appointment?.location || KI_DEFAULT_LOCATION
 
   // Felder beim Öffnen / Wechsel initialisieren.
   useEffect(() => {
     if (!open) return
     setError(null)
     setConfirmDelete(false)
+    setTab('termin')
     if (appointment) {
       const s = new Date(appointment.startTime)
       const e = new Date(appointment.endTime)
@@ -114,6 +129,39 @@ export function KiAppointmentFormDialog({
       setConfirmed(true)
     }
   }, [open, appointment, prefill])
+
+  // Verknüpften Anruf bereitstellen: entweder vom Kalender mitgeliefert
+  // (Wunschtermin) oder per ID nachgeladen (gespeicherter Termin).
+  useEffect(() => {
+    if (!open) return
+    if (prefill?.call) {
+      setLinkedCall(prefill.call)
+      setCallLoading(false)
+      return
+    }
+    if (!sourceCallId) {
+      setLinkedCall(null)
+      setCallLoading(false)
+      return
+    }
+    setLinkedCall(null)
+    setCallLoading(true)
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(`/api/ki-rezeptionist/${sourceCallId}`, { cache: 'no-store' })
+        const data = await res.json()
+        if (!cancelled) setLinkedCall(res.ok ? (data.call ?? null) : null)
+      } catch {
+        if (!cancelled) setLinkedCall(null)
+      } finally {
+        if (!cancelled) setCallLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, sourceCallId, prefill])
 
   const endLabel = useMemo(() => {
     if (!date || !time) return ''
@@ -149,6 +197,8 @@ export function KiAppointmentFormDialog({
       notesPublic: notesPublic.trim() || null,
       notesInternal: notesInternal.trim() || null,
       status: confirmed ? ('bestaetigt' as const) : ('geplant' as const),
+      // Verknüpfung zum Quell-Anruf nur beim Anlegen mitgeben (PATCH lässt sie unangetastet).
+      ...(sourceCallId && !isEdit ? { sourceCallId } : {}),
     }
 
     setBusy(true)
@@ -205,6 +255,21 @@ export function KiAppointmentFormDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Standort des angefragten Termins — in beiden Tabs sichtbar */}
+        <div className="-mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <MapPin className="h-3.5 w-3.5" />
+          Standort <span className="font-medium text-foreground">{location}</span>
+        </div>
+
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'termin' | 'konversation')}>
+          {hasConversation && (
+            <TabsList variant="line" className="w-full justify-start border-b border-border/60">
+              <TabsTrigger value="termin">Termin</TabsTrigger>
+              <TabsTrigger value="konversation">Konversation</TabsTrigger>
+            </TabsList>
+          )}
+
+          <TabsContent value="termin" className={hasConversation ? 'mt-3' : 'mt-0'}>
         <div className="space-y-3">
           <div className="space-y-1">
             <Label className="text-xs">Dienst / Service</Label>
@@ -327,6 +392,14 @@ export function KiAppointmentFormDialog({
 
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
+          </TabsContent>
+
+          {hasConversation && (
+            <TabsContent value="konversation" className="mt-3">
+              <KiConversationView call={linkedCall} loading={callLoading} />
+            </TabsContent>
+          )}
+        </Tabs>
 
         <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/60 pt-4">
           <div>

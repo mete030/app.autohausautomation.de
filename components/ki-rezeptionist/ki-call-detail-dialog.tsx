@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WaitingSince } from '@/components/ki-rezeptionist/waiting-since'
+import { TranscriptView } from '@/components/ki-rezeptionist/transcript-view'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -30,26 +31,9 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
 import { kiCategoryConfig, kiStatusConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
-import { formatExact, formatDuration } from '@/lib/ki-rezeptionist/format'
+import { formatExact, formatDuration, germanizeTranscriptSpeakers } from '@/lib/ki-rezeptionist/format'
+import { slugifyName, downloadBlob } from '@/lib/ki-rezeptionist/download'
 import type { KiReceptionCallDto } from '@/lib/ki-rezeptionist/types'
-
-/** Dateinamen-tauglicher Slug aus dem Kundennamen. */
-function slugifyName(name: string): string {
-  return name.replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '') || 'anruf'
-}
-
-/** Löst einen Client-seitigen Datei-Download aus (Blob → temporärer Link). */
-function downloadBlob(filename: string, content: string, type: string) {
-  const blob = new Blob([content], { type })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
-}
 
 interface KiCallDetailDialogProps {
   /** Anzuzeigender Anruf — `null` schließt den Dialog. */
@@ -88,7 +72,11 @@ export function KiCallDetailDialog({
   const status = kiStatusConfig[shown.status]
   const isDone = shown.status === 'erledigt'
   const duration = formatDuration(shown.callDurationSec)
-  const hasTranscript = Boolean(shown.transcript && shown.transcript.trim())
+  // Sprecher-Labels auch bei bereits gespeicherten Anrufen deutsch anzeigen.
+  const transcriptText = shown.transcript?.trim()
+    ? germanizeTranscriptSpeakers(shown.transcript)
+    : ''
+  const hasTranscript = transcriptText.length > 0
   const hasRecording = Boolean(shown.recordingUrl)
   const recordingDownloadUrl = `/api/ki-rezeptionist/${shown.id}/recording`
 
@@ -205,7 +193,7 @@ export function KiCallDetailDialog({
                     onClick={() =>
                       downloadBlob(
                         `Transkript_${slugifyName(shown.customerName)}.txt`,
-                        shown.transcript ?? '',
+                        transcriptText,
                         'text/plain;charset=utf-8',
                       )
                     }
@@ -214,9 +202,7 @@ export function KiCallDetailDialog({
                     Herunterladen
                   </Button>
                 </div>
-                <div className="max-h-[42vh] overflow-y-auto whitespace-pre-wrap rounded-xl bg-muted/40 p-3 text-[13px] leading-relaxed">
-                  {shown.transcript}
-                </div>
+                <TranscriptView transcript={transcriptText} />
               </>
             ) : (
               <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
@@ -285,7 +271,7 @@ export function KiCallDetailDialog({
                     onSelect={() =>
                       downloadBlob(
                         `Transkript_${slugifyName(shown.customerName)}.txt`,
-                        shown.transcript ?? '',
+                        transcriptText,
                         'text/plain;charset=utf-8',
                       )
                     }

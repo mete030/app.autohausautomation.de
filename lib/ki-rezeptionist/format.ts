@@ -13,3 +13,15 @@ export function formatDuration(sec?: number): string | null {
 export function formatExact(iso: string): string {
   return format(new Date(iso), 'dd.MM.yyyy, HH:mm:ss', { locale: de })
 }
+
+/**
+ * Englische Sprecher-Labels eines Transkripts auf Deutsch umschreiben:
+ * „AI:/Assistant:/Agent:/Bot:" → „Assistent:", „Customer:/User:/Caller:/Human:/Client:" → „Kunde:".
+ * Nur am Zeilenanfang (multiline), damit Vorkommen im Fließtext unangetastet
+ * bleiben. Idempotent — bereits deutsche Labels werden nicht erneut ersetzt.
+ */
+export function germanizeTranscriptSpeakers(text: string): string {
+  return text
+    .replace(/^(\s*)(?:AI|Assistant|Agent|Bot)\s*:/gim, '$1Assistent:')
+    .replace(/^(\s*)(?:Customer|User|Caller|Human|Client)\s*:/gim, '$1Kunde:')
+}

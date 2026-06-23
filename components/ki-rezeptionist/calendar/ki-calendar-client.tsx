@@ -48,6 +48,8 @@ const HOURS = Array.from({ length: END - START }, (_, i) => START + i)
 
 interface Tentative {
   key: string
+  /** Quell-Anruf (KiReceptionCallRecord.id) → Konversation im Termin-Modal. */
+  callId: string
   start: Date
   end: Date
   customerName: string
@@ -179,6 +181,7 @@ export function KiCalendarClient() {
       const end = new Date(parsed.start.getTime() + 45 * 60000)
       out.push({
         key: `wunsch-${c.id}`,
+        callId: c.id,
         start: parsed.start,
         end,
         customerName: c.customerName,
@@ -417,6 +420,8 @@ export function KiCalendarClient() {
                                 customerPhone: t.customerPhone,
                                 service: CATEGORY_TO_SERVICE[t.category],
                                 notesPublic: t.summary,
+                                sourceCallId: t.callId,
+                                call: calls.find((c) => c.id === t.callId) ?? null,
                               })
                               setEditAppt(null)
                               setNewApptOpen(true)
@@ -432,7 +437,7 @@ export function KiCalendarClient() {
                               <span className="relative flex items-center gap-1 truncate text-[10px] opacity-90">
                                 <Sparkles className="h-2.5 w-2.5 flex-shrink-0" />
                                 <span className="truncate">
-                                  Wunsch · {short}
+                                  Wunsch · {short} · {KI_DEFAULT_LOCATION}
                                   {t.vehicle ? ` · ${t.vehicle}` : ''}
                                 </span>
                               </span>
@@ -443,6 +448,10 @@ export function KiCalendarClient() {
                           <p className="font-semibold">
                             {t.customerName} · {short}
                             {t.vehicle ? ` · ${t.vehicle}` : ''}
+                          </p>
+                          <p className="mt-0.5 flex items-center gap-1 opacity-80">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            Standort {KI_DEFAULT_LOCATION}
                           </p>
                           {t.summary && <p className="mt-0.5 opacity-80">{t.summary}</p>}
                           <p className="mt-1 opacity-70">
@@ -487,7 +496,9 @@ export function KiCalendarClient() {
                           {format(start, 'HH:mm')} {a.customerName}
                         </span>
                         {geom.height > 30 && (
-                          <span className="relative block truncate text-[10px] opacity-85">{a.service}</span>
+                          <span className="relative block truncate text-[10px] opacity-85">
+                            {a.service} · {a.location}
+                          </span>
                         )}
                         {geom.height > 46 && a.staff && (
                           <span className="relative block truncate text-[10px] opacity-70">{a.staff}</span>

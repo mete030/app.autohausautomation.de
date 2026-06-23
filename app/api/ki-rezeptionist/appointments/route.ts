@@ -76,7 +76,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Termindaten.' }, { status: 400 })
   }
   try {
-    const appointment = await createAppointment({ ...parsed.data, source: 'manuell' })
+    // Aus einem KI-Wunschtermin bestätigt → als `ki_wunsch` kennzeichnen, sonst manuell.
+    const appointment = await createAppointment({
+      ...parsed.data,
+      source: parsed.data.sourceCallId ? 'ki_wunsch' : 'manuell',
+    })
     return NextResponse.json({ appointment }, { status: 201 })
   } catch (error) {
     return NextResponse.json(

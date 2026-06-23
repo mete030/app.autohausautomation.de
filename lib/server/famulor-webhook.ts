@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createHash } from 'crypto'
 import { normalizeCategory } from '@/lib/ki-rezeptionist/ki-reception-config'
+import { germanizeTranscriptSpeakers } from '@/lib/ki-rezeptionist/format'
 import type { KiReceptionCategory } from '@/lib/ki-rezeptionist/types'
 
 /**
@@ -135,7 +136,7 @@ function firstString(record: AnyRecord, keys: string[]): string | null {
 function roleLabel(raw: string | null): string | null {
   if (!raw) return null
   const r = raw.toLowerCase()
-  if (/(agent|assistant|assistent|bot|ai|system)/.test(r)) return 'Agent'
+  if (/(agent|assistant|assistent|bot|ai|system)/.test(r)) return 'Assistent'
   if (/(user|human|customer|kunde|caller|anrufer|client)/.test(r)) return 'Kunde'
   return raw.charAt(0).toUpperCase() + raw.slice(1)
 }
@@ -204,11 +205,16 @@ export function parseFamulorPayload(raw: unknown): NormalizedFamulorCall {
   // Transkript: fertiger String ODER Array von Gesprächs-Turns.
   // Deutsche Schreibweise `transkript`/`transkription` (Famulor-Variable)
   // ebenso berücksichtigt; native Felder gewinnen, wenn beide vorhanden sind.
-  const transcript = cap(pickTranscript(lookup, [
+  // Sprecher-Labels werden auf Deutsch umgeschrieben („AI/Customer" → „Assistent/Kunde").
+  const rawTranscript = pickTranscript(lookup, [
     'formatted_transcript', 'transcript', 'transcription',
     'call_transcript', 'callTranscript', 'transkript', 'transkription',
     'messages', 'turns', 'dialogue', 'gespraechsverlauf', 'gesprächsverlauf', 'text',
-  ]), MAX.transcript)
+  ])
+  const transcript = cap(
+    rawTranscript ? germanizeTranscriptSpeakers(rawTranscript) : null,
+    MAX.transcript,
+  )
   const recordingUrl = safeUrl(pickString(lookup, [
     'recording_url', 'recordingUrl', 'recording', 'audio_url', 'audioUrl', 'call_recording_url', 'recording_link',
   ]))
