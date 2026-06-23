@@ -56,10 +56,6 @@ export const navigation: NavItem[] = [
         title: 'Inserate',
         href: '/inserate',
         icon: FileText,
-        children: [
-          { title: 'Übersicht', href: '/inserate' },
-          { title: 'Neues Inserat', href: '/inserate/neu' },
-        ],
       }]
     : []),
   ...(featureVisibility.kiRezeptionist
@@ -67,10 +63,6 @@ export const navigation: NavItem[] = [
         title: 'KI-Assistent',
         href: '/ki-rezeptionist',
         icon: Bot,
-        children: [
-          { title: 'Übersicht', href: '/ki-rezeptionist' },
-          { title: 'Kalender', href: '/ki-rezeptionist/kalender' },
-        ],
       }]
     : []),
   ...(featureVisibility.fahrzeuge
