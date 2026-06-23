@@ -32,6 +32,7 @@ const createSchema = z.object({
   priceCents: z.number().int().nonnegative().optional().nullable(),
   notesPublic: z.string().optional().nullable(),
   notesInternal: z.string().optional().nullable(),
+  status: z.enum(['geplant', 'bestaetigt', 'abgesagt', 'erledigt']).optional(),
   sourceCallId: z.string().optional().nullable(),
   createdBy: z.string().optional().nullable(),
 })

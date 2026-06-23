@@ -33,9 +33,8 @@ import {
 } from '@/lib/ki-rezeptionist/calendar-config'
 import { OPENING_HOURS } from '@/lib/ki-rezeptionist/opening-hours'
 import { parseDesiredAppt } from '@/lib/ki-rezeptionist/desired-appt'
-import { kiCategoryConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
 import type { KiAppointmentDto, KiClosureDto } from '@/lib/ki-rezeptionist/appointment-types'
-import type { KiReceptionCallDto } from '@/lib/ki-rezeptionist/types'
+import type { KiReceptionCallDto, KiReceptionCategory } from '@/lib/ki-rezeptionist/types'
 
 const HOUR_PX = 52
 const START = CALENDAR_START_HOUR
@@ -50,7 +49,28 @@ interface Tentative {
   end: Date
   customerName: string
   customerPhone?: string
-  service: string
+  category: KiReceptionCategory
+  vehicle?: string
+  summary?: string
+}
+
+/** Kurzlabel je Anliegen für die kompakten Kalenderblöcke. */
+const CATEGORY_SHORT: Record<KiReceptionCategory, string> = {
+  neuwagen: 'Neuwagen',
+  gebrauchtwagen: 'Gebrauchtwagen',
+  probefahrt: 'Probefahrt',
+  finanzierung_leasing: 'Finanzierung',
+  inzahlungnahme: 'Inzahlungnahme',
+  werkstatt_service: 'Werkstatt',
+  beschwerde: 'Beschwerde',
+  sonstiges: 'Sonstiges',
+}
+
+/** Diagonale Schraffur-Auflage für unbestätigte/tentative Blöcke. */
+function HatchOverlay() {
+  return (
+    <span className="pointer-events-none absolute inset-0 [background:repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(120,120,120,0.18)_4px,rgba(120,120,120,0.18)_8px)]" />
+  )
 }
 
 function minutesFromGridStart(d: Date): number {
@@ -90,9 +110,9 @@ export function KiCalendarClient() {
     return () => clearInterval(id)
   }, [])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (attempt = 0) => {
     setLoading(true)
-    setError(null)
+    if (attempt === 0) setError(null)
     const from = weekStart.toISOString()
     const to = weekEnd.toISOString()
     try {
@@ -105,14 +125,24 @@ export function KiCalendarClient() {
       const cData = await cRes.json()
       const callsData = await callsRes.json()
       if (!aRes.ok || aData.available === false) {
-        setError(aData.error ?? 'Termine konnten nicht geladen werden.')
+        // Cold-Start-Blip o. Ä. → einmal automatisch erneut versuchen.
+        if (attempt < 1) {
+          setTimeout(() => void load(attempt + 1), 800)
+          return
+        }
+        setError('Termine konnten gerade nicht geladen werden. Bitte erneut versuchen.')
         setAppointments([])
       } else {
+        setError(null)
         setAppointments(aData.appointments ?? [])
       }
       setClosures(cData.closures ?? [])
       setCalls(callsData.calls ?? [])
     } catch {
+      if (attempt < 1) {
+        setTimeout(() => void load(attempt + 1), 800)
+        return
+      }
       setError('Verbindung zum Server fehlgeschlagen.')
     } finally {
       setLoading(false)
@@ -131,14 +161,16 @@ export function KiCalendarClient() {
       const parsed = parseDesiredAppt(c.desiredAppt, now)
       if (!parsed) continue
       if (parsed.start < weekStart || parsed.start >= weekEnd) continue
-      const end = new Date(parsed.start.getTime() + 30 * 60000)
+      const end = new Date(parsed.start.getTime() + 45 * 60000)
       out.push({
         key: `wunsch-${c.id}`,
         start: parsed.start,
         end,
         customerName: c.customerName,
         customerPhone: c.customerPhone || undefined,
-        service: kiCategoryConfig[c.category]?.label ?? 'Wunschtermin',
+        category: c.category,
+        vehicle: c.vehicle || undefined,
+        summary: c.summary || undefined,
       })
     }
     return out
@@ -357,6 +389,7 @@ export function KiCalendarClient() {
                   {dayTentatives.map((t) => {
                     const geom = blockGeom(t.start, t.end)
                     if (!geom) return null
+                    const short = CATEGORY_SHORT[t.category]
                     return (
                       <Tooltip key={t.key}>
                         <TooltipTrigger asChild>
@@ -367,18 +400,33 @@ export function KiCalendarClient() {
                               setEditAppt(null)
                               setNewApptOpen(true)
                             }}
-                            className="absolute left-1 right-1 z-10 overflow-hidden rounded-md border border-dashed border-violet-400 bg-violet-50/80 px-1.5 py-1 text-left text-violet-900 dark:bg-violet-950/40 dark:text-violet-200"
+                            className="absolute left-1 right-1 z-10 overflow-hidden rounded-md border border-dashed border-violet-400 bg-violet-50/70 px-1.5 py-0.5 text-left text-violet-900 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-200"
                             style={{ top: geom.top, height: geom.height }}
                           >
-                            <span className="flex items-center gap-1 text-[10px] font-semibold">
-                              <Sparkles className="h-2.5 w-2.5" />
-                              Wunschtermin
+                            <HatchOverlay />
+                            <span className="relative block truncate text-[11px] font-semibold tabular-nums">
+                              {format(t.start, 'HH:mm')} {t.customerName}
                             </span>
-                            <span className="block truncate text-[11px]">{t.customerName}</span>
+                            {geom.height > 30 && (
+                              <span className="relative flex items-center gap-1 truncate text-[10px] opacity-90">
+                                <Sparkles className="h-2.5 w-2.5 flex-shrink-0" />
+                                <span className="truncate">
+                                  Wunsch · {short}
+                                  {t.vehicle ? ` · ${t.vehicle}` : ''}
+                                </span>
+                              </span>
+                            )}
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent className="text-xs">
-                          Unbestätigter Wunschtermin aus Anruf — klicken zum Bestätigen/Anlegen
+                        <TooltipContent className="max-w-xs text-xs">
+                          <p className="font-semibold">
+                            {t.customerName} · {short}
+                            {t.vehicle ? ` · ${t.vehicle}` : ''}
+                          </p>
+                          {t.summary && <p className="mt-0.5 opacity-80">{t.summary}</p>}
+                          <p className="mt-1 opacity-70">
+                            Unbestätigter Wunschtermin aus Anruf — klicken zum Anlegen/Bestätigen
+                          </p>
                         </TooltipContent>
                       </Tooltip>
                     )
@@ -391,6 +439,7 @@ export function KiCalendarClient() {
                     const geom = blockGeom(start, end)
                     if (!geom) return null
                     const accent = serviceAccent(a.service)
+                    const confirmed = a.status === 'bestaetigt'
                     return (
                       <button
                         key={a.id}
@@ -401,21 +450,26 @@ export function KiCalendarClient() {
                           setNewApptOpen(true)
                         }}
                         className={cn(
-                          'absolute left-1 right-1 z-10 overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left shadow-sm transition hover:brightness-105',
+                          'absolute left-1 right-1 z-10 overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition hover:brightness-105',
                           accent.bg,
                           accent.text,
+                          !confirmed && 'border border-dashed border-current',
                         )}
-                        style={{ top: geom.top, height: geom.height, borderLeftColor: 'currentColor' }}
+                        style={{ top: geom.top, height: geom.height }}
                       >
-                        <span className={cn('absolute left-0 top-0 h-full w-[3px]', accent.bar)} />
-                        <span className="block truncate text-[11px] font-semibold tabular-nums">
+                        {confirmed ? (
+                          <span className={cn('absolute left-0 top-0 h-full w-[3px]', accent.bar)} />
+                        ) : (
+                          <HatchOverlay />
+                        )}
+                        <span className="relative block truncate text-[11px] font-semibold tabular-nums">
                           {format(start, 'HH:mm')} {a.customerName}
                         </span>
-                        {geom.height > 32 && (
-                          <span className="block truncate text-[10px] opacity-80">{a.service}</span>
+                        {geom.height > 30 && (
+                          <span className="relative block truncate text-[10px] opacity-85">{a.service}</span>
                         )}
-                        {geom.height > 48 && a.staff && (
-                          <span className="block truncate text-[10px] opacity-70">{a.staff}</span>
+                        {geom.height > 46 && a.staff && (
+                          <span className="relative block truncate text-[10px] opacity-70">{a.staff}</span>
                         )}
                       </button>
                     )

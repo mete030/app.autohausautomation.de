@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -61,6 +62,7 @@ export function KiAppointmentFormDialog({
   const [priceEuro, setPriceEuro] = useState('')
   const [notesPublic, setNotesPublic] = useState('')
   const [notesInternal, setNotesInternal] = useState('')
+  const [confirmed, setConfirmed] = useState(true)
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -83,6 +85,7 @@ export function KiAppointmentFormDialog({
       setPriceEuro(appointment.priceCents != null ? String(appointment.priceCents / 100) : '')
       setNotesPublic(appointment.notesPublic ?? '')
       setNotesInternal(appointment.notesInternal ?? '')
+      setConfirmed(appointment.status === 'bestaetigt')
     } else {
       const start = defaultStart ?? new Date()
       setService(KI_SERVICES[0].label)
@@ -95,6 +98,7 @@ export function KiAppointmentFormDialog({
       setPriceEuro('')
       setNotesPublic('')
       setNotesInternal('')
+      setConfirmed(true)
     }
   }, [open, appointment, defaultStart])
 
@@ -131,6 +135,7 @@ export function KiAppointmentFormDialog({
       priceCents: priceCents != null && !Number.isNaN(priceCents) ? priceCents : null,
       notesPublic: notesPublic.trim() || null,
       notesInternal: notesInternal.trim() || null,
+      status: confirmed ? ('bestaetigt' as const) : ('geplant' as const),
     }
 
     setBusy(true)
@@ -286,6 +291,20 @@ export function KiAppointmentFormDialog({
               onChange={(e) => setNotesInternal(e.target.value)}
             />
           </div>
+
+          <label className="flex cursor-pointer items-start gap-2 pt-0.5 text-sm">
+            <Checkbox
+              checked={confirmed}
+              onCheckedChange={(v) => setConfirmed(Boolean(v))}
+              className="mt-0.5"
+            />
+            <span>
+              Termin bestätigt
+              <span className="block text-xs text-muted-foreground">
+                Unbestätigt = im Kalender schraffiert/gestrichelt.
+              </span>
+            </span>
+          </label>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
