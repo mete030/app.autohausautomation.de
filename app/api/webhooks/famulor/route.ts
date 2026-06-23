@@ -130,7 +130,7 @@ export function GET() {
     {
       ok: false,
       error: 'Diesen Endpoint nur per POST (Famulor-Webhook) aufrufen.',
-      build: 'v9-metricfilter',
+      build: 'v10-kompakt',
     },
     { status: 405 },
   )

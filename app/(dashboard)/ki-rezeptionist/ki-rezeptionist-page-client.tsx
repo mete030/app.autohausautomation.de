@@ -276,11 +276,11 @@ export default function KiRezeptionistPageClient() {
 
 function KpiCard({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card px-3 py-3 md:px-4 md:py-4">
-      <p className="text-[11px] md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-card px-3 py-2">
+      <p className="truncate text-[10px] md:text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className={cn('mt-1 text-2xl md:text-3xl font-bold tabular-nums', accent)}>{value}</p>
+      <p className={cn('text-lg md:text-xl font-bold tabular-nums', accent)}>{value}</p>
     </div>
   )
 }

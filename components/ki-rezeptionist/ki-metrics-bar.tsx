@@ -108,20 +108,20 @@ function StatCard({
   fixedBadge?: string
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card px-3 py-3 md:px-4 md:py-3.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
+    <div className="rounded-xl border border-border/60 bg-card px-3 py-2.5 md:px-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
           <span
             className={cn(
-              'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg',
+              'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md',
               tone === 'amber'
                 ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
                 : 'bg-primary/10 text-primary',
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5" />
           </span>
-          <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground md:text-xs">
+          <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground md:text-[11px]">
             {label}
           </p>
         </div>
@@ -129,14 +129,14 @@ function StatCard({
         {period && onPeriod ? (
           <PeriodSelect value={period} onChange={onPeriod} />
         ) : fixedBadge ? (
-          <span className="flex-shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="flex-shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
             {fixedBadge}
           </span>
         ) : null}
       </div>
 
-      <p className="mt-1.5 text-2xl font-bold tabular-nums md:text-3xl">{value}</p>
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums md:text-2xl">{value}</p>
+      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{sub}</p>
     </div>
   )
 }
