@@ -165,3 +165,71 @@ model KiReceptionCallRecord {
   @@index([status, receivedAt])
   @@index([category])
 }
+
+// =====================================================================
+// KI-Kalender — Termine & Schließzeiten. Ebenfalls vollständig isoliert:
+// keine Relation/FK zu CallbackRecord oder KiReceptionCallRecord.
+// =====================================================================
+
+enum KiAppointmentStatus {
+  geplant
+  bestaetigt
+  abgesagt
+  erledigt
+}
+
+enum KiAppointmentSource {
+  manuell // vom Mitarbeiter angelegt
+  ki_wunsch // aus Famulor desiredAppt abgeleitet (tentativ)
+  ki_gebucht // von einem Buchungs-Agent gebucht (Webhook)
+  api
+}
+
+enum KiClosureType {
+  betriebsschliessung
+  urlaub
+  wartung
+  feiertag
+}
+
+model KiAppointment {
+  id            String               @id @default(cuid())
+  externalId    String?              @unique // Idempotenz für Buchungs-Webhook
+  customerName  String               @default("Unbekannt")
+  customerPhone String?
+  category      KiReceptionCategory?
+  service       String               @default("") // z.B. "Probefahrt", "Inspektion"
+  location      String               @default("Nagold")
+  staff         String? // zugewiesener Mitarbeiter
+  startTime     DateTime
+  endTime       DateTime
+  priceCents    Int? // Gesamt in Cent
+  notesPublic   String? // für Empfangsmitarbeiter sichtbar
+  notesInternal String? // nur intern
+  status        KiAppointmentStatus  @default(geplant)
+  source        KiAppointmentSource  @default(manuell)
+  sourceCallId  String? // optionale Referenz auf KiReceptionCallRecord.id (KEIN FK → Isolation)
+  rawPayload    Json?
+  createdBy     String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([startTime, location])
+  @@index([status, startTime])
+}
+
+model KiLocationClosure {
+  id        String        @id @default(cuid())
+  location  String        @default("Nagold")
+  type      KiClosureType @default(betriebsschliessung)
+  name      String        @default("")
+  allDay    Boolean       @default(true)
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdBy String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([location, startDate])
+}

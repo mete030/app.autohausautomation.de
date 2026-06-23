@@ -11,7 +11,9 @@ import {
   Check,
   Inbox,
   Search,
+  CalendarDays,
 } from 'lucide-react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -144,10 +146,18 @@ export default function KiRezeptionistPageClient() {
             Konversationen & Rückruf-Aufträge deiner digitalen Assistenz
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-          Aktualisieren
-        </Button>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/ki-rezeptionist/kalender">
+              <CalendarDays className="h-4 w-4" />
+              Kalender
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+            Aktualisieren
+          </Button>
+        </div>
       </div>
 
       {/* Anruf-Metriken (ElevenLabs-Stil) */}

@@ -67,6 +67,10 @@ export const navigation: NavItem[] = [
         title: '24/7-KI-Vertriebsassistent',
         href: '/ki-rezeptionist',
         icon: Bot,
+        children: [
+          { title: 'Übersicht', href: '/ki-rezeptionist' },
+          { title: 'Kalender', href: '/ki-rezeptionist/kalender' },
+        ],
       }]
     : []),
   ...(featureVisibility.fahrzeuge
