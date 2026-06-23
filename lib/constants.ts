@@ -64,7 +64,7 @@ export const navigation: NavItem[] = [
     : []),
   ...(featureVisibility.kiRezeptionist
     ? [{
-        title: '24/7-KI-Vertriebsassistent',
+        title: 'KI-Assistent',
         href: '/ki-rezeptionist',
         icon: Bot,
         children: [

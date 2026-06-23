@@ -130,7 +130,7 @@ export function GET() {
     {
       ok: false,
       error: 'Diesen Endpoint nur per POST (Famulor-Webhook) aufrufen.',
-      build: 'v7-kalender',
+      build: 'v8-navlabel',
     },
     { status: 405 },
   )
