@@ -10,9 +10,11 @@ import {
   SquareArrowOutUpRight,
   Check,
   Inbox,
+  Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KiCallDetailDialog } from '@/components/ki-rezeptionist/ki-call-detail-dialog'
 import { WaitingSince } from '@/components/ki-rezeptionist/waiting-since'
@@ -33,6 +35,7 @@ export default function KiRezeptionistPageClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterMode>('offen')
+  const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -67,10 +70,22 @@ export default function KiRezeptionistPageClient() {
   }, [load])
 
   const filtered = useMemo(() => {
-    if (filter === 'erledigt') return calls.filter((c) => c.status === 'erledigt')
-    if (filter === 'offen') return calls.filter((c) => c.status !== 'erledigt')
-    return calls
-  }, [calls, filter])
+    let result = calls
+    if (filter === 'erledigt') result = result.filter((c) => c.status === 'erledigt')
+    else if (filter === 'offen') result = result.filter((c) => c.status !== 'erledigt')
+
+    const q = query.trim().toLowerCase()
+    if (q) {
+      result = result.filter(
+        (c) =>
+          c.customerName.toLowerCase().includes(q) ||
+          (c.summary ?? '').toLowerCase().includes(q) ||
+          c.customerPhone.toLowerCase().includes(q) ||
+          kiCategoryConfig[c.category].label.toLowerCase().includes(q),
+      )
+    }
+    return result
+  }, [calls, filter, query])
 
   const kpis = useMemo(() => {
     const today = new Date().toDateString()
@@ -141,22 +156,33 @@ export default function KiRezeptionistPageClient() {
         <KpiCard label="Erledigt" value={kpis.erledigt} accent="text-emerald-600 dark:text-emerald-400" />
       </div>
 
-      {/* Filter */}
-      <div className="inline-flex rounded-lg border border-border/60 bg-card p-0.5">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={cn(
-              'rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
-              filter === f.value
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* Suche + Filter */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Konversationen durchsuchen…"
+            className="pl-9"
+          />
+        </div>
+        <div className="inline-flex flex-shrink-0 rounded-lg border border-border/60 bg-card p-0.5">
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
+                filter === f.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* States */}
@@ -176,10 +202,21 @@ export default function KiRezeptionistPageClient() {
             <Inbox className="h-6 w-6" />
           </div>
           <div className="space-y-1">
-            <p className="font-medium">Noch keine Konversationen</p>
-            <p className="text-sm text-muted-foreground">
-              Sobald dein KI-Vertriebsassistent ein Gespräch entgegennimmt, erscheint die Konversation hier.
-            </p>
+            {calls.length === 0 ? (
+              <>
+                <p className="font-medium">Noch keine Konversationen</p>
+                <p className="text-sm text-muted-foreground">
+                  Sobald dein KI-Vertriebsassistent ein Gespräch entgegennimmt, erscheint die Konversation hier.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">Keine Treffer</p>
+                <p className="text-sm text-muted-foreground">
+                  Keine Konversation passt zu Suche oder Filter.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -321,7 +358,7 @@ function CallRow({
     <div
       className={cn(
         'overflow-hidden rounded-xl border border-border/60 bg-card transition-all',
-        isDone ? 'opacity-65' : 'hover:border-border',
+        isDone ? 'opacity-65' : 'hover:border-border hover:shadow-sm',
       )}
     >
       {/* Row */}
@@ -344,6 +381,12 @@ function CallRow({
               {inProgress && (
                 <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', kiStatusConfig.in_bearbeitung.color)}>
                   In Bearbeitung
+                </span>
+              )}
+              {duration && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  <Phone className="h-3 w-3" />
+                  {duration}
                 </span>
               )}
             </div>
