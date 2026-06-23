@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KiCallDetailDialog } from '@/components/ki-rezeptionist/ki-call-detail-dialog'
+import { KiMetricsBar } from '@/components/ki-rezeptionist/ki-metrics-bar'
 import { WaitingSince } from '@/components/ki-rezeptionist/waiting-since'
 import { kiCategoryConfig, kiStatusConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
 import { formatExact, formatDuration } from '@/lib/ki-rezeptionist/format'
@@ -149,7 +150,10 @@ export default function KiRezeptionistPageClient() {
         </Button>
       </div>
 
-      {/* KPIs */}
+      {/* Anruf-Metriken (ElevenLabs-Stil) */}
+      <KiMetricsBar calls={calls} />
+
+      {/* KPIs — Arbeits-Status */}
       <div className="grid grid-cols-3 gap-2 md:gap-3">
         <KpiCard label="Offen" value={kpis.offen} accent="text-blue-600 dark:text-blue-400" />
         <KpiCard label="Heute eingegangen" value={kpis.heute} accent="text-foreground" />
