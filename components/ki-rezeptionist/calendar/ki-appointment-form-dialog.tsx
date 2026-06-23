@@ -31,13 +31,21 @@ function toTimeInput(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+/** Vorbelegung im Neu-Modus (Raster-Slot oder Wunschtermin-Übernahme). */
+export interface AppointmentPrefill {
+  start?: Date | null
+  customerName?: string
+  customerPhone?: string
+  service?: string
+  notesPublic?: string
+}
+
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Bestehender Termin → Bearbeiten-Modus; sonst Neu-Modus. */
   appointment?: KiAppointmentDto | null
-  /** Vorbelegung im Neu-Modus (z. B. aus geklicktem Raster-Slot). */
-  defaultStart?: Date | null
+  prefill?: AppointmentPrefill | null
   onSaved: (appt: KiAppointmentDto) => void
   onDeleted: (id: string) => void
 }
@@ -46,11 +54,12 @@ export function KiAppointmentFormDialog({
   open,
   onOpenChange,
   appointment,
-  defaultStart,
+  prefill,
   onSaved,
   onDeleted,
 }: Props) {
   const isEdit = Boolean(appointment)
+  const fromWish = !isEdit && Boolean(prefill?.customerName)
 
   const [service, setService] = useState(KI_SERVICES[0].label)
   const [customerName, setCustomerName] = useState('')
@@ -87,20 +96,24 @@ export function KiAppointmentFormDialog({
       setNotesInternal(appointment.notesInternal ?? '')
       setConfirmed(appointment.status === 'bestaetigt')
     } else {
-      const start = defaultStart ?? new Date()
-      setService(KI_SERVICES[0].label)
-      setCustomerName('')
-      setCustomerPhone('')
+      const start = prefill?.start ?? new Date()
+      const svc =
+        prefill?.service && KI_SERVICES.some((s) => s.label === prefill.service)
+          ? prefill.service
+          : KI_SERVICES[0].label
+      setService(svc)
+      setCustomerName(prefill?.customerName ?? '')
+      setCustomerPhone(prefill?.customerPhone ?? '')
       setDate(toDateInput(start))
-      setTime(defaultStart ? toTimeInput(start) : '09:00')
-      setDurationMin(KI_SERVICES[0].durationMin)
+      setTime(prefill?.start ? toTimeInput(start) : '09:00')
+      setDurationMin(KI_SERVICES.find((s) => s.label === svc)?.durationMin ?? KI_SERVICES[0].durationMin)
       setStaff('')
       setPriceEuro('')
-      setNotesPublic('')
+      setNotesPublic(prefill?.notesPublic ?? '')
       setNotesInternal('')
       setConfirmed(true)
     }
-  }, [open, appointment, defaultStart])
+  }, [open, appointment, prefill])
 
   const endLabel = useMemo(() => {
     if (!date || !time) return ''
@@ -180,9 +193,15 @@ export function KiAppointmentFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Termin bearbeiten' : 'Neuer Termin'}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? 'Termin bearbeiten' : fromWish ? 'Wunschtermin bestätigen' : 'Neuer Termin'}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Termin anpassen, speichern oder löschen.' : 'Einen neuen Termin für einen Kunden vereinbaren.'}
+            {isEdit
+              ? 'Termin anpassen, speichern oder löschen.'
+              : fromWish
+                ? 'Details aus dem Anruf prüfen, anpassen und als Termin bestätigen.'
+                : 'Einen neuen Termin für einen Kunden vereinbaren.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -339,7 +358,13 @@ export function KiAppointmentFormDialog({
             </Button>
             <Button size="sm" disabled={busy} onClick={handleSave}>
               {isEdit ? <Save className="h-4 w-4" /> : <CalendarPlus className="h-4 w-4" />}
-              {busy ? 'Speichert …' : isEdit ? 'Änderungen speichern' : 'Termin erstellen'}
+              {busy
+                ? 'Speichert …'
+                : isEdit
+                  ? 'Änderungen speichern'
+                  : fromWish
+                    ? 'Termin bestätigen'
+                    : 'Termin erstellen'}
             </Button>
           </div>
         </div>

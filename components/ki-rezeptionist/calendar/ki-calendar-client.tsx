@@ -23,7 +23,10 @@ import { de } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { KiAppointmentFormDialog } from '@/components/ki-rezeptionist/calendar/ki-appointment-form-dialog'
+import {
+  KiAppointmentFormDialog,
+  type AppointmentPrefill,
+} from '@/components/ki-rezeptionist/calendar/ki-appointment-form-dialog'
 import { KiClosureFormDialog } from '@/components/ki-rezeptionist/calendar/ki-closure-form-dialog'
 import {
   CALENDAR_START_HOUR,
@@ -66,6 +69,18 @@ const CATEGORY_SHORT: Record<KiReceptionCategory, string> = {
   sonstiges: 'Sonstiges',
 }
 
+/** Anliegen → vorgeschlagener Service beim Bestätigen eines Wunschtermins. */
+const CATEGORY_TO_SERVICE: Record<KiReceptionCategory, string> = {
+  neuwagen: 'Beratung Neuwagen',
+  gebrauchtwagen: 'Beratung Gebrauchtwagen',
+  probefahrt: 'Probefahrt',
+  finanzierung_leasing: 'Finanzierungsberatung',
+  inzahlungnahme: 'Fahrzeugbewertung / Inzahlungnahme',
+  werkstatt_service: 'Inspektion',
+  beschwerde: 'Sonstiges',
+  sonstiges: 'Sonstiges',
+}
+
 /** Diagonale Schraffur-Auflage für unbestätigte/tentative Blöcke. */
 function HatchOverlay() {
   return (
@@ -99,7 +114,7 @@ export function KiCalendarClient() {
   const [newApptOpen, setNewApptOpen] = useState(false)
   const [closureOpen, setClosureOpen] = useState(false)
   const [editAppt, setEditAppt] = useState<KiAppointmentDto | null>(null)
-  const [defaultStart, setDefaultStart] = useState<Date | null>(null)
+  const [prefill, setPrefill] = useState<AppointmentPrefill | null>(null)
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart])
@@ -192,7 +207,7 @@ export function KiCalendarClient() {
   function openNewAt(day: Date, hour: number) {
     const start = new Date(day)
     start.setHours(hour, 0, 0, 0)
-    setDefaultStart(start)
+    setPrefill({ start })
     setEditAppt(null)
     setNewApptOpen(true)
   }
@@ -250,7 +265,7 @@ export function KiCalendarClient() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setDefaultStart(null)
+              setPrefill(null)
               setClosureOpen(true)
             }}
           >
@@ -260,7 +275,7 @@ export function KiCalendarClient() {
           <Button
             size="sm"
             onClick={() => {
-              setDefaultStart(null)
+              setPrefill(null)
               setEditAppt(null)
               setNewApptOpen(true)
             }}
@@ -396,7 +411,13 @@ export function KiCalendarClient() {
                           <button
                             type="button"
                             onClick={() => {
-                              setDefaultStart(t.start)
+                              setPrefill({
+                                start: t.start,
+                                customerName: t.customerName,
+                                customerPhone: t.customerPhone,
+                                service: CATEGORY_TO_SERVICE[t.category],
+                                notesPublic: t.summary,
+                              })
                               setEditAppt(null)
                               setNewApptOpen(true)
                             }}
@@ -446,7 +467,7 @@ export function KiCalendarClient() {
                         type="button"
                         onClick={() => {
                           setEditAppt(a)
-                          setDefaultStart(null)
+                          setPrefill(null)
                           setNewApptOpen(true)
                         }}
                         className={cn(
@@ -488,14 +509,14 @@ export function KiCalendarClient() {
         open={newApptOpen}
         onOpenChange={setNewApptOpen}
         appointment={editAppt}
-        defaultStart={defaultStart}
+        prefill={prefill}
         onSaved={() => void load()}
         onDeleted={() => void load()}
       />
       <KiClosureFormDialog
         open={closureOpen}
         onOpenChange={setClosureOpen}
-        defaultDate={defaultStart}
+        defaultDate={prefill?.start ?? null}
         onSaved={() => void load()}
       />
     </div>
