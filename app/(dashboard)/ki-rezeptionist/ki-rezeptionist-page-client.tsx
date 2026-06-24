@@ -647,13 +647,13 @@ function CallRow({
                     e.stopPropagation()
                     onForward()
                   }}
-                  aria-label="An Berater weiterleiten"
+                  aria-label="An Mitarbeitenden weiterleiten"
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                 >
                   <Forward className="h-[16px] w-[16px]" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent className="text-xs">An Berater weiterleiten</TooltipContent>
+              <TooltipContent className="text-xs">An Mitarbeitenden weiterleiten</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -721,7 +721,7 @@ function CallRow({
             </Button>
             <Button variant="outline" size="sm" onClick={onForward}>
               <Forward className="h-4 w-4" />
-              An Berater weiterleiten
+              An Mitarbeitenden weiterleiten
             </Button>
             {call.customerPhone && (
               <Button asChild variant="ghost" size="sm">

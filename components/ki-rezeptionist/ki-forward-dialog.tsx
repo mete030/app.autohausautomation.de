@@ -136,7 +136,7 @@ export function KiForwardDialog({ call, onOpenChange, onForwarded }: KiForwardDi
         <DialogHeader className="pr-8">
           <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
             <Forward className="h-[18px] w-[18px] text-primary" />
-            An Berater weiterleiten
+            An Mitarbeitenden weiterleiten
           </DialogTitle>
           <DialogDescription>
             Diesen Rückruf an die zuständige Person übergeben — sie bekommt alle
@@ -200,7 +200,7 @@ export function KiForwardDialog({ call, onOpenChange, onForwarded }: KiForwardDi
               <Label className="text-xs">Empfänger *</Label>
               <Select value={selectedId} onValueChange={setSelectedId}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Berater auswählen …" />
+                  <SelectValue placeholder="Mitarbeitenden auswählen …" />
                 </SelectTrigger>
                 <SelectContent>
                   {KI_FORWARD_RECIPIENT_GROUPS.map((group) => (
@@ -272,7 +272,7 @@ export function KiForwardDialog({ call, onOpenChange, onForwarded }: KiForwardDi
               <span>
                 <span className="font-medium">Anruf als „In Bearbeitung" markieren und zuweisen</span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">
-                  Macht sichtbar, dass der Rückruf an {recipient?.name ?? 'den Berater'} übergeben wurde.
+                  Macht sichtbar, dass der Rückruf an {recipient?.name ?? 'den Mitarbeitenden'} übergeben wurde.
                 </span>
               </span>
             </label>

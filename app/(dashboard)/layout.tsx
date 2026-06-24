@@ -20,6 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const pathname = usePathname()
   const isNachrichten = pathname?.startsWith('/nachrichten')
+  const isKiRezeptionist = pathname?.startsWith('/ki-rezeptionist')
 
   useEffect(() => {
     const nextMode = isTablet ? 'tablet' : isLargeDesktop ? 'desktop' : null
@@ -84,8 +85,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </div>
 
-        {/* Voice Control */}
-        <VoiceControl />
+        {/* Voice Control — auf der KI-Rezeptionist-Seite ausgeblendet */}
+        {!isKiRezeptionist && <VoiceControl />}
         <CallcenterCallbackNotificationProvider />
       </div>
     </TooltipProvider>
