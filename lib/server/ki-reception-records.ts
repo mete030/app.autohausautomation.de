@@ -60,15 +60,22 @@ function toJsonInput(value: unknown): Prisma.InputJsonValue | undefined {
   return value as Prisma.InputJsonValue
 }
 
+export interface UpsertKiCallResult {
+  call: KiReceptionCallDto
+  /** true = neuer Anruf angelegt; false = bestehender (Webhook-Retry) aktualisiert. */
+  created: boolean
+}
+
 /**
  * Idempotenter Upsert auf externalCallId (Famulor-Retries erzeugen keine
  * Duplikate). Beim Update werden NUR Anruf-Inhalte aktualisiert — Status,
  * Zuweisung und Abschluss-Felder bleiben unangetastet, damit manuelle
- * Bearbeitung nicht überschrieben wird.
+ * Bearbeitung nicht überschrieben wird. Gibt zusätzlich zurück, ob der Anruf
+ * NEU angelegt wurde (für die automatische Lead-Weiterleitung).
  */
 export async function upsertKiReceptionCallFromWebhook(
   input: UpsertKiCallInput,
-): Promise<KiReceptionCallDto> {
+): Promise<UpsertKiCallResult> {
   const prisma = getPrismaClient()
   const rawPayload = toJsonInput(input.rawPayload)
 
@@ -93,16 +100,22 @@ export async function upsertKiReceptionCallFromWebhook(
       : {}
 
   if (input.externalCallId) {
+    // Vor dem Upsert prüfen, ob der Anruf schon existiert → unterscheidet
+    // „neu angelegt" von „Retry/Update" (für die Lead-Weiterleitung).
+    const existing = await prisma.kiReceptionCallRecord.findUnique({
+      where: { externalCallId: input.externalCallId },
+      select: { id: true },
+    })
     const record = await prisma.kiReceptionCallRecord.upsert({
       where: { externalCallId: input.externalCallId },
       update: content,
       create: { externalCallId: input.externalCallId, ...content, ...createdAtField },
     })
-    return mapRecordToDto(record)
+    return { call: mapRecordToDto(record), created: !existing }
   }
 
   const record = await prisma.kiReceptionCallRecord.create({ data: { ...content, ...createdAtField } })
-  return mapRecordToDto(record)
+  return { call: mapRecordToDto(record), created: true }
 }
 
 export async function listKiReceptionCalls(filter?: {

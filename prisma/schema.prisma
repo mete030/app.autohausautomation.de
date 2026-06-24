@@ -233,3 +233,14 @@ model KiLocationClosure {
 
   @@index([location, startDate])
 }
+
+// =====================================================================
+// KI-Einstellungen — schlichter Key-Value-Store für Feature-Flags
+// (z. B. Auto-Weiterleitung an lead@wackenhut.de). Vollständig isoliert.
+// =====================================================================
+
+model KiSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

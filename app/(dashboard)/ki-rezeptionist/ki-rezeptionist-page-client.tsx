@@ -8,24 +8,41 @@ import {
   Clock,
   ChevronDown,
   SquareArrowOutUpRight,
+  Forward,
   Check,
   Inbox,
   Search,
   CalendarDays,
+  ListFilter,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KiCallDetailDialog } from '@/components/ki-rezeptionist/ki-call-detail-dialog'
+import { KiForwardDialog } from '@/components/ki-rezeptionist/ki-forward-dialog'
+import { KiCompletionDialog } from '@/components/ki-rezeptionist/ki-completion-dialog'
 import { KiMetricsBar } from '@/components/ki-rezeptionist/ki-metrics-bar'
+import { KiAutoForwardToggle } from '@/components/ki-rezeptionist/ki-auto-forward-toggle'
 import { WaitingSince } from '@/components/ki-rezeptionist/waiting-since'
-import { kiCategoryConfig, kiStatusConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
+import {
+  kiCategoryConfig,
+  kiStatusConfig,
+  KI_RECEPTION_CATEGORIES,
+} from '@/lib/ki-rezeptionist/ki-reception-config'
 import { formatExact, formatDuration } from '@/lib/ki-rezeptionist/format'
 import type { KiReceptionCallDto, KiReceptionCategory } from '@/lib/ki-rezeptionist/types'
 
 type FilterMode = 'offen' | 'erledigt' | 'alle'
+type DateRange = 'alle' | 'heute' | '7tage' | '30tage'
 
 const FILTERS: { value: FilterMode; label: string }[] = [
   { value: 'offen', label: 'Offen' },
@@ -33,19 +50,39 @@ const FILTERS: { value: FilterMode; label: string }[] = [
   { value: 'alle', label: 'Alle' },
 ]
 
+const DATE_RANGES: { value: DateRange; label: string }[] = [
+  { value: 'alle', label: 'Alle' },
+  { value: 'heute', label: 'Heute' },
+  { value: '7tage', label: '7 Tage' },
+  { value: '30tage', label: '30 Tage' },
+]
+
 export default function KiRezeptionistPageClient() {
   const [calls, setCalls] = useState<KiReceptionCallDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterMode>('offen')
+  const [categoryFilter, setCategoryFilter] = useState<KiReceptionCategory | 'alle'>('alle')
+  const [dateRange, setDateRange] = useState<DateRange>('alle')
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [forwardId, setForwardId] = useState<string | null>(null)
+  const [completeId, setCompleteId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null)
 
   const detailCall = useMemo(
     () => calls.find((c) => c.id === detailId) ?? null,
     [calls, detailId],
+  )
+  const forwardCall = useMemo(
+    () => calls.find((c) => c.id === forwardId) ?? null,
+    [calls, forwardId],
+  )
+  const completingCall = useMemo(
+    () => calls.find((c) => c.id === completeId) ?? null,
+    [calls, completeId],
   )
 
   const load = useCallback(async () => {
@@ -72,10 +109,40 @@ export default function KiRezeptionistPageClient() {
     void load()
   }, [load])
 
+  // Deep-Link aus der Lead-E-Mail: ?call=<id> öffnet direkt die Konversation,
+  // sobald die Liste geladen ist. Funktioniert auf jeder Domain (Preview/Prod),
+  // da die URL clientseitig gelesen wird.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const cid = new URLSearchParams(window.location.search).get('call')
+    if (cid) setPendingDeepLink(cid)
+  }, [])
+
+  useEffect(() => {
+    if (pendingDeepLink && calls.some((c) => c.id === pendingDeepLink)) {
+      setDetailId(pendingDeepLink)
+      setPendingDeepLink(null)
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [pendingDeepLink, calls])
+
   const filtered = useMemo(() => {
     let result = calls
     if (filter === 'erledigt') result = result.filter((c) => c.status === 'erledigt')
     else if (filter === 'offen') result = result.filter((c) => c.status !== 'erledigt')
+
+    if (categoryFilter !== 'alle') result = result.filter((c) => c.category === categoryFilter)
+
+    if (dateRange !== 'alle') {
+      if (dateRange === 'heute') {
+        const today = new Date().toDateString()
+        result = result.filter((c) => new Date(c.receivedAt).toDateString() === today)
+      } else {
+        const days = dateRange === '7tage' ? 7 : 30
+        const cutoff = Date.now() - days * 86_400_000
+        result = result.filter((c) => new Date(c.receivedAt).getTime() >= cutoff)
+      }
+    }
 
     const q = query.trim().toLowerCase()
     if (q) {
@@ -88,7 +155,7 @@ export default function KiRezeptionistPageClient() {
       )
     }
     return result
-  }, [calls, filter, query])
+  }, [calls, filter, query, categoryFilter, dateRange])
 
   const kpis = useMemo(() => {
     const today = new Date().toDateString()
@@ -131,6 +198,41 @@ export default function KiRezeptionistPageClient() {
     }
   }, [])
 
+  // Nach einer Weiterleitung den (ggf. auf „In Bearbeitung" gesetzten) Anruf
+  // in der Liste aktualisieren.
+  const applyForwarded = useCallback((updated: KiReceptionCallDto) => {
+    setCalls((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+  }, [])
+
+  // Erledigt-Klick: beim Abschließen erst eine kurze Ergebnis-Notiz verlangen
+  // (Dialog), beim Wieder-Öffnen direkt umschalten.
+  const requestToggleDone = useCallback(
+    (call: KiReceptionCallDto) => {
+      if (call.status === 'erledigt') void toggleDone(call.id, false)
+      else setCompleteId(call.id)
+    },
+    [toggleDone],
+  )
+
+  // Abschluss mit Pflicht-Notiz speichern (Ergebnis → completionNotes).
+  const submitCompletion = useCallback(async (id: string, notes: string) => {
+    setBusyId(id)
+    try {
+      const res = await fetch(`/api/ki-rezeptionist/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'erledigt', completedBy: 'Dashboard', completionNotes: notes }),
+      })
+      if (res.ok) {
+        const { call } = await res.json()
+        setCalls((prev) => prev.map((c) => (c.id === id ? call : c)))
+        setCompleteId(null)
+      }
+    } finally {
+      setBusyId(null)
+    }
+  }, [])
+
   return (
     <div className="space-y-4 md:space-y-5">
       {/* Header */}
@@ -146,7 +248,8 @@ export default function KiRezeptionistPageClient() {
             Konversationen & Rückruf-Aufträge deiner digitalen Assistenz
           </p>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
+        <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
+          <KiAutoForwardToggle />
           <Button asChild variant="outline" size="sm">
             <Link href="/ki-rezeptionist/kalender">
               <CalendarDays className="h-4 w-4" />
@@ -194,6 +297,51 @@ export default function KiRezeptionistPageClient() {
               )}
             >
               {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Anliegen- + Zeitraum-Filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={categoryFilter}
+          onValueChange={(v) => setCategoryFilter(v as KiReceptionCategory | 'alle')}
+        >
+          <SelectTrigger className="h-9 w-auto min-w-[190px] gap-2">
+            <ListFilter className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alle">Alle Anliegen</SelectItem>
+            {KI_RECEPTION_CATEGORIES.map((catKey) => {
+              const c = kiCategoryConfig[catKey]
+              const Icon = c.icon
+              return (
+                <SelectItem key={catKey} value={catKey}>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Icon className="h-3.5 w-3.5" />
+                    {c.label}
+                  </span>
+                </SelectItem>
+              )
+            })}
+          </SelectContent>
+        </Select>
+
+        <div className="inline-flex flex-shrink-0 rounded-lg border border-border/60 bg-card p-0.5">
+          {DATE_RANGES.map((d) => (
+            <button
+              key={d.value}
+              onClick={() => setDateRange(d.value)}
+              className={cn(
+                'rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors',
+                dateRange === d.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {d.label}
             </button>
           ))}
         </div>
@@ -254,7 +402,8 @@ export default function KiRezeptionistPageClient() {
                 setExpandedId((cur) => (cur === call.id ? null : call.id))
               }
               onOpen={() => setDetailId(call.id)}
-              onToggleDone={() => void toggleDone(call.id, call.status !== 'erledigt')}
+              onForward={() => setForwardId(call.id)}
+              onToggleDone={() => requestToggleDone(call)}
             />
           ))}
         </div>
@@ -267,8 +416,31 @@ export default function KiRezeptionistPageClient() {
         onOpenChange={(open) => {
           if (!open) setDetailId(null)
         }}
-        onToggleDone={(c) => void toggleDone(c.id, c.status !== 'erledigt')}
+        onToggleDone={(c) => requestToggleDone(c)}
         onDelete={(c) => void deleteCall(c.id)}
+        onForward={(c) => {
+          setDetailId(null)
+          setForwardId(c.id)
+        }}
+      />
+
+      {/* Weiterleiten-Modal (Brevo-E-Mail an Berater) */}
+      <KiForwardDialog
+        call={forwardCall}
+        onOpenChange={(open) => {
+          if (!open) setForwardId(null)
+        }}
+        onForwarded={applyForwarded}
+      />
+
+      {/* Erledigt-Modal (Pflicht-Ergebnisnotiz) */}
+      <KiCompletionDialog
+        call={completingCall}
+        busy={completingCall ? busyId === completingCall.id : false}
+        onOpenChange={(open) => {
+          if (!open) setCompleteId(null)
+        }}
+        onComplete={(id, notes) => void submitCompletion(id, notes)}
       />
     </div>
   )
@@ -354,6 +526,7 @@ function CallRow({
   busy,
   onToggleExpand,
   onOpen,
+  onForward,
   onToggleDone,
 }: {
   call: KiReceptionCallDto
@@ -361,6 +534,7 @@ function CallRow({
   busy: boolean
   onToggleExpand: () => void
   onOpen: () => void
+  onForward: () => void
   onToggleDone: () => void
 }) {
   const cat = kiCategoryConfig[call.category]
@@ -397,6 +571,12 @@ function CallRow({
                   In Bearbeitung
                 </span>
               )}
+              {isDone && (
+                <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium', kiStatusConfig.erledigt.color)}>
+                  <Check className="h-3 w-3" />
+                  Erledigt
+                </span>
+              )}
               {duration && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                   <Phone className="h-3 w-3" />
@@ -404,9 +584,18 @@ function CallRow({
                 </span>
               )}
             </div>
-            <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
-              {call.summary || 'Kein Anliegen erkannt'}
-            </p>
+            {isDone && call.completionNotes?.trim() ? (
+              <p className="mt-0.5 flex items-center gap-1 text-[13px] text-emerald-700 dark:text-emerald-400">
+                <Check className="h-3 w-3 flex-shrink-0" />
+                <span className="min-w-0 truncate">
+                  <span className="font-medium">Ergebnis:</span> {call.completionNotes}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                {call.summary || 'Kein Anliegen erkannt'}
+              </p>
+            )}
           </button>
 
           {/* Desktop-Spalten (ab md): Wartet-seit · Eingegangen */}
@@ -449,6 +638,23 @@ function CallRow({
                 <TooltipContent className="text-xs">Zurückrufen</TooltipContent>
               </Tooltip>
             )}
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onForward()
+                  }}
+                  aria-label="An Berater weiterleiten"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                >
+                  <Forward className="h-[16px] w-[16px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">An Berater weiterleiten</TooltipContent>
+            </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -512,6 +718,10 @@ function CallRow({
             <Button variant="outline" size="sm" onClick={onOpen}>
               <SquareArrowOutUpRight className="h-4 w-4" />
               Konversation öffnen
+            </Button>
+            <Button variant="outline" size="sm" onClick={onForward}>
+              <Forward className="h-4 w-4" />
+              An Berater weiterleiten
             </Button>
             {call.customerPhone && (
               <Button asChild variant="ghost" size="sm">

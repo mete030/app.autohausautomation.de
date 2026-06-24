@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { Prisma } from '@prisma/client'
 import { isCallbackPersistenceConfigured } from '@/lib/server/callback-persistence-config'
 import { parseFamulorPayload } from '@/lib/server/famulor-webhook'
 import { upsertKiReceptionCallFromWebhook } from '@/lib/server/ki-reception-records'
+import { maybeForwardNewCallToLead } from '@/lib/server/ki-lead-forward'
+import { resolveAppBaseUrl } from '@/lib/server/app-base-url'
 
 // Prisma braucht die Node-Runtime (kein Edge).
 export const runtime = 'nodejs'
@@ -77,16 +79,24 @@ export async function POST(req: NextRequest) {
 
   try {
     const parsed = parseFamulorPayload(raw)
-    const call = await upsertKiReceptionCallFromWebhook({ ...parsed, rawPayload: raw })
+    const { call, created } = await upsertKiReceptionCallFromWebhook({ ...parsed, rawPayload: raw })
     // Nur Metadaten — KEINE PII.
     console.log('[famulor-webhook] empfangen', {
       id: call.id,
       externalCallId: parsed.externalCallId,
       category: parsed.category,
+      created,
       hasTranscript: Boolean(parsed.transcript),
       hasRecording: Boolean(parsed.recordingUrl),
       bytes: rawText.length,
     })
+    // Nur bei NEUEN Anrufen automatisch an lead@ weiterleiten (Feature-Flag wird
+    // intern geprüft). Läuft NACH der Webhook-Antwort → keine zusätzliche Latenz
+    // für Famulor; Retries (created=false) lösen keine erneute Mail aus.
+    if (created) {
+      const baseUrl = resolveAppBaseUrl(req)
+      after(() => maybeForwardNewCallToLead(call, baseUrl))
+    }
     // Frühwarnung: Anruf ohne Transkript → meist Plattform-Konfiguration
     // (Transkript im Post-Call-Webhook nicht aktiviert) oder unbekanntes Feld.
     if (!parsed.transcript) {

@@ -5,12 +5,12 @@ import {
   Phone,
   PhoneIncoming,
   Download,
-  ChevronDown,
   Trash2,
   Check,
   RotateCcw,
   FileText,
   Clock,
+  Forward,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WaitingSince } from '@/components/ki-rezeptionist/waiting-since'
@@ -42,6 +42,8 @@ interface KiCallDetailDialogProps {
   onOpenChange: (open: boolean) => void
   onToggleDone: (call: KiReceptionCallDto) => void
   onDelete: (call: KiReceptionCallDto) => void
+  /** Öffnet das Weiterleiten-Modal für diesen Anruf. */
+  onForward: (call: KiReceptionCallDto) => void
 }
 
 export function KiCallDetailDialog({
@@ -50,6 +52,7 @@ export function KiCallDetailDialog({
   onOpenChange,
   onToggleDone,
   onDelete,
+  onForward,
 }: KiCallDetailDialogProps) {
   // „State während des Renderns anpassen" (offizielles React-Muster, kein
   // Effect): den letzten Anruf vorhalten, damit beim Schließen die Inhalte
@@ -151,6 +154,19 @@ export function KiCallDetailDialog({
                 {shown.summary?.trim() || 'Keine Zusammenfassung verfügbar.'}
               </p>
             </section>
+
+            {/* Ergebnis (Pflicht-Notiz beim Abschließen) — nur wenn erledigt. */}
+            {isDone && shown.completionNotes?.trim() && (
+              <section className="space-y-1.5 rounded-xl border border-emerald-300/50 bg-emerald-50/60 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                <h3 className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700/90 dark:text-emerald-400/90">
+                  <Check className="h-3.5 w-3.5" />
+                  Ergebnis
+                </h3>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                  {shown.completionNotes}
+                </p>
+              </section>
+            )}
 
             <dl className="divide-y divide-border/60 rounded-xl border border-border/60">
               <DetailRow label="Eingegangen" value={formatExact(shown.receivedAt)} />
@@ -256,13 +272,23 @@ export function KiCallDetailDialog({
           </div>
 
           {/* Primäre Aktionen */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => onForward(shown)}>
+              <Forward className="h-4 w-4" />
+              Weiterleiten
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={!hasTranscript && !hasRecording}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-8 px-0"
+                  title="Herunterladen"
+                  aria-label="Herunterladen"
+                  disabled={!hasTranscript && !hasRecording}
+                >
                   <Download className="h-4 w-4" />
-                  Herunterladen
-                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -292,10 +318,16 @@ export function KiCallDetailDialog({
             </DropdownMenu>
 
             {shown.customerPhone && (
-              <Button asChild variant="outline" size="sm">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="w-8 px-0"
+                title="Anrufen"
+                aria-label="Anrufen"
+              >
                 <a href={`tel:${shown.customerPhone}`}>
                   <Phone className="h-4 w-4" />
-                  Anrufen
                 </a>
               </Button>
             )}
