@@ -35,7 +35,12 @@ import {
   type ChannelDecision,
   type VerwertungChannel,
 } from '@/lib/mock-data-einkauf'
-import { einkaufPackageVehicles, type EinkaufPackageVehicle } from '@/lib/mock-data-paket'
+import {
+  einkaufPackageVehicles,
+  parsePaketTranscript,
+  type EinkaufPackageVehicle,
+  type PaketVehicleOrigin,
+} from '@/lib/mock-data-paket'
 import { SingleVehicleResult } from './_components/SingleVehicleResult'
 import { RoutingBanner } from './_components/RoutingBanner'
 import { ListenplatzRechner } from './_components/ListenplatzRechner'
@@ -259,10 +264,17 @@ export default function EinkaufPage() {
   }
 
   // ── Paket-/Konvolut-Flow ──
-  const handleResolvePaket = () => {
+  // Erkennt 1–16 eingegebene/eingesprochene/per-OCR erfasste Fahrzeuge (A1/A2);
+  // leerer/unbrauchbarer Input fällt auf das kuratierte Demo-Paket zurück.
+  const handleResolvePaket = (transcript: string, origin: PaketVehicleOrigin) => {
     setLookupStatus('loading')
     setTimeout(() => {
-      setPaketVehicles(einkaufPackageVehicles.map((v) => ({ ...v })))
+      const parsed = parsePaketTranscript(transcript, origin)
+      setPaketVehicles(
+        parsed.length
+          ? parsed
+          : einkaufPackageVehicles.map((v) => ({ ...v, origin: 'demo' as PaketVehicleOrigin })),
+      )
       setLookupStatus('found')
       setStep('vehicle_confirm')
     }, 2200)

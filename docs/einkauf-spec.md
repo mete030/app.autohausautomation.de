@@ -95,10 +95,10 @@ Pro **Paket** („Zug"): Fahrzeugliste, Anzahl, Gesamt-EK, Gesamt-Marge, Gesamt-
 ## 5. Akzeptanzkriterien — Checkliste (SSOT)
 
 ### Epic A — Paket-Eingabe & Fahrzeug-Identifikation
-- [ ] **A1** Eingabemaske akzeptiert 1–16 VINs (mehrzeilig/komma-separiert); Submit erzeugt pro VIN eine Fahrzeugkarte aus Mock-Daten.
-- [ ] **A2** Alternativer Eingabeweg „Paket-Screenshot hochladen": Datei-Upload; nach (Mock-)Verarbeitung Liste von N identifizierten Fahrzeugen (gemocktes OCR), gelabelt „aus Paket identifiziert".
-- [ ] **A3** Eingegebene Fahrzeuge als „Zug/Paket" gruppiert; Paket-Header zeigt Anzahl (z. B. 8 oder 16).
-- [ ] **A4** Jede Fahrzeugkarte zeigt Stammdaten (Marke/Modell/Variante, EZ, km, Ausstattungs-Highlights).
+- [x] **A1** Eingabemaske akzeptiert 1–16 VINs (mehrzeilig/komma-separiert); Submit erzeugt pro VIN eine Fahrzeugkarte aus Mock-Daten. — *`parsePaketTranscript()` in mock-data-paket.ts (Modell/EZ/km/Ausstattung aus Freitext, VK rückwärts, Kanal nach Alter/km); `handleResolvePaket` liest Transcript ein, Fallback = Demo. Cap 16.*
+- [x] **A2** Alternativer Eingabeweg „Paket-Screenshot hochladen": Datei-Upload; nach (Mock-)Verarbeitung Liste von N identifizierten Fahrzeugen (gemocktes OCR), gelabelt „aus Paket identifiziert". — *Echtes `<input type=file>` in PaketIdentify; `origin`-Feld → Badge „aus Paket identifiziert" / „aus Paket-Screenshot (OCR)" in PaketConfirm.*
+- [x] **A3** Eingegebene Fahrzeuge als „Zug/Paket" gruppiert; Paket-Header zeigt Anzahl (z. B. 8 oder 16). — *Demo-Zug = 8 Fahrzeuge; PaketConfirm-Header „Zug / Paket — N Fahrzeuge" + Badge „N im Paket"; PaketResult zeigt `vehicles.length`.*
+- [x] **A4** Jede Fahrzeugkarte zeigt Stammdaten (Marke/Modell/Variante, EZ, km, Ausstattungs-Highlights). — *PaketConfirm-Zeile zeigt jetzt EZ + Kraftstoff (Modell/km/Ausstattung waren bereits da); Drill-down-Header zeigt EZ/km/Ausstattung.*
 
 ### Epic B — Regionale Marktanalyse pro Fahrzeug
 - [ ] **B1** Standort + einstellbarer Radius (50/100 km), Default Demo-Standort; Radius-Änderung aktualisiert sichtbar die Mock-Marktdaten.

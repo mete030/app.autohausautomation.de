@@ -20,6 +20,9 @@ import { mercedesMedia } from './mercedes-inventory'
 
 export type EinkaufCondition = 'sehr_gut' | 'gut' | 'maengel' | 'unfallschaden'
 
+// Woher ein Paket-Fahrzeug erkannt wurde (für das "aus Paket identifiziert"-Label, A2).
+export type PaketVehicleOrigin = 'screenshot' | 'voice' | 'text' | 'demo'
+
 export interface EinkaufPackageVehicle {
   id: string
   model: string
@@ -39,6 +42,7 @@ export interface EinkaufPackageVehicle {
   daysOnLot: number
   simplified: boolean // true => vereinfachte Schnellbewertung im Drill-down
   detail: EinkaufPricingResult // vollständiges Einzelfahrzeug-Ergebnis
+  origin?: PaketVehicleOrigin // aus welchem Eingabeweg erkannt (A2)
 }
 
 export interface EinkaufPackageTotals {
@@ -282,6 +286,141 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
   },
 ]
 
+// ─── A1/A2: Transcript-Parser (VINs / Beschreibungen / OCR-Zeilen → Fahrzeuge) ──
+// Wandelt die in PaketIdentify erfassten Zeilen (eine pro Fahrzeug) in bewertete
+// Paket-Fahrzeuge um. 1–16 Einträge. Glaubwürdige Demo-Heuristik; keine echte Quelle.
+// TODO[real-backend]: OCR (Paket-Screenshot) + VIN-/HSN-Decode (KBA) liefern diese
+// Stammdaten real; hier werden Modell/EZ/km/Ausstattung aus Freitext geschätzt.
+
+export const MAX_PAKET_VEHICLES = 16
+
+// Referenz-VK (junges Fahrzeug ~2023, ~30.000 km) je GLC-Variante — Demo-Kalibrierung.
+const VARIANT_BASE_VK: Record<string, number> = {
+  'GLC 200 4MATIC': 42000,
+  'GLC 220 d 4MATIC': 44000,
+  'GLC 300 4MATIC': 52000,
+  'GLC 300 e 4MATIC': 55000,
+  'GLC 400 e 4MATIC': 60000,
+  'GLC 43 AMG': 72000,
+}
+const VARIANT_FUEL: Record<string, string> = {
+  'GLC 200 4MATIC': 'Benzin',
+  'GLC 220 d 4MATIC': 'Diesel',
+  'GLC 300 4MATIC': 'Benzin',
+  'GLC 300 e 4MATIC': 'Plug-in-Hybrid',
+  'GLC 400 e 4MATIC': 'Plug-in-Hybrid',
+  'GLC 43 AMG': 'Benzin',
+}
+const PAKET_IMAGES = [
+  mercedesMedia.glcFrontLeftLot,
+  mercedesMedia.glcFrontRightLot,
+  mercedesMedia.glcRearLeftLot,
+  mercedesMedia.glcRearRightLot,
+]
+const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/i
+
+function matchVariant(text: string): string {
+  const t = text.toUpperCase()
+  const exact = Object.keys(VARIANT_BASE_VK).find((m) => t.includes(m.toUpperCase()))
+  if (exact) return exact
+  if (/GLC\s*300\s*E/i.test(text)) return 'GLC 300 e 4MATIC'
+  if (/GLC\s*400\s*E/i.test(text)) return 'GLC 400 e 4MATIC'
+  if (/GLC\s*43/i.test(text)) return 'GLC 43 AMG'
+  if (/GLC\s*300/i.test(text)) return 'GLC 300 4MATIC'
+  if (/GLC\s*220\s*D/i.test(text)) return 'GLC 220 d 4MATIC'
+  if (/GLC\s*200/i.test(text)) return 'GLC 200 4MATIC'
+  return 'GLC 300 4MATIC' // plausibler Default fürs Demo
+}
+
+function parseYear(text: string): number {
+  const m = text.match(/\b(20[0-2]\d)\b/)
+  const y = m ? Number(m[1]) : 2022
+  return Math.min(2026, Math.max(2014, y))
+}
+
+function parseMileage(text: string): number {
+  const km = text.match(/([\d.\s]{2,})\s*km/i)
+  const raw = km ? km[1] : (text.match(/\b(\d{2,3}[.\s]?\d{3})\b/)?.[1] ?? '')
+  const n = Number(raw.replace(/[^\d]/g, ''))
+  return n > 0 ? n : 60000
+}
+
+function parseEquipment(line: string): string {
+  const parts = line.split(/[,·]/).map((s) => s.trim()).filter(Boolean)
+  const extras = parts.filter(
+    (p) => !/^\s*20[0-2]\d\s*$/.test(p) && !/km/i.test(p) && !/GLC/i.test(p) && !VIN_RE.test(p) && !/^\d/.test(p),
+  )
+  return extras.length ? extras.join(' · ') : 'Serienausstattung'
+}
+
+function makePackageVehicleFromLine(line: string, index: number, origin: PaketVehicleOrigin): EinkaufPackageVehicle {
+  const isVin = VIN_RE.test(line.trim())
+  const model = matchVariant(line)
+  const year = isVin ? 2022 : parseYear(line)
+  const mileage = isVin ? 70000 : parseMileage(line)
+  const ageYears = 2026 - year
+
+  // VK rückwärts: Referenz minus Alters- und Mehr-km-Abschreibung.
+  const baseVk = VARIANT_BASE_VK[model] ?? 45000
+  const depAge = (year - 2023) * 2500
+  const depKm = -Math.round(Math.max(0, mileage - 30000) * 0.085)
+  const vk = Math.max(13000, Math.round((baseVk + depAge + depKm) / 100) * 100)
+
+  // Kanal nach derselben Alter/km-Logik wie evaluateChannel (Feature 2).
+  const channel: VerwertungChannel = ageYears >= 6 || mileage >= 120000 ? 'auktion' : 'endkunde'
+  const isAuction = channel === 'auktion'
+  const marginPct = isAuction ? 0.07 : 0.16
+  const sweetSpot = Math.round((vk * (1 - marginPct)) / 100) * 100
+  const margin = vk - sweetSpot
+
+  const condition: EinkaufCondition =
+    mileage >= 120000 || ageYears >= 7 ? 'maengel' : mileage >= 80000 || ageYears >= 4 ? 'gut' : 'sehr_gut'
+  const ez = line.match(/\b(0?[1-9]|1[0-2])\/(20[0-2]\d)\b/)?.[0] ?? `0${1 + (index % 9)}/${year}`
+  const equipmentSummary = isVin ? 'VIN-decodiert · Stammdaten via KBA' : parseEquipment(line)
+
+  // Hero-GLC (volle Bewertung aus Feature 1/2) wiederverwenden, wenn die Zeile passt —
+  // so bleibt im Demo-Drill-down die ausführliche Einzelanalyse erhalten.
+  const isHero = model === 'GLC 300 4MATIC' && year === 2023 && Math.abs(mileage - 32400) <= 1500
+  const detail = isHero
+    ? einkaufPricingResult
+    : makeQuickDetail({ model, ez, year, mileage, sweetSpot, vk, confidence: isAuction ? 84 : 88, channel, condition })
+
+  return {
+    id: `pkg-${origin}-${index + 1}`,
+    model,
+    modelYear: year,
+    firstRegistration: ez,
+    fuelType: VARIANT_FUEL[model] ?? 'Benzin',
+    mileage,
+    condition,
+    equipmentSummary,
+    imageUrl: PAKET_IMAGES[index % PAKET_IMAGES.length],
+    sweetSpot,
+    expectedSalePrice: vk,
+    margin,
+    marginPercent: pct(margin, vk),
+    channel,
+    channelReason: isAuction
+      ? `Alter ${ageYears} J. (EZ ${year}) & ${mileage.toLocaleString('de-DE')} km → Pflicht-Routing Auktion.`
+      : `EZ ${year} & ${mileage.toLocaleString('de-DE')} km — innerhalb des Endkunden-Profils.`,
+    daysOnLot: isAuction ? 5 + (index % 3) : 20 + (index % 6),
+    simplified: !isHero,
+    detail,
+    origin,
+  }
+}
+
+// 1–16 Zeilen → bewertete Paket-Fahrzeuge. Leerer Text => leeres Array (Aufrufer
+// fällt dann auf das kuratierte Demo-Paket zurück).
+export function parsePaketTranscript(text: string, origin: PaketVehicleOrigin = 'text'): EinkaufPackageVehicle[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, MAX_PAKET_VEHICLES)
+  return lines.map((line, i) => makePackageVehicleFromLine(line, i, origin))
+}
+
 export function buildPackageTotals(vehicles: EinkaufPackageVehicle[]): EinkaufPackageTotals {
   const ekRecommendation = vehicles.reduce((s, v) => s + v.sweetSpot, 0)
   const expectedSaleTotal = vehicles.reduce((s, v) => s + v.expectedSalePrice, 0)
@@ -299,7 +438,9 @@ export function buildPackageTotals(vehicles: EinkaufPackageVehicle[]): EinkaufPa
       endkunde: vehicles.filter((v) => v.channel === 'endkunde').length,
       auktion: vehicles.filter((v) => v.channel === 'auktion').length,
     },
-    defaultBundlePrice: 134900,
+    // Drehscheiben-Paketpreis ≈ Summe Einzel-EK + kleiner Paket-Aufschlag (~1,3 %).
+    // Auf 100 € gerundet; für das 4er-Demo ergibt das die bisherigen 134.900 €.
+    defaultBundlePrice: Math.round((ekRecommendation * 1.013) / 100) * 100,
   }
 }
 

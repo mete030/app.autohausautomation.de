@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { einkaufPackageVehicles, type EinkaufPackageVehicle, type EinkaufCondition } from '@/lib/mock-data-paket'
-import { CheckCircle2, Plus, X, Sparkles, Settings2 } from 'lucide-react'
+import { CheckCircle2, Plus, X, Sparkles, Settings2, Layers } from 'lucide-react'
 
 const GLC_VARIANTS = ['GLC 200 4MATIC', 'GLC 220 d 4MATIC', 'GLC 300 4MATIC', 'GLC 300 e 4MATIC', 'GLC 400 e 4MATIC', 'GLC 43 AMG']
 const CONDITIONS: { value: EinkaufCondition; label: string }[] = [
@@ -42,11 +42,11 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
             <Settings2 className="h-4 w-4 text-primary" />
-            {vehicles.length} Fahrzeuge erkannt — bitte prüfen/korrigieren
+            Zug / Paket — {vehicles.length} Fahrzeuge erkannt, bitte prüfen/korrigieren
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
             <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-500" />
-            Erkannt
+            {vehicles.length} im Paket
           </Badge>
         </div>
       </CardHeader>
@@ -65,6 +65,10 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
                   {GLC_VARIANTS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {/* Identifizierte Stammdaten (A4): EZ + Kraftstoff */}
+              <p className="mt-1 text-[10px] text-muted-foreground tabular-nums">
+                EZ {v.firstRegistration} · {v.fuelType}
+              </p>
             </div>
             <div className="w-[110px]">
               <Label className="text-[10px] text-muted-foreground">Kilometer</Label>
@@ -85,9 +89,19 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
                 </SelectContent>
               </Select>
             </div>
-            <Badge variant="secondary" className="text-[10px] font-normal mb-1.5 max-w-[160px] truncate">
-              {v.equipmentSummary}
-            </Badge>
+            <div className="flex flex-col items-start gap-1 mb-1">
+              <Badge variant="secondary" className="text-[10px] font-normal max-w-[160px] truncate">
+                {v.equipmentSummary}
+              </Badge>
+              {/* A2: erkannte Fahrzeuge sichtbar als „aus Paket identifiziert" labeln */}
+              <Badge
+                variant="outline"
+                className="text-[10px] font-normal text-muted-foreground border-border/60"
+              >
+                <Layers className="h-3 w-3 mr-1" />
+                {v.origin === 'screenshot' ? 'aus Paket-Screenshot (OCR)' : 'aus Paket identifiziert'}
+              </Badge>
+            </div>
             <Button
               variant="ghost"
               size="icon"
