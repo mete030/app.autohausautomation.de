@@ -14,6 +14,7 @@ import {
   buildPackageTotals,
   evaluatePackageBundle,
   allocateBundle,
+  buildPackageVerdictText,
   paketVerdictConfig,
   CONDITION_DAT_LABEL,
   type EinkaufPackageVehicle,
@@ -37,6 +38,7 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
   const priceNum = Number(bundlePrice) || 0
   const result = useMemo(() => ({ vehicles, totals }), [vehicles, totals])
   const bundle = evaluatePackageBundle(result, priceNum)
+  const kiVerdict = buildPackageVerdictText(result, priceNum) // H2
   const allocation = allocateBundle(vehicles, priceNum, totals.ekRecommendation)
   const maxAlloc = Math.max(1, ...allocation.map((a) => a.alloc))
   const verdict = paketVerdictConfig[bundle.verdict]
@@ -335,6 +337,17 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
             </div>
             <p className="text-[10px] text-muted-foreground mt-2">Summe der Aufteilung entspricht exakt dem eingegebenen Paketpreis.</p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* H2: KI-Gesamteinschätzung des Pakets */}
+      <Card className="border-border/60 bg-gradient-to-br from-primary/[0.04] via-card to-card">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">KI-Gesamteinschätzung</span>
+          </div>
+          <p className="text-sm leading-relaxed text-foreground/90">{kiVerdict}</p>
         </CardContent>
       </Card>
 

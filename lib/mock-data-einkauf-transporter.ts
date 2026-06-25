@@ -181,6 +181,10 @@ export const einkaufTransporterPricingResult: EinkaufPricingResult = {
       'Knappe Kühl-Nische unter Markt, Marge > 15 % — lange Standzeit unkritisch, Vorratskauf vor der Sommersaison sinnvoll.',
   },
 
+  // TODO[real-backend]: KI — Begründungstext aus echtem Modell.
+  kiSummary:
+    'KI-Fazit: Kaufempfehlung. Knappe Kühl-Nische unter Markt mit über 15 % Marge; die saisonale Nachfrage zieht zum Sommer deutlich an (Umschlagsrate 11,7 %, steigend). Lange Standzeit ist im antizyklischen Vorratskauf einkalkuliert und kein Nachteil. Nachrangig: eigene Kühl-Sprinter-Historie mit 15,3 % Marge.',
+
   vehicleType: 'transporter',
 
   // G2: saisonaler Nachfrage-/Preisindex (Sommer-Peak für Kühlfahrzeuge).

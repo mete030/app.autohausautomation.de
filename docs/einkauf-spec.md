@@ -149,13 +149,13 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 - [x] **G5** Auktions-Insights für Transporter: Panel mit Mock-Signal „was andere Mercedes-Händler aktuell EINKAUFEN" (Nachfrage-Frühindikator); nur Beobachtung, kein Bieten. — *`DealerBuyingSignal[]` Panel mit Händler-Anzahl + Trendpfeil + „nur Beobachtung, kein automatisches Bieten".*
 
 ### Epic H — KI-Schicht
-- [ ] **H1** Pro Fahrzeug „KI-Empfehlung"-Bereich mit Mock-Begründungstext (Trends + sekundär historische Zahlen), begründet die Kaufempfehlung.
-- [ ] **H2** Auf Paketebene KI-Gesamteinschätzung („Paket lohnt/lohnt nicht, weil …", Mock); Codestelle mit `// TODO[real-backend]: KI` markiert.
+- [x] **H1** Pro Fahrzeug „KI-Empfehlung"-Bereich mit Mock-Begründungstext (Trends + sekundär historische Zahlen), begründet die Kaufempfehlung. — *`buildKiSummary()` (Trend + KBA-Nachfrage primär, Historie nachrangig); „KI-Empfehlung"-Karte in SingleVehicleResult. Kuratiierte Texte für Hero/Auktion/Transporter. `// TODO[real-backend]: KI`.*
+- [x] **H2** Auf Paketebene KI-Gesamteinschätzung („Paket lohnt/lohnt nicht, weil …", Mock); Codestelle mit `// TODO[real-backend]: KI` markiert. — *`buildPackageVerdictText()` (reagiert auf Paketpreis, nutzt roleSplit + Verdict); „KI-Gesamteinschätzung"-Karte in PaketResult. `// TODO[real-backend]: KI`.*
 
 ### Querschnitt — Qualität
 - [ ] **Q1** Build/Dev-Server nach jeder Änderung fehlerfrei; nichts Bestehendes bricht.
 - [x] **Q2** Alle Mock-Daten zentral, realistisch, leicht austauschbar. — *Ist bereits gegeben; Muster beibehalten.*
-- [ ] **Q3** Alle künftigen Backend-Nahtstellen mit `// TODO[real-backend]: …` markiert.
+- [x] **Q3** Alle künftigen Backend-Nahtstellen mit `// TODO[real-backend]: …` markiert. — *21 Marker: mobile.de (Umkreissuche), KBA (Marktdaten-Anbieter), DAT/Schwacke, OCR (Paket-Screenshot), VIN-/HSN-Decode, Auktionen (B2B + Händler-Einkaufssignale), KI (pro Fahrzeug + Paket + Scoring).*
 - [x] **Q4** UI-Texte Deutsch; Code in Repo-Konvention. — *Ist bereits gegeben; beibehalten.*
 - [x] **Q5** Bestehende Design-Sprache/Komponenten wiederverwendet; keine fremde UI-Lib. — *Ist bereits gegeben; beibehalten.*
 

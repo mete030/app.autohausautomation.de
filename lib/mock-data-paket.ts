@@ -14,6 +14,7 @@ import {
   buildSegmentSignal,
   computeTrendSignal,
   buildRecommendation,
+  buildKiSummary,
   classifyRole,
   kraftstoffartFromModel,
   DEFAULT_REGION_LOCATION,
@@ -238,6 +239,7 @@ function makeQuickDetail(o: {
     marketPercentile: result.marketPosition.percentile,
     segmentCaution: result.segmentSignal.caution,
   })
+  result.kiSummary = buildKiSummary(result) // H1
 
   return result
 }
@@ -523,6 +525,26 @@ export function evaluatePackageBundle(result: EinkaufPackageResult, bundlePrice:
   const breakEven = expectedSaleTotal // Marge = 0
   const grenzwertigAbove = expectedSaleTotal / (1 + PAKET_LOHNT_PCT / 100) // darüber: nicht mehr "lohnt"
   return { blendedMargin, blendedMarginPercent, premiumVsSingleEk, verdict, breakEven, grenzwertigAbove }
+}
+
+// H2: KI-Gesamteinschätzung des Pakets (Mock) — formuliert die Arbitrage-Logik in
+// einem Satz, reagiert auf den eingegebenen Paketpreis.
+// TODO[real-backend]: KI — echtes Modell bewertet das Paket gesamthaft.
+export function buildPackageVerdictText(result: EinkaufPackageResult, bundlePrice: number): string {
+  const { totals } = result
+  const bundle = evaluatePackageBundle(result, bundlePrice)
+  const { treiber, mitnahme } = totals.roleSplit
+  const eur = (n: number) => `${Math.round(n).toLocaleString('de-DE')} €`
+  const verdictWord = bundle.verdict === 'lohnt' ? 'lohnt sich' : bundle.verdict === 'grenzwertig' ? 'ist grenzwertig' : 'lohnt sich nicht'
+  const driverNote =
+    treiber >= mitnahme
+      ? `Die ${treiber} Treiber tragen die ${mitnahme} schwächeren Mitnahme-Fahrzeug${mitnahme === 1 ? '' : 'e'}`
+      : `Achtung: nur ${treiber} Treiber für ${mitnahme} Mitnahme-Fahrzeuge — dünne Arbitrage-Basis`
+  return (
+    `KI-Gesamteinschätzung: Das Paket ${verdictWord}. ${driverNote}. ` +
+    `Bei ${eur(bundlePrice)} Paketpreis ergibt sich eine Blended-Marge von ${eur(bundle.blendedMargin)} (${bundle.blendedMarginPercent.toFixed(1)} %), Break-even bei ${eur(bundle.breakEven)}. ` +
+    `Die starken Fahrzeuge subventionieren die schwachen, solange die Gesamtmarge über ${PAKET_LOHNT_PCT} % bleibt.`
+  )
 }
 
 // Aufteilung des Paketpreises ∝ Einzel-EK; Σ === bundlePrice exakt (letzte Zeile

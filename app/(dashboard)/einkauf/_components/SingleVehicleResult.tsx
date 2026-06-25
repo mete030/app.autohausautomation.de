@@ -22,7 +22,7 @@ import {
   type EquipmentCoverage,
 } from '@/lib/mock-data-einkauf'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, Calculator, Sun, Snowflake, Package, Boxes, ShoppingCart } from 'lucide-react'
+import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, Calculator, Sun, Snowflake, Package, Boxes, ShoppingCart, Sparkles } from 'lucide-react'
 import {
   Area,
   AreaChart,
@@ -668,6 +668,21 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          {/* H1: KI-Empfehlung — fasst Trends + (nachrangig) Historie zusammen */}
+          {result.kiSummary && (
+            <Card className="border-border/60 bg-gradient-to-br from-primary/[0.04] via-card to-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  KI-Empfehlung
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-relaxed text-foreground/90">{result.kiSummary}</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

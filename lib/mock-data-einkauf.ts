@@ -235,6 +235,7 @@ export interface EinkaufPricingResult {
   trend?: TrendSignal // D1/D2: 8-Wochen-Trendserie (kombiniertes Signal)
   buyDecision?: BuyDecision // E1/E2: Kaufempfehlung + Begründungstyp
   packageRole?: PackageRole // E3: nur im Paket-Kontext gesetzt
+  kiSummary?: string // H1: KI-Begründungstext (Mock)
 
   // Transporter-Modus (G1–G5) — nur bei vehicleType==='transporter' gesetzt.
   vehicleType?: VehicleType // G1
@@ -399,6 +400,29 @@ export function classifyRole(o: { channel: VerwertungChannel; marginPercent: num
   return o.channel === 'endkunde' && o.marginPercent >= 12 ? 'treiber' : 'mitnahme'
 }
 
+// H1: KI-Begründungstext pro Fahrzeug — fasst die aktuellen Signale (Trend, KBA-
+// Nachfrage) zusammen und stützt sich NACHRANGIG auf die eigene Historie.
+// TODO[real-backend]: KI — echtes Modell formuliert die Begründung.
+export function buildKiSummary(r: EinkaufPricingResult): string {
+  const rec = r.buyDecision?.recommendation
+  const recWord = rec === 'kaufen' ? 'Kaufempfehlung' : rec === 'pruefen' ? 'mit Vorbehalt prüfen' : 'eher ablehnen'
+  const trendWord = r.trend
+    ? r.trend.direction === 'up'
+      ? `steigender Markttrend (${r.trend.changePercent >= 0 ? '+' : ''}${r.trend.changePercent} % über 8 Wochen)`
+      : r.trend.direction === 'down'
+        ? `fallender Markttrend (${r.trend.changePercent} % über 8 Wochen)`
+        : 'seitwärts laufender Markt'
+    : 'verfügbarer Markttrend'
+  const demandWord = r.kbaDemand
+    ? `Umschlagsrate ${r.kbaDemand.umschlagsrate} % (${
+        r.kbaDemand.trendDirection === 'up' ? 'Nachfrage zieht an' : r.kbaDemand.trendDirection === 'down' ? 'Nachfrage schwächt ab' : 'stabil'
+      })`
+    : 'regionale Nachfrage'
+  const hist = `historisch ${r.historical.averageMarginPercent.toFixed(1)} % Marge bei Ø ${r.historical.averageDaysOnLot.toFixed(0)} Tagen Standzeit`
+  const caution = r.segmentSignal?.caution ? ' Achtung: rückläufiger Segment-/Kraftstoff-Trend dämpft die Empfehlung.' : ''
+  return `KI-Fazit: ${recWord}. Die aktuellen Signale dominieren — ${trendWord}, ${demandWord}. Nachrangig stützt die eigene Verkaufshistorie (${hist}).${caution}`
+}
+
 // UI-Konfiguration (Ampel) für die Kaufempfehlung.
 export const buyRecommendationConfig: Record<BuyRecommendation, { label: string; tone: string; dot: string; badge: string }> = {
   kaufen: {
@@ -545,6 +569,7 @@ export const einkaufHistoricalSales: HistoricalSale[] = [
 
 // ─── Mock: DAT/Schwacke ─────────────────────────────────────────────────────
 
+// TODO[real-backend]: DAT/Schwacke-API liefert Grundwert + Korrekturen (nachrangige Referenz).
 export const einkaufDATValuation: DATValuation = {
   baseValue: 47200,
   adjustments: [
@@ -700,6 +725,9 @@ export const einkaufPricingResult: EinkaufPricingResult = {
   segmentSignal: buildSegmentSignal('benzin'),
   trend: computeTrendSignal({ baseValue: 52400, kbaTrend: 'up', kbaChangePercent: 9, umschlagsrate: 14.5, avgStandtage: 34 }),
   buyDecision: buildRecommendation({ channel: 'endkunde', marginPercent: 17.8, umschlagsrate: 14.5, marketPercentile: 35, segmentCaution: false }),
+  // TODO[real-backend]: KI — Begründungstext aus echtem Modell.
+  kiSummary:
+    'KI-Fazit: Klare Kaufempfehlung. Die aktuellen Signale dominieren — steigender Markttrend (+9 % über 8 Wochen) und hohe regionale Nachfrage (Umschlagsrate 14,5 %, Tendenz steigend). Unter Markt eingekauft entsteht eine attraktive Endkundenmarge. Nachrangig stützt die eigene Historie (17,8 % Marge bei Ø 23 Tagen Standzeit).',
 }
 
 // ─── Kanal-Labels (eine Quelle für alle kanal-bewussten Texte) ───────────────
@@ -924,6 +952,7 @@ export const einkaufAuktionDATValuation: DATValuation = {
 
 // ─── Mock: B2B-Auktionsreferenzen ────────────────────────────────────────────
 
+// TODO[real-backend]: Auktionen — B2B-Hammerpreise (BCA / Autobid.de / MB Remarketing).
 export const einkaufAuctionBenchmarks: AuctionBenchmark[] = [
   { platform: 'BCA', medianHammer: 12900, lowest: 10900, highest: 14200, count: 6, note: 'Hammer-Median der letzten 6 Auktionen' },
   { platform: 'Autobid.de', medianHammer: 12400, lowest: 11100, highest: 13700, count: 23, note: 'Median aus 23 Online-Geboten' },
@@ -994,4 +1023,7 @@ export const einkaufAuktionPricingResult: EinkaufPricingResult = {
   segmentSignal: buildSegmentSignal('benzin'),
   trend: computeTrendSignal({ baseValue: 12700, kbaTrend: 'down', kbaChangePercent: -7, umschlagsrate: 2.4, avgStandtage: 52 }),
   buyDecision: buildRecommendation({ channel: 'auktion', marginPercent: 7.1, umschlagsrate: 2.4, marketPercentile: 55, segmentCaution: false }),
+  // TODO[real-backend]: KI — Begründungstext aus echtem Modell.
+  kiSummary:
+    'KI-Fazit: Mit Vorbehalt prüfen. Aktuelle Signale: fallender Markttrend (−10 % über 8 Wochen) und schwache Nachfrage (Umschlagsrate 2,4 %, Tendenz fallend). Als Endkundenfahrzeug ungeeignet — nur über die B2B-Auktion mit dünnem Spread verwertbar, im Paket als Mitnahme vertretbar. Nachrangig: eigene Auktions-Historie 6,7 % Spread bei Ø 5 Tagen bis Zuschlag.',
 }
