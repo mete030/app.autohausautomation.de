@@ -8,16 +8,20 @@ import { priceCategoryConfig } from '@/lib/constants'
 import {
   channelLabels,
   regionalMarketFor,
+  recommendedEk,
   DATA_WINDOW_LABEL,
   SECONDARY_REFERENCE_NOTE,
+  DEFAULT_TARGET_MARGIN_PCT,
   type EinkaufPricingResult,
   type VerwertungChannel,
   type SearchRadiusKm,
   type TrendDirection,
 } from '@/lib/mock-data-einkauf'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react'
+import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, Calculator } from 'lucide-react'
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -67,6 +71,22 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
   const demand = result.kbaDemand
   const segment = result.segmentSignal
   const umschlagLabel = (rate: number) => (rate >= 8 ? 'Dreht schnell' : rate >= 4 ? 'Mittel' : 'Träge')
+
+  // C1/C2: Zielmarge → empfohlener EK (rückwärts aus regionalem VK). Reaktiv auf
+  // Zielmarge UND Radius (Marktpreis-Basis ändert sich mit dem Umkreis).
+  const [targetMarginPct, setTargetMarginPct] = useState<number>(isAuction ? 7 : DEFAULT_TARGET_MARGIN_PCT)
+  const regionalVk = regional?.avgOfferPrice ?? result.mobileDe.medianPrice
+  const derivedEk = recommendedEk(regionalVk, targetMarginPct)
+  const derivedMarginEur = regionalVk - derivedEk
+
+  // D1/D2: Trade-Republic-Trend — Farbe grün bei Aufwärts-, rot bei Abwärtstrend.
+  const trend = result.trend
+  const trendColor = trend?.direction === 'down' ? '#ef4444' : trend?.direction === 'up' ? '#10b981' : '#94a3b8'
+  const trendVals = trend?.points.map((p) => p.value) ?? []
+  const trendMin = trendVals.length ? Math.min(...trendVals) : 0
+  const trendMax = trendVals.length ? Math.max(...trendVals) : 0
+  const trendPad = (trendMax - trendMin) * 0.4 || 500
+  const trendDomain: [number, number] = [Math.round(trendMin - trendPad), Math.round(trendMax + trendPad)]
 
   const sellPrice = isAuction ? (result.auction?.expectedHammerPrice ?? result.mobileDe.medianPrice) : result.mobileDe.medianPrice
   const spread = isAuction ? (result.auction?.spread ?? sellPrice - result.sweetSpot) : sellPrice - result.sweetSpot
@@ -177,6 +197,43 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
             </CardContent>
           </Card>
 
+          {/* D1/D2: Markttrend im Trade-Republic-Stil (8 Wochen, grün ↑ / rot ↓) */}
+          {trend && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-1">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                    Markttrend
+                    <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-0">
+                      {DATA_WINDOW_LABEL}
+                    </Badge>
+                  </CardTitle>
+                  <TrendArrow dir={trend.direction} pct={trend.changePercent} />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-1">
+                <div className="h-[120px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trend.points} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
+                      <defs>
+                        <linearGradient id="einkaufTrendFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={trendColor} stopOpacity={0.35} />
+                          <stop offset="100%" stopColor={trendColor} stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <YAxis hide domain={trendDomain} />
+                      <XAxis dataKey="week" hide />
+                      <RechartsTooltip formatter={(v) => formatCurrency(Number(v))} labelStyle={{ fontWeight: 600 }} />
+                      <Area type="monotone" dataKey="value" stroke={trendColor} strokeWidth={2} fill="url(#einkaufTrendFill)" dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">Signal kombiniert: {trend.drivers}</p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* B1/B2/B3/B5: Regionaler Markt & KBA-Nachfrage (Datenfenster „Letzte 8 Wochen" = erste Klasse) */}
           {regional && (
             <Card className="border-border/60">
@@ -267,6 +324,55 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
 
                 <p className="text-[10px] text-muted-foreground">
                   Quelle: mobile.de Umkreissuche + KBA-Signale (Demo) &middot; Fenster {DATA_WINDOW_LABEL}.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* C1/C2: Zielmarge → empfohlener EK (rückwärts aus regionalem VK), reaktiv */}
+          {regional && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calculator className="h-4 w-4 text-muted-foreground" />
+                  Preis- & Margenkalkulation
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-sm font-medium">Zielmarge (auf VK)</span>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={5}
+                      max={15}
+                      step={0.5}
+                      value={targetMarginPct}
+                      onChange={(e) => setTargetMarginPct(Number(e.target.value))}
+                      className="w-44 accent-primary"
+                      aria-label="Zielmarge"
+                    />
+                    <span className="text-sm font-bold tabular-nums w-12 text-right">{targetMarginPct.toFixed(1)}%</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                    <p className="text-[11px] text-muted-foreground">Regionaler VK (Basis)</p>
+                    <p className="text-lg font-bold tabular-nums mt-0.5">{formatCurrency(regionalVk)}</p>
+                  </div>
+                  <div className="rounded-lg border border-primary/30 bg-primary/[0.04] p-3">
+                    <p className="text-[11px] text-muted-foreground">Empfohlener EK (= VK − Marge)</p>
+                    <p className="text-lg font-bold tabular-nums mt-0.5">{formatCurrency(derivedEk)}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                    <p className="text-[11px] text-muted-foreground">Erwartete Marge</p>
+                    <p className="text-lg font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(derivedMarginEur)} <span className="text-xs font-medium">({targetMarginPct.toFixed(1)}%)</span>
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Engine-Empfehlung (EK): {formatCurrency(result.sweetSpot)} &middot; die Zielmarge rechnet den EK rückwärts aus dem regionalen Marktpreis (reagiert auf Radius &amp; Zielmarge).
                 </p>
               </CardContent>
             </Card>

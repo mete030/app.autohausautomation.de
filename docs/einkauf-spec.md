@@ -124,12 +124,12 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 - [x] **B4** Datenfenster „letzte 8 Wochen / 1–2 Monate" sichtbar erste Klasse (Label/Filter). DAT-Wert + historischer VK gezeigt, aber **visuell nachrangig** (ausgegraut / „Referenz, nicht tagesaktuell"), nie als Primäranker. — *Regional-Karte trägt „Letzte 8 Wochen"-Badge; DAT- & Historisch-Karten `opacity-80` + Caption „Referenz, nicht tagesaktuell".*
 
 ### Epic C — Preis-/Margenlogik pro Fahrzeug
-- [ ] **C1** Empfohlener EK = regionaler mobile-VK − Zielmarge; Zielmarge einstellbar, Default 8–10 %.
-- [ ] **C2** Erwartete Marge (€ und %) pro Fahrzeug; passt sich an bei Änderung von Zielmarge/Mock-Marktpreis.
+- [x] **C1** Empfohlener EK = regionaler mobile-VK − Zielmarge; Zielmarge einstellbar, Default 8–10 %. — *`recommendedEk(regionalVk, targetMarginPct)` + `DEFAULT_TARGET_MARGIN_PCT=9`; Zielmarge-Slider (5–15 %) in „Preis- & Margenkalkulation"; Ziel-EK rückwärts aus regionalem VK.*
+- [x] **C2** Erwartete Marge (€ und %) pro Fahrzeug; passt sich an bei Änderung von Zielmarge/Mock-Marktpreis. — *Erwartete Marge €/% reagiert live auf Zielmarge-Slider UND Radius (regionaler VK ändert sich mit dem Umkreis).*
 
 ### Epic D — Trendanzeige (Trade-Republic-Stil) pro Fahrzeug
-- [ ] **D1** Pro Fahrzeug minimalistischer Chart im Trade-Republic-Stil (Linie/Fläche, grün bei ↑ / rot bei ↓) für den Mock-Verlauf.
-- [ ] **D2** Chart zeigt Trendrichtung + %-Veränderung über das Datenfenster; Mock-Signal kombiniert Standtage, Regionalpreis und Besitzumschreibungen.
+- [x] **D1** Pro Fahrzeug minimalistischer Chart im Trade-Republic-Stil (Linie/Fläche, grün bei ↑ / rot bei ↓) für den Mock-Verlauf. — *recharts `AreaChart` (achsenlos, Gradient-Fill), Farbe grün/rot/neutral nach `trend.direction`.*
+- [x] **D2** Chart zeigt Trendrichtung + %-Veränderung über das Datenfenster; Mock-Signal kombiniert Standtage, Regionalpreis und Besitzumschreibungen. — *`computeTrendSignal()` blendet KBA-Trend + Umschlagsrate + Standtage; `TrendArrow` zeigt Richtung+% , Caption listet die Signaltreiber.*
 
 ### Epic E — Kauf/Nicht-Kauf-Empfehlung pro Fahrzeug
 - [ ] **E1** Pro Fahrzeug klare Kaufen/Nicht-kaufen-Empfehlung (Badge/Ampel) aus Mock-Logik.

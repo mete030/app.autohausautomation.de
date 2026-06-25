@@ -12,6 +12,7 @@ import {
   einkaufPricingResult,
   buildKbaDemand,
   buildSegmentSignal,
+  computeTrendSignal,
   kraftstoffartFromModel,
   DEFAULT_REGION_LOCATION,
   DEFAULT_RADIUS_KM,
@@ -218,6 +219,13 @@ function makeQuickDetail(o: {
     ? buildKbaDemand({ besitzumschreibungen: 38 + (year % 6), bestand: 1700, trend: 'down', changePercent: -(5 + (year % 4)) })
     : buildKbaDemand({ besitzumschreibungen: 124 + (year % 5) * 6, bestand: 960, trend: 'up', changePercent: 6 + (year % 4) })
   result.segmentSignal = buildSegmentSignal(kraftstoffart)
+  result.trend = computeTrendSignal({
+    baseValue: result.mobileDe.medianPrice,
+    kbaTrend: result.kbaDemand.trendDirection,
+    kbaChangePercent: result.kbaDemand.changePercent,
+    umschlagsrate: result.kbaDemand.umschlagsrate,
+    avgStandtage: result.region.avgStandtage,
+  })
 
   return result
 }

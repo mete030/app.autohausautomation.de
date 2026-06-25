@@ -144,6 +144,19 @@ export interface SegmentSignal {
   neuzulassungsHinweis?: string // B7 Warnhinweis
 }
 
+// D1/D2: Trade-Republic-Stil-Trendserie. Kombiniertes Mock-Signal aus Standtage,
+// Regionalpreis und Besitzumschreibungen.
+export interface TrendPoint {
+  week: string
+  value: number
+}
+export interface TrendSignal {
+  points: TrendPoint[] // 8 Wochenpunkte
+  direction: TrendDirection
+  changePercent: number // %-Veränderung über das Fenster
+  drivers: string // welche Mock-Inputs das Signal speisen (D2)
+}
+
 export interface EinkaufPricingResult {
   recommendedMin: number
   recommendedMax: number
@@ -186,6 +199,7 @@ export interface EinkaufPricingResult {
   region?: RegionalMarket
   kbaDemand?: KbaDemand
   segmentSignal?: SegmentSignal
+  trend?: TrendSignal // D1/D2: 8-Wochen-Trendserie (kombiniertes Signal)
 }
 
 // ─── Helper für regionale Marktsicht & KBA-Signale ───────────────────────────
@@ -262,6 +276,40 @@ export function buildSegmentSignal(
         ? `Neuzulassungen aktuell +${nz} % — künftig mehr Gebrauchtangebot, Preisdruck möglich.`
         : undefined,
   }
+}
+
+// C1/C2: empfohlener EK = regionaler VK − Zielmarge (Marge auf VK, App-Konvention).
+export const DEFAULT_TARGET_MARGIN_PCT = 9 // Default-Zielmarge (8–10 %)
+export function recommendedEk(regionalVk: number, targetMarginPct: number): number {
+  return Math.round(regionalVk * (1 - targetMarginPct / 100))
+}
+
+// D1/D2: 8-Wochen-Trendserie als kombiniertes Mock-Signal (Standtage + Regionalpreis
+// + Besitzumschreibungen). Richtung: KBA-Trend dominiert, hohe Umschlagsrate /
+// niedrige Standtage stützen „up". Serie endet beim baseValue (heutiger Wert).
+// TODO[real-backend]: Signal aus realen Zeitreihen (mobile.de Preisindex + KBA-Reihe).
+export function computeTrendSignal(o: {
+  baseValue: number
+  kbaTrend: TrendDirection
+  kbaChangePercent: number
+  umschlagsrate: number
+  avgStandtage: number
+}): TrendSignal {
+  const speedBonus =
+    (o.umschlagsrate >= 8 ? 1 : o.umschlagsrate >= 4 ? 0 : -1) +
+    (o.avgStandtage <= 30 ? 1 : o.avgStandtage >= 45 ? -1 : 0)
+  const dirScore = (o.kbaTrend === 'up' ? 1 : o.kbaTrend === 'down' ? -1 : 0) + speedBonus
+  const direction: TrendDirection = dirScore > 0 ? 'up' : dirScore < 0 ? 'down' : 'flat'
+  const changePercent = Math.round((o.kbaChangePercent + speedBonus * 1.5) * 10) / 10
+  const weeks = 8
+  const points: TrendPoint[] = Array.from({ length: weeks }, (_, i) => {
+    const t = i / (weeks - 1)
+    const drift = (changePercent / 100) * o.baseValue * (t - 1) // endet bei baseValue (t=1)
+    const wobble = ((i % 3) - 1) * o.baseValue * 0.006 // kleines deterministisches Rauschen
+    return { week: `KW ${i + 1}`, value: Math.round(o.baseValue + drift + wobble) }
+  })
+  const drivers = `Standtage ${o.avgStandtage} T · Umschlagsrate ${o.umschlagsrate} % · KBA ${o.kbaChangePercent >= 0 ? '+' : ''}${o.kbaChangePercent} %`
+  return { points, direction, changePercent, drivers }
 }
 
 // Kraftstoffart aus Modell-/Antriebsstring ableiten (Demo-Heuristik).
@@ -533,6 +581,7 @@ export const einkaufPricingResult: EinkaufPricingResult = {
   },
   kbaDemand: buildKbaDemand({ besitzumschreibungen: 142, bestand: 980, trend: 'up', changePercent: 9 }),
   segmentSignal: buildSegmentSignal('benzin'),
+  trend: computeTrendSignal({ baseValue: 52400, kbaTrend: 'up', kbaChangePercent: 9, umschlagsrate: 14.5, avgStandtage: 34 }),
 }
 
 // ─── Kanal-Labels (eine Quelle für alle kanal-bewussten Texte) ───────────────
@@ -825,4 +874,5 @@ export const einkaufAuktionPricingResult: EinkaufPricingResult = {
   },
   kbaDemand: buildKbaDemand({ besitzumschreibungen: 41, bestand: 1720, trend: 'down', changePercent: -7 }),
   segmentSignal: buildSegmentSignal('benzin'),
+  trend: computeTrendSignal({ baseValue: 12700, kbaTrend: 'down', kbaChangePercent: -7, umschlagsrate: 2.4, avgStandtage: 52 }),
 }
