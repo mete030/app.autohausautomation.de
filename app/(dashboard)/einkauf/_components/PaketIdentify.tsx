@@ -7,17 +7,18 @@ import { Textarea } from '@/components/ui/textarea'
 import type { PaketVehicleOrigin } from '@/lib/mock-data-paket'
 import { Mic, Loader2, Upload, Sparkles, Layers, Search } from 'lucide-react'
 
-// Realistischer Drehscheiben-„Zug" (8 Fahrzeuge): Mix aus jungen Treibern und
-// älteren Mitnahme-Fahrzeugen, die nur gemeinsam gekauft werden können.
+// Realistischer Drehscheiben-„Zug" (8 Fahrzeuge): bunte Mischung gängiger
+// MB-Endkunden-Baureihen (A/B/C/E-Klasse, CLA, GLA, GLB, GLC) — junge Treiber
+// plus ältere Mitnahme-Fahrzeuge, die nur gemeinsam gekauft werden können.
 const DEMO_LINES = [
-  'GLC 200 4MATIC, 2023, 38.000 km, AMG Line · LED',
-  'GLC 220 d 4MATIC, 2022, 64.000 km, Night-Paket · AHK',
-  'GLC 300 4MATIC, 2023, 32.400 km, Burmester · Panorama · HUD',
-  'GLC 300 e 4MATIC, 2022, 55.000 km, AMG Line · Distronic',
-  'GLC 200 4MATIC, 2021, 89.000 km, Advanced',
-  'GLC 43 AMG, 2020, 96.000 km, Performance · Burmester',
-  'GLC 220 d 4MATIC, 2019, 138.000 km, Basis',
-  'GLC 220 d 4MATIC, 2018, 152.000 km, Basis · Navi',
+  'C 220 d 4MATIC, 2021, 58.000 km, AMG Line · LED',
+  'A 200, 2022, 41.000 km, Progressive · MBUX',
+  'GLC 300 4MATIC, 2023, 32.400 km, AMG Line · Burmester · Panorama',
+  'CLA 200, 2021, 63.000 km, AMG Line · Ambientebeleuchtung',
+  'GLA 200, 2022, 48.000 km, Progressive · Kamera',
+  'E 220 d, 2018, 138.000 km, Avantgarde · AHK',
+  'GLB 200, 2021, 71.000 km, Style · 7-Sitzer',
+  'B 180, 2016, 152.000 km, Style · Navi',
 ]
 
 interface PaketIdentifyProps {

@@ -1,5 +1,10 @@
 import type { PriceCategory } from './types'
-import { mercedesMedia } from './mercedes-inventory'
+
+// AI-generierte Einkauf-Demo-Bilder via fal.ai (fal-ai/gpt-image-2), passend zu
+// den Dummy-Fahrzeugen. Liegen in public/einkauf-demo/ — siehe
+// scripts/generate-einkauf-images.mjs. Bewusst getrennt von mercedesMedia
+// (das die Inserate-Demo speist) gehalten.
+export const einkaufDemoImage = (name: string) => `/einkauf-demo/${name}.png`
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -504,7 +509,7 @@ export const einkaufVinMock: EinkaufVehicleData = {
     'MBUX Navigation Premium',
     'Lederausstattung ARTICO/Dinamica',
   ],
-  imageUrl: mercedesMedia.glcExterior,
+  imageUrl: einkaufDemoImage('glc_300_spektralblau'),
 }
 
 // ─── Mock: Historische Verkäufe ──────────────────────────────────────────────
@@ -867,7 +872,7 @@ export const einkaufVinMockAuktion: EinkaufVehicleData = {
     'Anhängerkupplung',
     'Sitzkomfort-Paket',
   ],
-  imageUrl: mercedesMedia.glcExterior,
+  imageUrl: einkaufDemoImage('glc_250_obsidianschwarz'),
 }
 
 // ─── Mock: Auktions-Historie (B2B-Einlieferungen) ────────────────────────────

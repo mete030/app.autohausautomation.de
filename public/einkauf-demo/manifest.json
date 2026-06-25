@@ -1,0 +1,86 @@
+{
+  "transporter_sprinter_kuehlkoffer": {
+    "file": "transporter_sprinter_kuehlkoffer.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb839/LU57itux1PhpniOv7NoI__s1vpL5YT.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T13:53:24.211Z"
+  },
+  "glc_300_spektralblau": {
+    "file": "glc_300_spektralblau.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb848/t5o44mlpTIYM6bEZt1XOz_beUiotVa.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T13:55:48.879Z"
+  },
+  "glc_250_obsidianschwarz": {
+    "file": "glc_250_obsidianschwarz.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb865/ol-zR-yPqOfK5MtxWCPNk_mcwNzEMX.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:00:42.019Z"
+  },
+  "glc_200_polarweiss": {
+    "file": "glc_200_polarweiss.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb874/rhaRjIcnnthdmbMCbadt7_fg3WBZW6.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:03:15.274Z"
+  },
+  "glc_220d_selenitgrau_2022": {
+    "file": "glc_220d_selenitgrau_2022.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb883/cXRK7xqUUlxfXs152nHoH_2jLdA8Te.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:05:46.564Z"
+  },
+  "glc_220d_iridiumsilber_2019": {
+    "file": "glc_220d_iridiumsilber_2019.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb892/fvJErCIrGNLTy4Fdf8NDl_nrBBph2D.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:08:13.218Z"
+  },
+  "mb_a_klasse": {
+    "file": "mb_a_klasse.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb8b3/i6hXg4v4cLSnJQfnCl0s4_eXhiaJ0S.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:13:39.261Z"
+  },
+  "mb_b_klasse": {
+    "file": "mb_b_klasse.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb8c2/LCPijg8Xmnby1MfrRzYoc_0sLJPXQN.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:16:05.529Z"
+  },
+  "mb_c_klasse": {
+    "file": "mb_c_klasse.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb8d0/zmzcWy1gE74FHC7s--est_YNLrhtWT.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:18:43.871Z"
+  },
+  "mb_e_klasse": {
+    "file": "mb_e_klasse.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb8e0/F6XLyNv3nVEy2HEhEUgJS_JasIWvc8.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:21:18.194Z"
+  },
+  "mb_cla": {
+    "file": "mb_cla.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb8ef/yIkRxM9bJIFpQ22sFa8yI_hnxbSafL.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:23:47.674Z"
+  },
+  "mb_gla": {
+    "file": "mb_gla.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb907/hcdm2D_P3-xBH1lBDlIGB_gvsXRJz3.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:26:28.347Z"
+  },
+  "mb_glb": {
+    "file": "mb_glb.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb90f/ze6rqL76PcczrDrT_HzPl_un3el9hS.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:28:58.460Z"
+  },
+  "mb_gle": {
+    "file": "mb_gle.png",
+    "url": "https://v3b.fal.media/files/b/0a9fb926/3_G9VJZvO6VnleyYzvv-T_JmbrJ8OB.png",
+    "model": "fal-ai/gpt-image-2",
+    "ts": "2026-06-25T14:31:41.276Z"
+  }
+}

@@ -11,9 +11,9 @@
 //  • B7: Neuzulassungs-Frühindikator (eSprinter-Schwemme → künftiger Preisdruck)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { mercedesMedia } from './mercedes-inventory'
 import {
   computeTrendSignal,
+  einkaufDemoImage,
   DEFAULT_REGION_LOCATION,
   type EinkaufVehicleData,
   type EinkaufPricingResult,
@@ -48,8 +48,8 @@ export const einkaufTransporterVinMock: EinkaufVehicleData = {
     'MBUX 10,25"',
     'Anhängerkupplung 3,5 t',
   ],
-  // TODO[real-backend]: Transporter-Bilder; Demo nutzt vorhandenes Asset als Platzhalter.
-  imageUrl: mercedesMedia.glcExterior,
+  // AI-generiertes Demo-Bild (fal-ai/gpt-image-2) passend zum Kühlkoffer-Sprinter.
+  imageUrl: einkaufDemoImage('transporter_sprinter_kuehlkoffer'),
 }
 
 const transporterSales: HistoricalSale[] = [

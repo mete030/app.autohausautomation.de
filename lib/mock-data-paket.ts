@@ -17,6 +17,7 @@ import {
   buildKiSummary,
   classifyRole,
   kraftstoffartFromModel,
+  einkaufDemoImage,
   DEFAULT_REGION_LOCATION,
   DEFAULT_RADIUS_KM,
   type EinkaufPricingResult,
@@ -26,7 +27,6 @@ import {
   type VerwertungChannel,
   type PackageRole,
 } from './mock-data-einkauf'
-import { mercedesMedia } from './mercedes-inventory'
 
 export type EinkaufCondition = 'sehr_gut' | 'gut' | 'maengel' | 'unfallschaden'
 
@@ -249,44 +249,44 @@ function makeQuickDetail(o: {
 export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
   {
     id: 'pkg-1',
-    model: 'GLC 200 4MATIC',
-    modelYear: 2023,
-    firstRegistration: '04/2023',
-    fuelType: 'Benzin',
-    mileage: 38000,
-    condition: 'sehr_gut',
+    model: 'C 220 d',
+    modelYear: 2021,
+    firstRegistration: '03/2021',
+    fuelType: 'Diesel',
+    mileage: 58000,
+    condition: 'gut',
     equipmentSummary: 'AMG Line · LED · Kamera',
-    imageUrl: mercedesMedia.glcFrontLeftLot,
-    sweetSpot: 35000,
-    expectedSalePrice: 41400,
-    margin: 6400,
-    marginPercent: pct(6400, 41400), // 15,5 %
+    imageUrl: einkaufDemoImage('mb_c_klasse'),
+    sweetSpot: 30000,
+    expectedSalePrice: 35500,
+    margin: 5500,
+    marginPercent: pct(5500, 35500), // 15,5 %
     channel: 'endkunde',
-    channelReason: 'Jung (2023) & 38.000 km — volle Handelsmarge im Endkundengeschäft.',
-    daysOnLot: 21,
+    channelReason: 'EZ 2021 & 58.000 km — volle Handelsmarge im Endkundengeschäft.',
+    daysOnLot: 22,
     simplified: true,
-    detail: makeQuickDetail({ model: 'GLC 200 4MATIC', ez: '04/2023', year: 2023, mileage: 38000, sweetSpot: 35000, vk: 41400, confidence: 89, channel: 'endkunde', condition: 'sehr_gut' }),
+    detail: makeQuickDetail({ model: 'C 220 d', ez: '03/2021', year: 2021, mileage: 58000, sweetSpot: 30000, vk: 35500, confidence: 89, channel: 'endkunde', condition: 'gut' }),
     role: 'treiber',
   },
   {
     id: 'pkg-2',
-    model: 'GLC 220 d 4MATIC',
-    modelYear: 2022,
-    firstRegistration: '09/2022',
-    fuelType: 'Diesel',
-    mileage: 64000,
-    condition: 'gut',
-    equipmentSummary: 'Night-Paket · AHK · Navi Premium',
-    imageUrl: mercedesMedia.glcFrontRightLot,
-    sweetSpot: 38000,
-    expectedSalePrice: 45000,
-    margin: 7000,
-    marginPercent: pct(7000, 45000), // 15,6 %
+    model: 'CLA 200',
+    modelYear: 2021,
+    firstRegistration: '06/2021',
+    fuelType: 'Benzin',
+    mileage: 49000,
+    condition: 'sehr_gut',
+    equipmentSummary: 'AMG Line · Ambientebeleuchtung',
+    imageUrl: einkaufDemoImage('mb_cla'),
+    sweetSpot: 25500,
+    expectedSalePrice: 30200,
+    margin: 4700,
+    marginPercent: pct(4700, 30200), // 15,6 %
     channel: 'endkunde',
-    channelReason: 'EZ 2022 & 64.000 km — innerhalb des Endkunden-Profils.',
-    daysOnLot: 25,
+    channelReason: 'EZ 2021 & 49.000 km — gängiges Coupé, gute Endkundenmarge.',
+    daysOnLot: 26,
     simplified: true,
-    detail: makeQuickDetail({ model: 'GLC 220 d 4MATIC', ez: '09/2022', year: 2022, mileage: 64000, sweetSpot: 38000, vk: 45000, confidence: 88, channel: 'endkunde', condition: 'gut' }),
+    detail: makeQuickDetail({ model: 'CLA 200', ez: '06/2021', year: 2021, mileage: 49000, sweetSpot: 25500, vk: 30200, confidence: 88, channel: 'endkunde', condition: 'sehr_gut' }),
     role: 'treiber',
   },
   {
@@ -298,7 +298,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     mileage: 32400,
     condition: 'gut',
     equipmentSummary: 'AMG Line · Burmester · Panorama · HUD',
-    imageUrl: mercedesMedia.glcRearLeftLot,
+    imageUrl: einkaufDemoImage('glc_300_spektralblau'),
     sweetSpot: 43200,
     expectedSalePrice: 52400,
     margin: 9200,
@@ -312,23 +312,23 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
   },
   {
     id: 'pkg-4',
-    model: 'GLC 220 d 4MATIC',
-    modelYear: 2019,
-    firstRegistration: '03/2019',
+    model: 'E 220 d',
+    modelYear: 2017,
+    firstRegistration: '05/2017',
     fuelType: 'Diesel',
-    mileage: 138000,
+    mileage: 168000,
     condition: 'maengel',
-    equipmentSummary: 'Basis · Navi · AHK',
-    imageUrl: mercedesMedia.glcRearRightLot,
-    sweetSpot: 17000,
-    expectedSalePrice: 18300, // erwarteter Auktionserlös (Zuschlag)
-    margin: 1300,
-    marginPercent: pct(1300, 18300), // 7,1 %
+    equipmentSummary: 'Avantgarde · Distronic · AHK',
+    imageUrl: einkaufDemoImage('mb_e_klasse'),
+    sweetSpot: 13500,
+    expectedSalePrice: 14500, // erwarteter Auktionserlös (Zuschlag)
+    margin: 1000,
+    marginPercent: pct(1000, 14500), // 6,9 %
     channel: 'auktion',
-    channelReason: 'Alter 7 J. (EZ 2019) & 138.000 km → Pflicht-Routing Auktion (R1 + R2).',
+    channelReason: 'Alter 9 J. (EZ 2017) & 168.000 km → Pflicht-Routing Auktion (R1 + R2).',
     daysOnLot: 6,
     simplified: true,
-    detail: makeQuickDetail({ model: 'GLC 220 d 4MATIC', ez: '03/2019', year: 2019, mileage: 138000, sweetSpot: 17000, vk: 18300, confidence: 84, channel: 'auktion', condition: 'maengel' }),
+    detail: makeQuickDetail({ model: 'E 220 d', ez: '05/2017', year: 2017, mileage: 168000, sweetSpot: 13500, vk: 14500, confidence: 84, channel: 'auktion', condition: 'maengel' }),
     role: 'mitnahme',
   },
 ]
@@ -341,42 +341,49 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
 
 export const MAX_PAKET_VEHICLES = 16
 
-// Referenz-VK (junges Fahrzeug ~2023, ~30.000 km) je GLC-Variante — Demo-Kalibrierung.
-const VARIANT_BASE_VK: Record<string, number> = {
-  'GLC 200 4MATIC': 42000,
-  'GLC 220 d 4MATIC': 44000,
-  'GLC 300 4MATIC': 52000,
-  'GLC 300 e 4MATIC': 55000,
-  'GLC 400 e 4MATIC': 60000,
-  'GLC 43 AMG': 72000,
+// Häufig an Endkunden verkaufte MB-Baureihen (nicht nur GLC). Pro Modell:
+// Referenz-VK (junges Fahrzeug ~2023, ~30.000 km), Kraftstoff und Demo-Bild.
+// Reihenfolge: spezifischere Muster (e-/d-Varianten, mehrbuchstabige Präfixe)
+// zuerst — matchModel nimmt den ersten Treffer.
+interface MbModelSpec {
+  name: string
+  re: RegExp
+  baseVk: number
+  fuel: string
+  image: string // Key in public/einkauf-demo/
 }
-const VARIANT_FUEL: Record<string, string> = {
-  'GLC 200 4MATIC': 'Benzin',
-  'GLC 220 d 4MATIC': 'Diesel',
-  'GLC 300 4MATIC': 'Benzin',
-  'GLC 300 e 4MATIC': 'Plug-in-Hybrid',
-  'GLC 400 e 4MATIC': 'Plug-in-Hybrid',
-  'GLC 43 AMG': 'Benzin',
-}
-const PAKET_IMAGES = [
-  mercedesMedia.glcFrontLeftLot,
-  mercedesMedia.glcFrontRightLot,
-  mercedesMedia.glcRearLeftLot,
-  mercedesMedia.glcRearRightLot,
+const MB_MODELS: MbModelSpec[] = [
+  // SUVs (mehrbuchstabige Präfixe zuerst, e-Varianten vor Basis)
+  { name: 'GLC 300 e 4MATIC', re: /\bGLC\s?300\s?e\b/i, baseVk: 55000, fuel: 'Plug-in-Hybrid', image: 'glc_300_spektralblau' },
+  { name: 'GLC 300 4MATIC', re: /\bGLC\s?300\b/i, baseVk: 52000, fuel: 'Benzin', image: 'glc_300_spektralblau' },
+  { name: 'GLC 220 d 4MATIC', re: /\bGLC\s?220\s?d\b/i, baseVk: 44000, fuel: 'Diesel', image: 'glc_220d_selenitgrau_2022' },
+  { name: 'GLC 200 4MATIC', re: /\bGLC\s?200\b/i, baseVk: 42000, fuel: 'Benzin', image: 'glc_200_polarweiss' },
+  { name: 'GLE 400 d 4MATIC', re: /\bGLE\s?400\s?d\b/i, baseVk: 70000, fuel: 'Diesel', image: 'mb_gle' },
+  { name: 'GLE 350 d 4MATIC', re: /\bGLE\s?350\s?d\b/i, baseVk: 62000, fuel: 'Diesel', image: 'mb_gle' },
+  { name: 'GLA 250 e', re: /\bGLA\s?250\s?e\b/i, baseVk: 35000, fuel: 'Plug-in-Hybrid', image: 'mb_gla' },
+  { name: 'GLA 200', re: /\bGLA\s?200\b/i, baseVk: 32000, fuel: 'Benzin', image: 'mb_gla' },
+  { name: 'GLB 220 d 4MATIC', re: /\bGLB\s?220\s?d\b/i, baseVk: 39000, fuel: 'Diesel', image: 'mb_glb' },
+  { name: 'GLB 200', re: /\bGLB\s?200\b/i, baseVk: 36000, fuel: 'Benzin', image: 'mb_glb' },
+  // Coupé
+  { name: 'CLA 220 d', re: /\bCLA\s?220\s?d\b/i, baseVk: 33000, fuel: 'Diesel', image: 'mb_cla' },
+  { name: 'CLA 200', re: /\bCLA\s?200\b/i, baseVk: 30000, fuel: 'Benzin', image: 'mb_cla' },
+  // Limousinen / Kompakt (einbuchstabige Präfixe zuletzt)
+  { name: 'A 250 e', re: /\bA\s?250\s?e\b/i, baseVk: 31000, fuel: 'Plug-in-Hybrid', image: 'mb_a_klasse' },
+  { name: 'A 200', re: /\bA\s?200\b/i, baseVk: 28000, fuel: 'Benzin', image: 'mb_a_klasse' },
+  { name: 'A 180', re: /\bA\s?180\b/i, baseVk: 25000, fuel: 'Benzin', image: 'mb_a_klasse' },
+  { name: 'B 200', re: /\bB\s?200\b/i, baseVk: 27000, fuel: 'Benzin', image: 'mb_b_klasse' },
+  { name: 'B 180', re: /\bB\s?180\b/i, baseVk: 24000, fuel: 'Benzin', image: 'mb_b_klasse' },
+  { name: 'C 300 e', re: /\bC\s?300\s?e\b/i, baseVk: 40000, fuel: 'Plug-in-Hybrid', image: 'mb_c_klasse' },
+  { name: 'C 220 d', re: /\bC\s?220\s?d\b/i, baseVk: 35000, fuel: 'Diesel', image: 'mb_c_klasse' },
+  { name: 'C 200', re: /\bC\s?200\b/i, baseVk: 34000, fuel: 'Benzin', image: 'mb_c_klasse' },
+  { name: 'E 300 e', re: /\bE\s?300\s?e\b/i, baseVk: 48000, fuel: 'Plug-in-Hybrid', image: 'mb_e_klasse' },
+  { name: 'E 220 d', re: /\bE\s?220\s?d\b/i, baseVk: 42000, fuel: 'Diesel', image: 'mb_e_klasse' },
 ]
+const DEFAULT_MODEL: MbModelSpec = { name: 'C 220 d', re: /(?!)/, baseVk: 35000, fuel: 'Diesel', image: 'mb_c_klasse' }
 const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/i
 
-function matchVariant(text: string): string {
-  const t = text.toUpperCase()
-  const exact = Object.keys(VARIANT_BASE_VK).find((m) => t.includes(m.toUpperCase()))
-  if (exact) return exact
-  if (/GLC\s*300\s*E/i.test(text)) return 'GLC 300 e 4MATIC'
-  if (/GLC\s*400\s*E/i.test(text)) return 'GLC 400 e 4MATIC'
-  if (/GLC\s*43/i.test(text)) return 'GLC 43 AMG'
-  if (/GLC\s*300/i.test(text)) return 'GLC 300 4MATIC'
-  if (/GLC\s*220\s*D/i.test(text)) return 'GLC 220 d 4MATIC'
-  if (/GLC\s*200/i.test(text)) return 'GLC 200 4MATIC'
-  return 'GLC 300 4MATIC' // plausibler Default fürs Demo
+function matchModel(line: string): MbModelSpec {
+  return MB_MODELS.find((m) => m.re.test(line)) ?? DEFAULT_MODEL
 }
 
 function parseYear(text: string): number {
@@ -392,26 +399,28 @@ function parseMileage(text: string): number {
   return n > 0 ? n : 60000
 }
 
+// Modell-Token am Zeilenanfang (z.B. "C 220 d", "GLC 300") herausfiltern, Rest = Ausstattung.
+const MODEL_TOKEN_RE = /^(?:A|B|C|E|S|CLA|CLS|GLA|GLB|GLC|GLE|GLS|EQA|EQB|EQC|EQE|EQS)\s?\d{2,3}/i
 function parseEquipment(line: string): string {
   const parts = line.split(/[,·]/).map((s) => s.trim()).filter(Boolean)
   const extras = parts.filter(
-    (p) => !/^\s*20[0-2]\d\s*$/.test(p) && !/km/i.test(p) && !/GLC/i.test(p) && !VIN_RE.test(p) && !/^\d/.test(p),
+    (p) => !/^\s*20[0-2]\d\s*$/.test(p) && !/km/i.test(p) && !VIN_RE.test(p) && !/^\d/.test(p) && !MODEL_TOKEN_RE.test(p),
   )
   return extras.length ? extras.join(' · ') : 'Serienausstattung'
 }
 
 function makePackageVehicleFromLine(line: string, index: number, origin: PaketVehicleOrigin): EinkaufPackageVehicle {
   const isVin = VIN_RE.test(line.trim())
-  const model = matchVariant(line)
-  const year = isVin ? 2022 : parseYear(line)
-  const mileage = isVin ? 70000 : parseMileage(line)
+  const spec = matchModel(line)
+  const model = spec.name
+  const year = isVin ? 2021 : parseYear(line)
+  const mileage = isVin ? 72000 : parseMileage(line)
   const ageYears = 2026 - year
 
-  // VK rückwärts: Referenz minus Alters- und Mehr-km-Abschreibung.
-  const baseVk = VARIANT_BASE_VK[model] ?? 45000
-  const depAge = (year - 2023) * 2500
-  const depKm = -Math.round(Math.max(0, mileage - 30000) * 0.085)
-  const vk = Math.max(13000, Math.round((baseVk + depAge + depKm) / 100) * 100)
+  // VK rückwärts: Referenz minus Alters- (~5 %/Jahr) und Mehr-km-Abschreibung.
+  const depAge = (year - 2023) * Math.round(spec.baseVk * 0.05)
+  const depKm = -Math.round(Math.max(0, mileage - 30000) * (spec.baseVk > 45000 ? 0.1 : 0.07))
+  const vk = Math.max(9000, Math.round((spec.baseVk + depAge + depKm) / 100) * 100)
 
   // Kanal nach derselben Alter/km-Logik wie evaluateChannel (Feature 2).
   const channel: VerwertungChannel = ageYears >= 6 || mileage >= 120000 ? 'auktion' : 'endkunde'
@@ -437,11 +446,11 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
     model,
     modelYear: year,
     firstRegistration: ez,
-    fuelType: VARIANT_FUEL[model] ?? 'Benzin',
+    fuelType: spec.fuel,
     mileage,
     condition,
     equipmentSummary,
-    imageUrl: PAKET_IMAGES[index % PAKET_IMAGES.length],
+    imageUrl: einkaufDemoImage(spec.image),
     sweetSpot,
     expectedSalePrice: vk,
     margin,
