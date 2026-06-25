@@ -63,7 +63,6 @@ import {
   Rocket,
   TrendingUp,
   Gavel,
-  Truck,
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -357,37 +356,23 @@ export default function EinkaufPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Einkauf</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            KI-gestützte Fahrzeugbewertung für den Ankauf
-          </p>
-        </div>
-        {/* G1: Fahrzeugart-Umschalter PKW ⇄ Transporter */}
-        <div className="flex gap-1 rounded-lg border bg-muted p-1">
-          {([
-            { t: 'pkw' as VehicleType, icon: Car, label: 'PKW' },
-            { t: 'transporter' as VehicleType, icon: Truck, label: 'Transporter' },
-          ]).map(({ t, icon: Icon, label }) => (
-            <button
-              key={t}
-              onClick={() => switchVehicleType(t)}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
-                vehicleType === t ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Einkauf</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          KI-gestützte Fahrzeugbewertung für den Ankauf
+        </p>
       </div>
 
       {/* ═══ Identifikation: eine Maske — eine VIN (Einzel) oder mehrere VINs (Paket) ═══ */}
+      {/* G1: Fahrzeugart-Umschalter PKW ⇄ Transporter sitzt jetzt in der Maske selbst */}
       {step === 'identify' && (
         <div className="animate-in fade-in duration-300">
-          <VehicleIdentify vehicleType={vehicleType} onSubmit={handleRecognize} busy={lookupStatus === 'loading'} />
+          <VehicleIdentify
+            vehicleType={vehicleType}
+            onVehicleTypeChange={switchVehicleType}
+            onSubmit={handleRecognize}
+            busy={lookupStatus === 'loading'}
+          />
         </div>
       )}
 
