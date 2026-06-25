@@ -3,7 +3,7 @@ import 'server-only'
 import { createHash } from 'crypto'
 import { normalizeCategory } from '@/lib/ki-rezeptionist/ki-reception-config'
 import { germanizeTranscriptSpeakers } from '@/lib/ki-rezeptionist/format'
-import type { KiReceptionCategory } from '@/lib/ki-rezeptionist/types'
+import type { KiReceptionCategory, FahrzeugZustand } from '@/lib/ki-rezeptionist/types'
 
 /**
  * Defensive Famulor-Webhook-Parser.
@@ -28,6 +28,8 @@ export interface NormalizedFamulorCall {
   callDurationSec: number | null
   /** Tatsächlicher Anrufzeitpunkt aus dem Payload (ISO) — sonst null → DB-Default. */
   receivedAt: string | null
+  /** Neuwagen vs. Gebrauchtwagen (extracted_variables.fahrzeug_zustand) — null = nicht übermittelt. */
+  fahrzeugZustand: FahrzeugZustand | null
 }
 
 type AnyRecord = Record<string, unknown>
@@ -181,6 +183,15 @@ function safeUrl(value: string | null): string | null {
   }
 }
 
+/** Famulors `fahrzeug_zustand` robust auf neuwagen/gebrauchtwagen/unklar abbilden. */
+function normalizeFahrzeugZustand(raw: string | null): FahrzeugZustand | null {
+  if (!raw) return null
+  const r = raw.toLowerCase()
+  if (/(gebraucht|jahreswagen|vorf[üu]hr|tageszulassung|\bused\b)/.test(r)) return 'gebrauchtwagen'
+  if (/(neuwagen|neufahrzeug|\bneu\b|\bnew\b)/.test(r)) return 'neuwagen'
+  return 'unklar'
+}
+
 export function parseFamulorPayload(raw: unknown): NormalizedFamulorCall {
   const root = isRecord(raw) ? raw : {}
   const lookup = flattenLookup(root)
@@ -228,6 +239,10 @@ export function parseFamulorPayload(raw: unknown): NormalizedFamulorCall {
     'created_at', 'createdAt', 'started_at', 'startedAt', 'start_time',
     'call_time', 'call_date', 'finished_at', 'ended_at',
   ])
+  // Neuwagen/Gebrauchtwagen aus Famulors extracted_variables.fahrzeug_zustand.
+  const fahrzeugZustand = normalizeFahrzeugZustand(
+    pickString(lookup, ['fahrzeug_zustand', 'fahrzeugzustand', 'vehicle_condition', 'fahrzeug_status', 'zustand']),
+  )
 
   let externalCallId = cap(
     pickString(lookup, ['call_id', 'callId', 'id', 'uuid', 'conversation_id', 'conversationId', 'call_sid', 'callSid', 'session_id']),
@@ -252,5 +267,6 @@ export function parseFamulorPayload(raw: unknown): NormalizedFamulorCall {
     recordingUrl,
     callDurationSec,
     receivedAt,
+    fahrzeugZustand,
   }
 }

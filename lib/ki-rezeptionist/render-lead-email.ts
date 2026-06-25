@@ -4,6 +4,8 @@
 // Plaintext. Enthält eine Zusammenfassung des Anrufs UND genau einen Link, der
 // direkt auf die Konversation im Dashboard führt (Transkript & Aufnahme).
 
+import type { FahrzeugZustand } from '@/lib/ki-rezeptionist/types'
+
 export interface KiLeadEmailPayload {
   customerName: string
   customerPhone: string
@@ -17,6 +19,8 @@ export interface KiLeadEmailPayload {
   receivedAt: string
   /** Absolute URL zur Konversation im Dashboard (Transkript + Aufnahme). */
   dashboardUrl: string
+  /** Neuwagen vs. Gebrauchtwagen — für Betreff-Tag + Body-Zeile. */
+  fahrzeugZustand?: FahrzeugZustand | null
 }
 
 function escapeHtml(value: string): string {
@@ -45,6 +49,13 @@ interface Row {
   value: string
 }
 
+/** Anzeige-Label + Betreff-Tag je Fahrzeug-Zustand. */
+const FAHRZEUG_ZUSTAND_INFO: Record<FahrzeugZustand, { label: string; tag: string }> = {
+  neuwagen: { label: 'Neuwagen', tag: 'NEUWAGEN' },
+  gebrauchtwagen: { label: 'Gebrauchtwagen', tag: 'GEBRAUCHTWAGEN' },
+  unklar: { label: 'Unklar (Neu-/Gebrauchtwagen)', tag: 'FAHRZEUG UNKLAR' },
+}
+
 export function renderKiLeadEmail(payload: KiLeadEmailPayload): {
   subject: string
   html: string
@@ -53,18 +64,20 @@ export function renderKiLeadEmail(payload: KiLeadEmailPayload): {
   const customerName = payload.customerName.trim() || 'Unbekannt'
   const summary = payload.summary?.trim() ?? ''
   const url = payload.dashboardUrl
+  const zustand = payload.fahrzeugZustand ? FAHRZEUG_ZUSTAND_INFO[payload.fahrzeugZustand] : null
 
   const rows: Row[] = [
     { label: 'Kunde', value: customerName },
     { label: 'Telefon', value: payload.customerPhone.trim() || '—' },
     { label: 'Anliegen', value: payload.categoryLabel },
   ]
+  if (zustand) rows.push({ label: 'Fahrzeug-Zustand', value: zustand.label })
   if (payload.vehicle?.trim()) rows.push({ label: 'Fahrzeug', value: payload.vehicle.trim() })
   if (payload.desiredAppt?.trim()) rows.push({ label: 'Wunschtermin', value: payload.desiredAppt.trim() })
   if (payload.durationLabel?.trim()) rows.push({ label: 'Gesprächsdauer', value: payload.durationLabel.trim() })
   rows.push({ label: 'Eingegangen', value: formatDateTime(payload.receivedAt) })
 
-  const subject = `Neuer Anruf: ${customerName} – ${payload.categoryLabel}`
+  const subject = `${zustand ? `[${zustand.tag}] ` : ''}Neuer Anruf: ${customerName} – ${payload.categoryLabel}`
 
   // ---- HTML ----
   const htmlRows = rows

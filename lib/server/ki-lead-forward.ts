@@ -5,7 +5,7 @@ import { sendKiBrevoEmail } from '@/lib/server/ki-forward-email'
 import { renderKiLeadEmail } from '@/lib/ki-rezeptionist/render-lead-email'
 import { kiCategoryConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
 import { formatDuration } from '@/lib/ki-rezeptionist/format'
-import type { KiReceptionCallDto } from '@/lib/ki-rezeptionist/types'
+import type { KiReceptionCallDto, FahrzeugZustand } from '@/lib/ki-rezeptionist/types'
 
 // Automatische Weiterleitung jedes NEUEN KI-Anrufs an lead@wackenhut.de
 // (dahinter sitzt Oliver Gackenheimer). Hinter dem Dashboard-Feature-Flag
@@ -28,6 +28,7 @@ export function buildCallDashboardUrl(baseUrl: string, callId: string): string {
 export async function maybeForwardNewCallToLead(
   call: KiReceptionCallDto,
   baseUrl: string,
+  fahrzeugZustand?: FahrzeugZustand | null,
 ): Promise<void> {
   try {
     if (!(await getKiAutoForwardLeadEnabled())) return
@@ -42,6 +43,7 @@ export async function maybeForwardNewCallToLead(
       durationLabel: formatDuration(call.callDurationSec),
       receivedAt: call.receivedAt,
       dashboardUrl: buildCallDashboardUrl(baseUrl, call.id),
+      fahrzeugZustand,
     })
 
     await sendKiBrevoEmail({

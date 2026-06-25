@@ -3,6 +3,9 @@
 
 export type KiReceptionStatus = 'offen' | 'in_bearbeitung' | 'erledigt'
 
+/** Fahrzeug-Zustand aus Famulor `extracted_variables.fahrzeug_zustand`. */
+export type FahrzeugZustand = 'neuwagen' | 'gebrauchtwagen' | 'unklar'
+
 export type KiReceptionCategory =
   | 'neuwagen'
   | 'gebrauchtwagen'

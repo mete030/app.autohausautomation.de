@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     // für Famulor; Retries (created=false) lösen keine erneute Mail aus.
     if (created) {
       const baseUrl = resolveAppBaseUrl(req)
-      after(() => maybeForwardNewCallToLead(call, baseUrl))
+      after(() => maybeForwardNewCallToLead(call, baseUrl, parsed.fahrzeugZustand))
     }
     // Frühwarnung: Anruf ohne Transkript → meist Plattform-Konfiguration
     // (Transkript im Post-Call-Webhook nicht aktiviert) oder unbekanntes Feld.
