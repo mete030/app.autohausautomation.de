@@ -34,7 +34,9 @@ import {
   type EinkaufPricingResult,
   type ChannelDecision,
   type VerwertungChannel,
+  type VehicleType,
 } from '@/lib/mock-data-einkauf'
+import { einkaufTransporterVinMock, einkaufTransporterPricingResult } from '@/lib/mock-data-einkauf-transporter'
 import {
   einkaufPackageVehicles,
   parsePaketTranscript,
@@ -68,6 +70,7 @@ import {
   TrendingUp,
   Gavel,
   Layers,
+  Truck,
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -138,6 +141,9 @@ export default function EinkaufPage() {
 
   // Input mode
   const [inputMode, setInputMode] = useState<InputMode>('choose')
+
+  // G1: Fahrzeugart PKW ⇄ Transporter (eigene Nischenlogik im Transporter-Modus)
+  const [vehicleType, setVehicleType] = useState<VehicleType>('pkw')
 
   // Flow
   const [step, setStep] = useState<EinkaufStep>('identify')
@@ -244,8 +250,9 @@ export default function EinkaufPage() {
 
   const resolveVehicle = () => {
     setLookupStatus('loading')
-    const isAuktionVin = vin.trim().toUpperCase() === einkaufVinMockAuktion.vin
-    const mock = isAuktionVin ? einkaufVinMockAuktion : einkaufVinMock
+    const isTransporter = vehicleType === 'transporter'
+    const isAuktionVin = !isTransporter && vin.trim().toUpperCase() === einkaufVinMockAuktion.vin
+    const mock = isTransporter ? einkaufTransporterVinMock : isAuktionVin ? einkaufVinMockAuktion : einkaufVinMock
     setTimeout(() => {
       setVehicleData(mock)
       setSelectedEquipment([...mock.sonderausstattung])
@@ -255,6 +262,19 @@ export default function EinkaufPage() {
       setLookupStatus('found')
       setStep('vehicle_confirm')
     }, 2200)
+  }
+
+  // G1: PKW ⇄ Transporter umschalten — Flow zurücksetzen, damit das passende
+  // Demo-Fahrzeug + die passende Nischenlogik geladen werden.
+  const switchVehicleType = (t: VehicleType) => {
+    if (t === vehicleType) return
+    setVehicleType(t)
+    setVin('')
+    setVehicleData(null)
+    setPricingResult(null)
+    setChannelDecision(null)
+    setLookupStatus('idle')
+    if (inputMode !== 'choose' && inputMode !== 'paket') setStep('identify')
   }
 
   const toggleEquipment = (item: string) => {
@@ -336,7 +356,8 @@ export default function EinkaufPage() {
         setStep('results')
         return
       }
-      const result = isAuktionVin ? PRICING_RESULT_AUKTION : PRICING_RESULT
+      const isTransporter = vehicleData?.vin === einkaufTransporterVinMock.vin
+      const result = isTransporter ? einkaufTransporterPricingResult : isAuktionVin ? PRICING_RESULT_AUKTION : PRICING_RESULT
       const decision = evaluateChannel(
         vehicleData ?? einkaufVinMock,
         mileage,
@@ -437,11 +458,31 @@ export default function EinkaufPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Einkauf</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          KI-gestützte Fahrzeugbewertung für den Ankauf
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Einkauf</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            KI-gestützte Fahrzeugbewertung für den Ankauf
+          </p>
+        </div>
+        {/* G1: Fahrzeugart-Umschalter PKW ⇄ Transporter */}
+        <div className="flex gap-1 rounded-lg border bg-muted p-1">
+          {([
+            { t: 'pkw' as VehicleType, icon: Car, label: 'PKW' },
+            { t: 'transporter' as VehicleType, icon: Truck, label: 'Transporter' },
+          ]).map(({ t, icon: Icon, label }) => (
+            <button
+              key={t}
+              onClick={() => switchVehicleType(t)}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+                vehicleType === t ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ═══ Mode Chooser ═══ */}
@@ -613,22 +654,35 @@ export default function EinkaufPage() {
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[11px] text-muted-foreground">Demo-Fahrzeuge:</span>
-                      <button
-                        type="button"
-                        onClick={() => setVin(einkaufVinMock.vin)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/60 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        Endkunden-GLC · 2023 · 32.400 km
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setVin(einkaufVinMockAuktion.vin)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-300/60 bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-300"
-                      >
-                        <Gavel className="h-3 w-3" />
-                        Auktions-GLC · 2017 · 145.800 km
-                      </button>
+                      {vehicleType === 'transporter' ? (
+                        <button
+                          type="button"
+                          onClick={() => setVin(einkaufTransporterVinMock.vin)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/60 bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700 transition-colors hover:bg-sky-100 dark:border-sky-800/50 dark:bg-sky-950/30 dark:text-sky-400"
+                        >
+                          <Truck className="h-3 w-3" />
+                          Sprinter 317 CDI Kühlkoffer · 2021 · 78.000 km
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setVin(einkaufVinMock.vin)}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/60 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            Endkunden-GLC · 2023 · 32.400 km
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setVin(einkaufVinMockAuktion.vin)}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-300/60 bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-300"
+                          >
+                            <Gavel className="h-3 w-3" />
+                            Auktions-GLC · 2017 · 145.800 km
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1070,7 +1124,7 @@ export default function EinkaufPage() {
             resultsView={resultsView}
             channel={channel}
             empfehlungInsert={
-              channel === 'endkunde' ? (
+              channel === 'endkunde' && vehicleType !== 'transporter' ? (
                 <ListenplatzRechner
                   listPrice={listPrice}
                   onListPriceChange={setListPrice}

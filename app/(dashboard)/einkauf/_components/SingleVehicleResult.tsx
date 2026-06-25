@@ -19,9 +19,10 @@ import {
   type VerwertungChannel,
   type SearchRadiusKm,
   type TrendDirection,
+  type EquipmentCoverage,
 } from '@/lib/mock-data-einkauf'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, Calculator } from 'lucide-react'
+import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, Calculator, Sun, Snowflake, Package, Boxes, ShoppingCart } from 'lucide-react'
 import {
   Area,
   AreaChart,
@@ -90,6 +91,19 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
   const trendMax = trendVals.length ? Math.max(...trendVals) : 0
   const trendPad = (trendMax - trendMin) * 0.4 || 500
   const trendDomain: [number, number] = [Math.round(trendMin - trendPad), Math.round(trendMax + trendPad)]
+
+  // G1–G5/B7: Transporter-spezifische Blöcke (nur im Transporter-Modus gesetzt).
+  const transporter = result.vehicleType === 'transporter'
+  const seasonal = result.seasonalTrend
+  const coverage = result.equipmentCoverage
+  const vorrat = result.vorratskauf
+  const dealerSignals = result.dealerBuyingSignals
+  const neuzulassungHinweis = result.segmentSignal?.neuzulassungsHinweis
+  const rarityConfig: Record<EquipmentCoverage['rarity'], { label: string; badge: string }> = {
+    einzigartig: { label: 'Einziger im Umkreis', badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' },
+    selten: { label: 'Einer von wenigen', badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' },
+    verbreitet: { label: 'Verbreitet', badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300' },
+  }
 
   const sellPrice = isAuction ? (result.auction?.expectedHammerPrice ?? result.mobileDe.medianPrice) : result.mobileDe.medianPrice
   const spread = isAuction ? (result.auction?.spread ?? sellPrice - result.sweetSpot) : sellPrice - result.sweetSpot
@@ -407,6 +421,143 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                 </p>
               </CardContent>
             </Card>
+          )}
+
+          {/* ── Transporter-Modus: Nischen-, Saison- & Beobachtungslogik (G2–G5, B7) ── */}
+          {transporter && (
+            <div className="space-y-5">
+              {/* B7: Neuzulassungs-Frühindikator */}
+              {neuzulassungHinweis && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs dark:border-amber-800 dark:bg-amber-950/20">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-semibold">Neuzulassungs-Frühindikator</span>
+                    <p className="text-muted-foreground">{neuzulassungHinweis}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* G2: Saisonale Nachfrage (Sommer/Winter) */}
+              {seasonal && (
+                <Card className="border-border/60">
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Sun className="h-4 w-4 text-amber-500" />
+                        Saisonale Nachfrage
+                        <Badge variant="secondary" className="text-[10px]">Umkreis {seasonal.region}</Badge>
+                      </CardTitle>
+                      <div className="flex items-center gap-3 text-xs font-medium">
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"><Sun className="h-3.5 w-3.5" /> Sommer {seasonal.summerIndex}</span>
+                        <span className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400"><Snowflake className="h-3.5 w-3.5" /> Winter {seasonal.winterIndex}</span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[150px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={seasonal.points} margin={{ top: 6, right: 6, bottom: 0, left: -10 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                          <XAxis dataKey="month" tick={{ fontSize: 10 }} interval={0} />
+                          <YAxis hide domain={[80, 'dataMax + 6']} />
+                          <RechartsTooltip formatter={(v) => [`${v} Index`, 'Nachfrage']} labelStyle={{ fontWeight: 600 }} />
+                          <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+                            {seasonal.points.map((p, i) => (
+                              <Cell key={i} fill={p.value >= 100 ? '#f59e0b' : '#94a3b8'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">{seasonal.note}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* G3: Nischen-/Ausstattungsabdeckung */}
+                {coverage && coverage.length > 0 && (
+                  <Card className="border-border/60">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Boxes className="h-4 w-4 text-muted-foreground" />
+                        Nischen-Abdeckung im Umkreis
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {coverage.map((c) => (
+                        <div key={c.feature} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="truncate">{c.feature}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-muted-foreground tabular-nums">{c.comparableInRegion}× in Region</span>
+                            <Badge variant="secondary" className={`text-[10px] ${rarityConfig[c.rarity].badge}`}>
+                              {rarityConfig[c.rarity].label}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* G4: Vorratskauf (lange Standzeit unkritisch) */}
+                {vorrat && (
+                  <Card className="border-border/60">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        Vorratskauf
+                        {vorrat.recommended && (
+                          <Badge variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                            empfohlen
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <p className="text-sm text-muted-foreground">{vorrat.note}</p>
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+                        <Clock className="h-3.5 w-3.5" />
+                        Lange Standzeit wird im Transporter-Modus nicht negativ gewertet.
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* G5: Was kaufen andere Mercedes-Händler aktuell ein? (Frühindikator, nur Beobachtung) */}
+              {dealerSignals && dealerSignals.length > 0 && (
+                <Card className="border-border/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                      Was Mercedes-Händler aktuell einkaufen
+                      <Badge variant="outline" className="text-[10px] border-border/60">nur Beobachtung</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {dealerSignals.map((s) => (
+                      <div key={s.model} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">{s.model}</span>
+                            <TrendArrow dir={s.trend} pct={s.trend === 'up' ? 8 : s.trend === 'down' ? -8 : 0} />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">{s.note}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold tabular-nums">{s.dealersBuying}</p>
+                          <p className="text-[10px] text-muted-foreground">Händler kaufen</p>
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-muted-foreground">
+                      Nachfrage-Frühindikator aus Auktions-/Großhandelssignalen — reine Beobachtung, kein automatisches Bieten.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
 
           {/* Optional inserted block (e.g. Listenplatz-Rechner) */}

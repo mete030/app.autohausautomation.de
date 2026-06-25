@@ -142,11 +142,11 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 - [x] **F3** **Arbitrage-Sicht**: starke + schwache Fahrzeuge gemeinsam gekauft sichtbar („X Treiber, Y Mitnahme") inkl. Netto-Empfehlung. — *`roleSplit` in den Totals; Hero-Badge „X Treiber · Y Mitnahme"; Arbitrage-Banner im Bundle-Rechner „X Treiber tragen Y Mitnahme-Fahrzeuge" + Netto-Verdict (reagiert auf Paketpreis).*
 
 ### Epic G — Transporter-Modus (~20 %)
-- [ ] **G1** Umschalter PKW ⇄ Transporter; im Transporter-Modus abweichende Mock-Logik/Darstellung.
-- [ ] **G2** Saisonale Trend-Darstellung (Sommer/Winter) pro Region für Transporter.
-- [ ] **G3** Nischen-/Ausstattungsabdeckung (z. B. Kühlbox): wie viele vergleichbare in der Region (Mock) + ob man „einer von wenigen/einziger" wäre.
-- [ ] **G4** Längere Standtage im Transporter-Modus nicht negativ gewertet; **Vorratskauf** als Option dargestellt.
-- [ ] **G5** Auktions-Insights für Transporter: Panel mit Mock-Signal „was andere Mercedes-Händler aktuell EINKAUFEN" (Nachfrage-Frühindikator); nur Beobachtung, kein Bieten.
+- [x] **G1** Umschalter PKW ⇄ Transporter; im Transporter-Modus abweichende Mock-Logik/Darstellung. — *Header-Toggle (`vehicleType`); paralleler Mock `mock-data-einkauf-transporter.ts` (Sprinter 317 CDI Kühlkoffer); VIN-Demo-Pill + Ergebnis-Panels schalten um; Listenplatz-Rechner (GLC-spezifisch) im Transporter-Modus ausgeblendet.*
+- [x] **G2** Saisonale Trend-Darstellung (Sommer/Winter) pro Region für Transporter. — *`SeasonalTrend` (12-Monats-`BarChart`, Sommer-Balken hervorgehoben) + Sommer-/Winter-Index + Note.*
+- [x] **G3** Nischen-/Ausstattungsabdeckung (z. B. Kühlbox): wie viele vergleichbare in der Region (Mock) + ob man „einer von wenigen/einziger" wäre. — *`EquipmentCoverage[]` Karte: Feature + „N× in Region" + Rarität-Badge (einzigartig/selten/verbreitet).*
+- [x] **G4** Längere Standtage im Transporter-Modus nicht negativ gewertet; **Vorratskauf** als Option dargestellt. — *`vorratskauf`-Karte (empfohlen-Badge + antizyklische Note) + expliziter Hinweis „lange Standzeit wird nicht negativ gewertet".*
+- [x] **G5** Auktions-Insights für Transporter: Panel mit Mock-Signal „was andere Mercedes-Händler aktuell EINKAUFEN" (Nachfrage-Frühindikator); nur Beobachtung, kein Bieten. — *`DealerBuyingSignal[]` Panel mit Händler-Anzahl + Trendpfeil + „nur Beobachtung, kein automatisches Bieten".*
 
 ### Epic H — KI-Schicht
 - [ ] **H1** Pro Fahrzeug „KI-Empfehlung"-Bereich mit Mock-Begründungstext (Trends + sekundär historische Zahlen), begründet die Kaufempfehlung.
@@ -162,7 +162,7 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 ### Erweiterung 1 — KBA-/Nachfrage-Signale (Amendment, koppelt an 4.1)
 - [x] **B5** Pro Fahrzeug **Umschlagsrate** (Besitzumschreibungen ÷ regionaler Bestand) als **hervorgehobene** Nachfragekennzahl. Verfeinert B3: rohe Umschreibungszahl bleibt sichtbar, aber **sekundär**. Rate fließt nachvollziehbar in die Empfehlungs-Logik (4.1) ein (hohe Rate → „dreht schnell"). — *`umschlagsrate` als 3xl-Zahl + Label „Dreht schnell/Mittel/Träge"; rohe Umschreibungen ÷ Bestand als kleine Caption. Speist E1/E2 (folgt).*
 - [x] **B6** Über dem Einzelfahrzeug ein **Makro-Badge** mit Segment-/Kraftstoffart-Trend (z. B. „Diesel −12 % / Hybrid +18 %", Mock). Gute Einzelwerte + negativer Segment-/Kraftstoff-Trend → sichtbares **Vorsicht-Flag** an der Empfehlung (Kopplung 4.1). — *`SegmentSignal` Makro-Badge über dem Hero; Diesel → `caution` → amber Vorsicht-Flag „Empfehlung kritisch prüfen".*
-- [ ] **B7** *(optional — v. a. Transporter & Vorratskauf)* **Neuzulassungs-Frühindikator**: heutige Neuzulassungs-Schwemme → künftiges Gebrauchtangebot/Preisdruck als Warnhinweis. Für PKW-Schnelldreher ausblendbar/nachrangig. — *Feld `neuzulassungsTrend*` vorhanden; Anzeige folgt im Transporter-Modus (Epic G).*
+- [x] **B7** *(optional — v. a. Transporter & Vorratskauf)* **Neuzulassungs-Frühindikator**: heutige Neuzulassungs-Schwemme → künftiges Gebrauchtangebot/Preisdruck als Warnhinweis. Für PKW-Schnelldreher ausblendbar/nachrangig. — *Im Transporter-Modus amber Warnhinweis „Neuzulassungs-Frühindikator" (eSprinter +19 % → künftiger Preisdruck) aus `segmentSignal.neuzulassungsHinweis`; bei PKW-Schnelldrehern nicht gesetzt → nachrangig/ausgeblendet.*
 
 ## 6. Definition of Done
 - Alle Boxen in Abschnitt 5 abgehakt + Notiz.

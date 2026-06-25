@@ -168,6 +168,28 @@ export interface BuyDecision {
   rationale: string
 }
 
+// G1–G5/B7: Transporter-Modus (~20 %, nachfragegetriebene Nischenlogik).
+export type VehicleType = 'pkw' | 'transporter'
+
+export interface SeasonalTrend {
+  region: string
+  summerIndex: number // relativer Nachfrage-/Preisindex Sommer (100 = Jahresschnitt)
+  winterIndex: number
+  points: { month: string; value: number }[] // 12 Monate für den Saison-Chart
+  note: string
+}
+export interface EquipmentCoverage {
+  feature: string // z.B. 'Kühlkoffer'
+  comparableInRegion: number // vergleichbare Fahrzeuge mit diesem Merkmal im Umkreis
+  rarity: 'einzigartig' | 'selten' | 'verbreitet'
+}
+export interface DealerBuyingSignal {
+  model: string
+  dealersBuying: number // Anzahl Händler, die das Modell aktuell EINKAUFEN (Nachfrage-Frühindikator)
+  trend: TrendDirection
+  note: string
+}
+
 export interface EinkaufPricingResult {
   recommendedMin: number
   recommendedMax: number
@@ -213,6 +235,13 @@ export interface EinkaufPricingResult {
   trend?: TrendSignal // D1/D2: 8-Wochen-Trendserie (kombiniertes Signal)
   buyDecision?: BuyDecision // E1/E2: Kaufempfehlung + Begründungstyp
   packageRole?: PackageRole // E3: nur im Paket-Kontext gesetzt
+
+  // Transporter-Modus (G1–G5) — nur bei vehicleType==='transporter' gesetzt.
+  vehicleType?: VehicleType // G1
+  seasonalTrend?: SeasonalTrend // G2
+  equipmentCoverage?: EquipmentCoverage[] // G3
+  vorratskauf?: { recommended: boolean; note: string } // G4
+  dealerBuyingSignals?: DealerBuyingSignal[] // G5
 }
 
 // ─── Helper für regionale Marktsicht & KBA-Signale ───────────────────────────
