@@ -10,6 +10,8 @@
 
 import {
   einkaufPricingResult,
+  einkaufVinMock,
+  einkaufVinMockAuktion,
   buildKbaDemand,
   buildSegmentSignal,
   computeTrendSignal,
@@ -334,7 +336,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
 ]
 
 // ─── A1/A2: Transcript-Parser (VINs / Beschreibungen / OCR-Zeilen → Fahrzeuge) ──
-// Wandelt die in PaketIdentify erfassten Zeilen (eine pro Fahrzeug) in bewertete
+// Wandelt die in VehicleIdentify erfassten Zeilen (eine pro Fahrzeug/VIN) in bewertete
 // Paket-Fahrzeuge um. 1–16 Einträge. Glaubwürdige Demo-Heuristik; keine echte Quelle.
 // TODO[real-backend]: OCR (Paket-Screenshot) + VIN-/HSN-Decode (KBA) liefern diese
 // Stammdaten real; hier werden Modell/EZ/km/Ausstattung aus Freitext geschätzt.
@@ -386,6 +388,37 @@ function matchModel(line: string): MbModelSpec {
   return MB_MODELS.find((m) => m.re.test(line)) ?? DEFAULT_MODEL
 }
 
+// Beispiel-VINs für das Demo-Paket (8 Fahrzeuge): bunte Modell-Mischung. Jede VIN
+// bildet auf eine beschreibende Demo-Zeile ab, damit ein eingegebener/gescannter
+// VIN-Block dieselben Fahrzeuge ergibt wie das kuratierte Demo.
+const PAKET_DEMO_ENTRIES: { vin: string; line: string }[] = [
+  { vin: 'WDD2060041R200001', line: 'C 220 d 4MATIC, 2021, 58.000 km, AMG Line · LED' },
+  { vin: 'W1K1770871J200002', line: 'A 200, 2022, 41.000 km, Progressive · MBUX' },
+  { vin: einkaufVinMock.vin, line: 'GLC 300 4MATIC, 2023, 32.400 km, AMG Line · Burmester · Panorama' },
+  { vin: 'W1K1183451N200004', line: 'CLA 200, 2021, 63.000 km, AMG Line · Ambientebeleuchtung' },
+  { vin: 'W1N2477871J200005', line: 'GLA 200, 2022, 48.000 km, Progressive · Kamera' },
+  { vin: 'WDD2130041A200006', line: 'E 220 d, 2018, 138.000 km, Avantgarde · AHK' },
+  { vin: 'W1N2476871J200007', line: 'GLB 200, 2021, 71.000 km, Style · 7-Sitzer' },
+  { vin: 'W1K2470871J200008', line: 'B 180, 2016, 152.000 km, Style · Navi' },
+]
+export const PAKET_DEMO_VINS = PAKET_DEMO_ENTRIES.map((e) => e.vin)
+
+const DEMO_VIN_TO_LINE: Record<string, string> = {
+  ...Object.fromEntries(PAKET_DEMO_ENTRIES.map((e) => [e.vin.toUpperCase(), e.line])),
+  [einkaufVinMockAuktion.vin.toUpperCase()]: 'GLC 250 4MATIC, 2017, 145.800 km, Basis · Navi',
+}
+
+// Unbekannte VIN → deterministisch ein plausibles Modell/Jahr/km ableiten (Demo).
+// TODO[real-backend]: VIN-Decode (KBA) liefert die echten Stammdaten.
+const SYNTH_POOL = ['C 220 d', 'A 200', 'GLC 300 4MATIC', 'CLA 200', 'GLA 200', 'E 220 d', 'B 200', 'GLB 200']
+function vinToSyntheticLine(vin: string): string {
+  const h = [...vin].reduce((a, c) => a + c.charCodeAt(0), 0)
+  const model = SYNTH_POOL[h % SYNTH_POOL.length]
+  const year = 2016 + (h % 8)
+  const km = 30000 + ((h * 137) % 130000)
+  return `${model}, ${year}, ${km.toLocaleString('de-DE')} km`
+}
+
 function parseYear(text: string): number {
   const m = text.match(/\b(20[0-2]\d)\b/)
   const y = m ? Number(m[1]) : 2022
@@ -410,11 +443,16 @@ function parseEquipment(line: string): string {
 }
 
 function makePackageVehicleFromLine(line: string, index: number, origin: PaketVehicleOrigin): EinkaufPackageVehicle {
-  const isVin = VIN_RE.test(line.trim())
-  const spec = matchModel(line)
+  // VIN → beschreibende Zeile auflösen (bekannte Demo-VIN oder synthetisch),
+  // sonst die getippte Beschreibung direkt verwenden.
+  const trimmed = line.trim()
+  const isVin = VIN_RE.test(trimmed)
+  const effectiveLine = isVin ? (DEMO_VIN_TO_LINE[trimmed.toUpperCase()] ?? vinToSyntheticLine(trimmed)) : line
+
+  const spec = matchModel(effectiveLine)
   const model = spec.name
-  const year = isVin ? 2021 : parseYear(line)
-  const mileage = isVin ? 72000 : parseMileage(line)
+  const year = parseYear(effectiveLine)
+  const mileage = parseMileage(effectiveLine)
   const ageYears = 2026 - year
 
   // VK rückwärts: Referenz minus Alters- (~5 %/Jahr) und Mehr-km-Abschreibung.
@@ -431,8 +469,8 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
 
   const condition: EinkaufCondition =
     mileage >= 120000 || ageYears >= 7 ? 'maengel' : mileage >= 80000 || ageYears >= 4 ? 'gut' : 'sehr_gut'
-  const ez = line.match(/\b(0?[1-9]|1[0-2])\/(20[0-2]\d)\b/)?.[0] ?? `0${1 + (index % 9)}/${year}`
-  const equipmentSummary = isVin ? 'VIN-decodiert · Stammdaten via KBA' : parseEquipment(line)
+  const ez = effectiveLine.match(/\b(0?[1-9]|1[0-2])\/(20[0-2]\d)\b/)?.[0] ?? `0${1 + (index % 9)}/${year}`
+  const equipmentSummary = parseEquipment(effectiveLine)
 
   // Hero-GLC (volle Bewertung aus Feature 1/2) wiederverwenden, wenn die Zeile passt —
   // so bleibt im Demo-Drill-down die ausführliche Einzelanalyse erhalten.

@@ -38,7 +38,6 @@ import {
 } from '@/lib/mock-data-einkauf'
 import { einkaufTransporterVinMock, einkaufTransporterPricingResult } from '@/lib/mock-data-einkauf-transporter'
 import {
-  einkaufPackageVehicles,
   parsePaketTranscript,
   type EinkaufPackageVehicle,
   type PaketVehicleOrigin,
@@ -46,12 +45,11 @@ import {
 import { SingleVehicleResult } from './_components/SingleVehicleResult'
 import { RoutingBanner } from './_components/RoutingBanner'
 import { ListenplatzRechner } from './_components/ListenplatzRechner'
-import { PaketIdentify } from './_components/PaketIdentify'
+import { VehicleIdentify } from './_components/VehicleIdentify'
 import { PaketConfirm } from './_components/PaketConfirm'
 import { PaketResult } from './_components/PaketResult'
 import { formatCurrency } from '@/lib/utils'
 import {
-  ScanLine,
   Loader2,
   CheckCircle2,
   Car,
@@ -59,80 +57,24 @@ import {
   Sparkles,
   RefreshCw,
   Check,
-  Hash,
-  List,
-  ChevronRight,
-  Search,
   FileText,
   ArrowRight,
   Pencil,
   Rocket,
   TrendingUp,
   Gavel,
-  Layers,
   Truck,
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type InputMode = 'choose' | 'vin' | 'kba' | 'manual' | 'paket'
+type InputMode = 'vin' | 'paket' // interner Flow-Flag (Einzel vs. Paket), kein Chooser mehr
 type EinkaufStep = 'identify' | 'vehicle_confirm' | 'computing' | 'results'
 type LookupStatus = 'idle' | 'loading' | 'found'
 type Condition = 'sehr_gut' | 'gut' | 'maengel' | 'unfallschaden'
 type ResultsView = 'empfehlung' | 'details'
 
-// ─── Mock: Marke → Modell → Variante tree ────────────────────────────────────
 
-const MAKE_MODEL_TREE: Record<string, Record<string, string[]>> = {
-  'Mercedes-Benz': {
-    'A-Klasse': ['A 180', 'A 200', 'A 250', 'A 250 e', 'A 35 AMG'],
-    'C-Klasse': ['C 180', 'C 200', 'C 220 d', 'C 300', 'C 300 e', 'C 43 AMG'],
-    'E-Klasse': ['E 200', 'E 220 d', 'E 300', 'E 300 e', 'E 400 d', 'E 53 AMG'],
-    'GLA': ['GLA 200', 'GLA 250', 'GLA 250 e', 'GLA 35 AMG'],
-    'GLB': ['GLB 200', 'GLB 250', 'GLB 250 4MATIC'],
-    'GLC': ['GLC 200', 'GLC 220 d', 'GLC 300', 'GLC 300 4MATIC', 'GLC 300 e', 'GLC 400 e', 'GLC 43 AMG'],
-    'GLE': ['GLE 300 d', 'GLE 350 d', 'GLE 400 d', 'GLE 450', 'GLE 53 AMG'],
-    'CLA': ['CLA 200', 'CLA 220', 'CLA 250', 'CLA 35 AMG'],
-    'EQA': ['EQA 250', 'EQA 250+', 'EQA 300 4MATIC', 'EQA 350 4MATIC'],
-    'EQB': ['EQB 250+', 'EQB 300 4MATIC', 'EQB 350 4MATIC'],
-    'EQE': ['EQE 300', 'EQE 350+', 'EQE 500 4MATIC', 'EQE 43 AMG'],
-  },
-  'BMW': {
-    '1er': ['116i', '118i', '120i', '128ti', 'M135i'],
-    '3er': ['318i', '320i', '320d', '330i', '330e', 'M340i'],
-    '5er': ['520i', '520d', '530i', '530d', '540i', 'M550i'],
-    'X1': ['sDrive18i', 'sDrive20i', 'xDrive25e', 'xDrive28i'],
-    'X3': ['sDrive20i', 'xDrive20d', 'xDrive30i', 'xDrive30d', 'M40i'],
-    'X5': ['xDrive40i', 'xDrive40d', 'xDrive45e', 'M50i'],
-  },
-  'Audi': {
-    'A3': ['30 TFSI', '35 TFSI', '40 TFSI e', 'S3'],
-    'A4': ['35 TFSI', '40 TFSI', '40 TDI', '45 TFSI', 'S4'],
-    'A6': ['40 TDI', '45 TFSI', '50 TDI', '55 TFSI e', 'S6'],
-    'Q3': ['35 TFSI', '40 TFSI', '45 TFSI e'],
-    'Q5': ['40 TDI', '45 TFSI', '50 TFSI e', '55 TFSI e', 'SQ5'],
-    'Q7': ['45 TDI', '50 TDI', '55 TFSI e', '60 TFSI e', 'SQ7'],
-    'e-tron GT': ['e-tron GT', 'RS e-tron GT'],
-  },
-  'Volkswagen': {
-    'Golf': ['1.0 TSI', '1.5 TSI', '2.0 TDI', 'GTE', 'GTI', 'R'],
-    'Tiguan': ['1.5 TSI', '2.0 TDI', '2.0 TSI', 'eHybrid', 'R'],
-    'Passat': ['1.5 TSI', '2.0 TDI', 'GTE'],
-    'ID.3': ['Pure', 'Pro', 'Pro S', 'GTX'],
-    'ID.4': ['Pure', 'Pro', 'Pro S', 'GTX'],
-    'T-Roc': ['1.0 TSI', '1.5 TSI', '2.0 TDI', '2.0 TSI R'],
-  },
-  'Porsche': {
-    'Cayenne': ['Cayenne', 'Cayenne S', 'Cayenne E-Hybrid', 'Cayenne GTS', 'Cayenne Turbo'],
-    'Macan': ['Macan', 'Macan S', 'Macan GTS', 'Macan Turbo'],
-    'Taycan': ['Taycan', 'Taycan 4S', 'Taycan GTS', 'Taycan Turbo', 'Taycan Turbo S'],
-    '911': ['Carrera', 'Carrera S', 'Carrera 4S', 'Turbo', 'Turbo S', 'GT3'],
-  },
-}
-
-const YEARS = Array.from({ length: 10 }, (_, i) => `${2026 - i}`)
-
-const FUEL_TYPES = ['Benzin', 'Diesel', 'Elektro', 'Hybrid', 'Plug-in-Hybrid'] as const
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -140,7 +82,7 @@ export default function EinkaufPage() {
   const router = useRouter()
 
   // Input mode
-  const [inputMode, setInputMode] = useState<InputMode>('choose')
+  const [inputMode, setInputMode] = useState<InputMode>('vin')
 
   // G1: Fahrzeugart PKW ⇄ Transporter (eigene Nischenlogik im Transporter-Modus)
   const [vehicleType, setVehicleType] = useState<VehicleType>('pkw')
@@ -148,21 +90,7 @@ export default function EinkaufPage() {
   // Flow
   const [step, setStep] = useState<EinkaufStep>('identify')
 
-  // VIN
-  const [vin, setVin] = useState('')
   const [lookupStatus, setLookupStatus] = useState<LookupStatus>('idle')
-
-  // KBA / HSN/TSN
-  const [hsn, setHsn] = useState('')
-  const [tsn, setTsn] = useState('')
-
-  // Manual selection
-  const [selectedMake, setSelectedMake] = useState('')
-  const [selectedModel, setSelectedModel] = useState('')
-  const [selectedVariant, setSelectedVariant] = useState('')
-  const [selectedYear, setSelectedYear] = useState('')
-  const [selectedFuelType, setSelectedFuelType] = useState('')
-  const [manualMileage, setManualMileage] = useState('')
 
   // Vehicle
   const [vehicleData, setVehicleData] = useState<EinkaufVehicleData | null>(null)
@@ -197,9 +125,6 @@ export default function EinkaufPage() {
 
   // ─── Derived ───────────────────────────────────────────────────────────────
 
-  const models = selectedMake ? Object.keys(MAKE_MODEL_TREE[selectedMake] || {}) : []
-  const variants = selectedMake && selectedModel ? (MAKE_MODEL_TREE[selectedMake]?.[selectedModel] || []) : []
-
   // Effektiver Verwertungskanal (Engine-Empfehlung, ggf. manuell übersteuert)
   const recommendedChannel: VerwertungChannel = channelDecision?.recommendedChannel ?? 'endkunde'
   const channel: VerwertungChannel = overrideChannel ?? recommendedChannel
@@ -223,14 +148,14 @@ export default function EinkaufPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const inFlow = inputMode !== 'choose'
+    const inFlow = step !== 'identify'
     if (inFlow && !backGuardRef.current) {
       window.history.pushState({ einkaufGuard: true }, '')
       backGuardRef.current = true
     } else if (!inFlow) {
       backGuardRef.current = false
     }
-  }, [inputMode, step])
+  }, [step])
 
   useEffect(() => {
     const onPop = () => {
@@ -238,8 +163,7 @@ export default function EinkaufPage() {
       backGuardRef.current = false // dieser Guard-Eintrag ist verbraucht
       const s = stepRef.current
       if (s === 'results' || s === 'computing') setStep('vehicle_confirm')
-      else if (s === 'vehicle_confirm') setStep('identify')
-      else setInputMode('choose')
+      else setStep('identify')
       // Der Install-Effekt setzt bei Bedarf einen neuen Guard.
     }
     window.addEventListener('popstate', onPop)
@@ -248,20 +172,35 @@ export default function EinkaufPage() {
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
-  const resolveVehicle = () => {
+  // Einheitliche Erfassung: 1 VIN → Einzelfahrzeug-Flow, mehrere VINs → Paket-Flow.
+  const handleRecognize = (vinText: string, origin: PaketVehicleOrigin) => {
+    const tokens = vinText.split(/[\n,;]+/).map((t) => t.trim()).filter(Boolean).slice(0, 16)
     setLookupStatus('loading')
-    const isTransporter = vehicleType === 'transporter'
-    const isAuktionVin = !isTransporter && vin.trim().toUpperCase() === einkaufVinMockAuktion.vin
-    const mock = isTransporter ? einkaufTransporterVinMock : isAuktionVin ? einkaufVinMockAuktion : einkaufVinMock
-    setTimeout(() => {
-      setVehicleData(mock)
-      setSelectedEquipment([...mock.sonderausstattung])
-      // Der Auktions-GLC hat leichte Mängel (Hagel/Steinschlag) — passend zur DAT-Bewertung.
-      setCondition(isAuktionVin ? 'maengel' : 'gut')
-      setMileage(inputMode === 'manual' && manualMileage ? Number(manualMileage) : mock.mileage)
-      setLookupStatus('found')
-      setStep('vehicle_confirm')
-    }, 2200)
+    if (tokens.length <= 1) {
+      // Einzelfahrzeug — wie die klassische VIN-Abfrage.
+      setInputMode('vin')
+      const token = (tokens[0] ?? '').toUpperCase()
+      const isTransporter = vehicleType === 'transporter' || token === einkaufTransporterVinMock.vin
+      const isAuktionVin = !isTransporter && token === einkaufVinMockAuktion.vin
+      const mock = isTransporter ? einkaufTransporterVinMock : isAuktionVin ? einkaufVinMockAuktion : einkaufVinMock
+      setTimeout(() => {
+        setVehicleData(mock)
+        setSelectedEquipment([...mock.sonderausstattung])
+        // Der Auktions-GLC hat leichte Mängel (Hagel/Steinschlag) — passend zur DAT-Bewertung.
+        setCondition(isAuktionVin ? 'maengel' : 'gut')
+        setMileage(mock.mileage)
+        setLookupStatus('found')
+        setStep('vehicle_confirm')
+      }, 2200)
+    } else {
+      // Mehrere VINs → Paket/Konvolut.
+      setInputMode('paket')
+      setTimeout(() => {
+        setPaketVehicles(parsePaketTranscript(vinText, origin))
+        setLookupStatus('found')
+        setStep('vehicle_confirm')
+      }, 2200)
+    }
   }
 
   // G1: PKW ⇄ Transporter umschalten — Flow zurücksetzen, damit das passende
@@ -269,35 +208,18 @@ export default function EinkaufPage() {
   const switchVehicleType = (t: VehicleType) => {
     if (t === vehicleType) return
     setVehicleType(t)
-    setVin('')
     setVehicleData(null)
     setPricingResult(null)
     setChannelDecision(null)
     setLookupStatus('idle')
-    if (inputMode !== 'choose' && inputMode !== 'paket') setStep('identify')
+    setInputMode('vin')
+    setStep('identify')
   }
 
   const toggleEquipment = (item: string) => {
     setSelectedEquipment(prev =>
       prev.includes(item) ? prev.filter(e => e !== item) : [...prev, item]
     )
-  }
-
-  // ── Paket-/Konvolut-Flow ──
-  // Erkennt 1–16 eingegebene/eingesprochene/per-OCR erfasste Fahrzeuge (A1/A2);
-  // leerer/unbrauchbarer Input fällt auf das kuratierte Demo-Paket zurück.
-  const handleResolvePaket = (transcript: string, origin: PaketVehicleOrigin) => {
-    setLookupStatus('loading')
-    setTimeout(() => {
-      const parsed = parsePaketTranscript(transcript, origin)
-      setPaketVehicles(
-        parsed.length
-          ? parsed
-          : einkaufPackageVehicles.map((v) => ({ ...v, origin: 'demo' as PaketVehicleOrigin })),
-      )
-      setLookupStatus('found')
-      setStep('vehicle_confirm')
-    }, 2200)
   }
 
   const handleCreatePaketInserat = (vehicle: EinkaufPackageVehicle) => {
@@ -374,18 +296,9 @@ export default function EinkaufPage() {
   }
 
   const handleReset = () => {
-    setInputMode('choose')
+    setInputMode('vin')
     setStep('identify')
-    setVin('')
     setLookupStatus('idle')
-    setHsn('')
-    setTsn('')
-    setSelectedMake('')
-    setSelectedModel('')
-    setSelectedVariant('')
-    setSelectedYear('')
-    setSelectedFuelType('')
-    setManualMileage('')
     setVehicleData(null)
     setSelectedEquipment([])
     setCondition('gut')
@@ -439,20 +352,6 @@ export default function EinkaufPage() {
     router.push('/inserate/neu')
   }
 
-  const switchMode = (mode: InputMode) => {
-    setInputMode(mode)
-    setLookupStatus('idle')
-    setVehicleData(null)
-    setPaketVehicles([])
-    setStep('identify')
-  }
-
-  // ─── Validation ────────────────────────────────────────────────────────────
-
-  const canLookupVin = vin.length >= 5 && lookupStatus === 'idle'
-  const canLookupKba = hsn.length === 4 && tsn.length >= 3 && lookupStatus === 'idle'
-  const canLookupManual = !!selectedMake && !!selectedModel && !!selectedVariant && lookupStatus === 'idle'
-
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -485,424 +384,10 @@ export default function EinkaufPage() {
         </div>
       </div>
 
-      {/* ═══ Mode Chooser ═══ */}
-      {inputMode === 'choose' && (
-        <div className="max-w-3xl mx-auto py-6">
-          <p className="text-center text-muted-foreground text-sm mb-8">
-            Wie möchten Sie das Fahrzeug identifizieren?
-          </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <button
-              onClick={() => setInputMode('vin')}
-              className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
-            >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <ScanLine className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-1.5">VIN-Abfrage</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Fahrzeugdaten automatisch per Fahrgestellnummer abrufen
-              </p>
-              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
-            </button>
-
-            <button
-              onClick={() => setInputMode('kba')}
-              className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
-            >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <Hash className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-1.5">Schlüsselnummer</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Identifikation über HSN/TSN aus dem Fahrzeugschein
-              </p>
-              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
-            </button>
-
-            <button
-              onClick={() => setInputMode('manual')}
-              className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
-            >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <List className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-1.5">Manuelle Auswahl</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Marke, Modell und Variante manuell auswählen
-              </p>
-              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
-            </button>
-
-            <button
-              onClick={() => setInputMode('paket')}
-              className="group relative p-6 rounded-2xl border-2 border-border bg-card hover:border-primary hover:shadow-lg transition-all text-left"
-            >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <Layers className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-1.5">Paket bewerten</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Konvolut / Drehscheibe — mehrere Fahrzeuge gemeinsam bewerten
-              </p>
-              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ Identification Form ═══ */}
-      {inputMode !== 'choose' && step === 'identify' && (
-        <div className="space-y-5 animate-in fade-in duration-300">
-          {/* Mode Switcher */}
-          <div className="flex w-full gap-1 rounded-lg border bg-muted p-1 sm:w-fit">
-            <button
-              onClick={() => switchMode('vin')}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all sm:flex-none ${
-                inputMode === 'vin'
-                  ? 'bg-card shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <ScanLine className="h-3.5 w-3.5" />
-              VIN
-            </button>
-            <button
-              onClick={() => switchMode('kba')}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all sm:flex-none ${
-                inputMode === 'kba'
-                  ? 'bg-card shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Hash className="h-3.5 w-3.5" />
-              HSN / TSN
-            </button>
-            <button
-              onClick={() => switchMode('manual')}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all sm:flex-none ${
-                inputMode === 'manual'
-                  ? 'bg-card shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <List className="h-3.5 w-3.5" />
-              Manuell
-            </button>
-            <button
-              onClick={() => switchMode('paket')}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all sm:flex-none ${
-                inputMode === 'paket'
-                  ? 'bg-card shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Layers className="h-3.5 w-3.5" />
-              Paket
-            </button>
-          </div>
-
-          {/* ── Paket Mode ── */}
-          {inputMode === 'paket' && (
-            <PaketIdentify onRecognize={handleResolvePaket} recognizing={lookupStatus === 'loading'} />
-          )}
-
-          {/* ── VIN Mode ── */}
-          {inputMode === 'vin' && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <ScanLine className="h-4 w-4 text-primary" />
-                  VIN / Fahrgestellnummer
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    placeholder="z.B. W1N2546021F789012"
-                    value={vin}
-                    onChange={e => setVin(e.target.value.toUpperCase())}
-                    className="font-mono text-sm tracking-wider"
-                    maxLength={17}
-                    disabled={lookupStatus === 'loading'}
-                  />
-                  <Button
-                    onClick={resolveVehicle}
-                    disabled={!canLookupVin}
-                    className="shrink-0"
-                  >
-                    {lookupStatus === 'loading' ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Abfragen...</>
-                    ) : (
-                      <><Search className="h-4 w-4 mr-2" />Fahrzeug identifizieren</>
-                    )}
-                  </Button>
-                </div>
-                {lookupStatus === 'loading' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Fahrzeugdaten werden abgerufen...
-                    </div>
-                    <Progress value={66} className="h-1" />
-                  </div>
-                )}
-                {lookupStatus === 'idle' && (
-                  <div className="space-y-2.5">
-                    <p className="text-xs text-muted-foreground">
-                      17-stellige Fahrgestellnummer eingeben. Zu finden im Fahrzeugschein (Feld E) oder an der Windschutzscheibe.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">Demo-Fahrzeuge:</span>
-                      {vehicleType === 'transporter' ? (
-                        <button
-                          type="button"
-                          onClick={() => setVin(einkaufTransporterVinMock.vin)}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/60 bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700 transition-colors hover:bg-sky-100 dark:border-sky-800/50 dark:bg-sky-950/30 dark:text-sky-400"
-                        >
-                          <Truck className="h-3 w-3" />
-                          Sprinter 317 CDI Kühlkoffer · 2021 · 78.000 km
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setVin(einkaufVinMock.vin)}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/60 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400"
-                          >
-                            <Sparkles className="h-3 w-3" />
-                            Endkunden-GLC · 2023 · 32.400 km
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setVin(einkaufVinMockAuktion.vin)}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-300/60 bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-300"
-                          >
-                            <Gavel className="h-3 w-3" />
-                            Auktions-GLC · 2017 · 145.800 km
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ── KBA / HSN/TSN Mode ── */}
-          {inputMode === 'kba' && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Hash className="h-4 w-4 text-primary" />
-                  Schlüsselnummer (HSN / TSN)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-xs text-muted-foreground">
-                  Aus dem Fahrzeugschein (Zulassungsbescheinigung Teil I): HSN = Feld 2.1, TSN = Feld 2.2
-                </p>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground">HSN (4-stellig)</Label>
-                    <Input
-                      placeholder="z.B. 1313"
-                      value={hsn}
-                      onChange={e => setHsn(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-                      className="mt-1 font-mono text-sm tracking-wider"
-                      maxLength={4}
-                      disabled={lookupStatus === 'loading'}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground">TSN (mind. 3-stellig)</Label>
-                    <Input
-                      placeholder="z.B. CKL"
-                      value={tsn}
-                      onChange={e => setTsn(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7))}
-                      className="mt-1 font-mono text-sm tracking-wider"
-                      maxLength={7}
-                      disabled={lookupStatus === 'loading'}
-                    />
-                  </div>
-                  <Button
-                    onClick={resolveVehicle}
-                    disabled={!canLookupKba}
-                    className="shrink-0"
-                  >
-                    {lookupStatus === 'loading' ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Abfragen...</>
-                    ) : (
-                      <><Search className="h-4 w-4 mr-2" />Fahrzeug identifizieren</>
-                    )}
-                  </Button>
-                </div>
-                {lookupStatus === 'loading' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      KBA-Datenbank wird abgefragt...
-                    </div>
-                    <Progress value={66} className="h-1" />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ── Manual Selection Mode ── */}
-          {inputMode === 'manual' && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <List className="h-4 w-4 text-primary" />
-                  Fahrzeug manuell auswählen
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Marke */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Marke</Label>
-                    <Select
-                      value={selectedMake}
-                      onValueChange={v => {
-                        setSelectedMake(v)
-                        setSelectedModel('')
-                        setSelectedVariant('')
-                      }}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Marke wählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.keys(MAKE_MODEL_TREE).map(make => (
-                          <SelectItem key={make} value={make}>{make}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Modell */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Modell</Label>
-                    <Select
-                      value={selectedModel}
-                      onValueChange={v => {
-                        setSelectedModel(v)
-                        setSelectedVariant('')
-                      }}
-                      disabled={!selectedMake}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Modell wählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {models.map(model => (
-                          <SelectItem key={model} value={model}>{model}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Variante */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Variante</Label>
-                    <Select
-                      value={selectedVariant}
-                      onValueChange={setSelectedVariant}
-                      disabled={!selectedModel}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Variante wählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {variants.map(variant => (
-                          <SelectItem key={variant} value={variant}>{variant}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Erweiterte Details */}
-                {selectedVariant && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border/40 animate-in fade-in duration-300">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Erstzulassung / Baujahr</Label>
-                      <Select value={selectedYear} onValueChange={setSelectedYear}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Jahr wählen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {YEARS.map(y => (
-                            <SelectItem key={y} value={y}>{y}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Kraftstoff</Label>
-                      <Select value={selectedFuelType} onValueChange={setSelectedFuelType}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Kraftstoff" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FUEL_TYPES.map(f => (
-                            <SelectItem key={f} value={f}>{f}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Kilometerstand</Label>
-                      <Input
-                        type="number"
-                        placeholder="z.B. 32400"
-                        value={manualMileage}
-                        onChange={e => setManualMileage(e.target.value)}
-                        className="mt-1 font-mono"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Action */}
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-xs text-muted-foreground">
-                    {!selectedMake
-                      ? 'Wählen Sie Marke, Modell und Variante aus.'
-                      : !selectedModel
-                        ? 'Modell auswählen...'
-                        : !selectedVariant
-                          ? 'Variante auswählen...'
-                          : 'Fahrzeug kann identifiziert werden.'}
-                  </p>
-                  <Button
-                    onClick={resolveVehicle}
-                    disabled={!canLookupManual}
-                    className="shrink-0"
-                  >
-                    {lookupStatus === 'loading' ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Suche...</>
-                    ) : (
-                      <><Search className="h-4 w-4 mr-2" />Fahrzeug identifizieren</>
-                    )}
-                  </Button>
-                </div>
-                {lookupStatus === 'loading' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Fahrzeugdaten werden zusammengestellt...
-                    </div>
-                    <Progress value={66} className="h-1" />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+      {/* ═══ Identifikation: eine Maske — eine VIN (Einzel) oder mehrere VINs (Paket) ═══ */}
+      {step === 'identify' && (
+        <div className="animate-in fade-in duration-300">
+          <VehicleIdentify vehicleType={vehicleType} onSubmit={handleRecognize} busy={lookupStatus === 'loading'} />
         </div>
       )}
 
