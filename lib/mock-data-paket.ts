@@ -13,6 +13,8 @@ import {
   buildKbaDemand,
   buildSegmentSignal,
   computeTrendSignal,
+  buildRecommendation,
+  classifyRole,
   kraftstoffartFromModel,
   DEFAULT_REGION_LOCATION,
   DEFAULT_RADIUS_KM,
@@ -21,6 +23,7 @@ import {
   type DATAdjustment,
   type MobileDeComparable,
   type VerwertungChannel,
+  type PackageRole,
 } from './mock-data-einkauf'
 import { mercedesMedia } from './mercedes-inventory'
 
@@ -49,6 +52,7 @@ export interface EinkaufPackageVehicle {
   simplified: boolean // true => vereinfachte Schnellbewertung im Drill-down
   detail: EinkaufPricingResult // vollständiges Einzelfahrzeug-Ergebnis
   origin?: PaketVehicleOrigin // aus welchem Eingabeweg erkannt (A2)
+  role: PackageRole // E3: Treiber (trägt das Paket) vs. Mitnahme (schwächer)
 }
 
 export interface EinkaufPackageTotals {
@@ -61,6 +65,7 @@ export interface EinkaufPackageTotals {
   confidence: number
   averageDaysOnLot: number
   channelSplit: { endkunde: number; auktion: number }
+  roleSplit: { treiber: number; mitnahme: number } // F3: Arbitrage-Sicht
   defaultBundlePrice: number
 }
 
@@ -226,6 +231,13 @@ function makeQuickDetail(o: {
     umschlagsrate: result.kbaDemand.umschlagsrate,
     avgStandtage: result.region.avgStandtage,
   })
+  result.buyDecision = buildRecommendation({
+    channel,
+    marginPercent: result.historical.averageMarginPercent,
+    umschlagsrate: result.kbaDemand.umschlagsrate,
+    marketPercentile: result.marketPosition.percentile,
+    segmentCaution: result.segmentSignal.caution,
+  })
 
   return result
 }
@@ -252,6 +264,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     daysOnLot: 21,
     simplified: true,
     detail: makeQuickDetail({ model: 'GLC 200 4MATIC', ez: '04/2023', year: 2023, mileage: 38000, sweetSpot: 35000, vk: 41400, confidence: 89, channel: 'endkunde', condition: 'sehr_gut' }),
+    role: 'treiber',
   },
   {
     id: 'pkg-2',
@@ -272,6 +285,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     daysOnLot: 25,
     simplified: true,
     detail: makeQuickDetail({ model: 'GLC 220 d 4MATIC', ez: '09/2022', year: 2022, mileage: 64000, sweetSpot: 38000, vk: 45000, confidence: 88, channel: 'endkunde', condition: 'gut' }),
+    role: 'treiber',
   },
   {
     id: 'pkg-3',
@@ -292,6 +306,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     daysOnLot: 23,
     simplified: false, // volle Bewertung = der Hero-GLC aus Feature 1/2
     detail: einkaufPricingResult,
+    role: 'treiber',
   },
   {
     id: 'pkg-4',
@@ -312,6 +327,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     daysOnLot: 6,
     simplified: true,
     detail: makeQuickDetail({ model: 'GLC 220 d 4MATIC', ez: '03/2019', year: 2019, mileage: 138000, sweetSpot: 17000, vk: 18300, confidence: 84, channel: 'auktion', condition: 'maengel' }),
+    role: 'mitnahme',
   },
 ]
 
@@ -436,6 +452,7 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
     simplified: !isHero,
     detail,
     origin,
+    role: classifyRole({ channel, marginPercent: pct(margin, vk) }),
   }
 }
 
@@ -466,6 +483,10 @@ export function buildPackageTotals(vehicles: EinkaufPackageVehicle[]): EinkaufPa
     channelSplit: {
       endkunde: vehicles.filter((v) => v.channel === 'endkunde').length,
       auktion: vehicles.filter((v) => v.channel === 'auktion').length,
+    },
+    roleSplit: {
+      treiber: vehicles.filter((v) => v.role === 'treiber').length,
+      mitnahme: vehicles.filter((v) => v.role === 'mitnahme').length,
     },
     // Drehscheiben-Paketpreis ≈ Summe Einzel-EK + kleiner Paket-Aufschlag (~1,3 %).
     // Auf 100 € gerundet; für das 4er-Demo ergibt das die bisherigen 134.900 €.

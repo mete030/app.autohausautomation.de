@@ -9,6 +9,9 @@ import {
   channelLabels,
   regionalMarketFor,
   recommendedEk,
+  buyRecommendationConfig,
+  reasoningTypeLabel,
+  packageRoleConfig,
   DATA_WINDOW_LABEL,
   SECONDARY_REFERENCE_NOTE,
   DEFAULT_TARGET_MARGIN_PCT,
@@ -153,6 +156,28 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                     Bandbreite: {formatCurrency(result.recommendedMin)} &ndash; {formatCurrency(result.recommendedMax)}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 mt-3 justify-center lg:justify-start">
+                    {/* E1: Kauf-/Nicht-Kauf-Ampel */}
+                    {result.buyDecision && (
+                      <Badge
+                        variant="secondary"
+                        className={`text-xs font-semibold ${buyRecommendationConfig[result.buyDecision.recommendation].badge}`}
+                      >
+                        <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${buyRecommendationConfig[result.buyDecision.recommendation].dot}`} />
+                        {buyRecommendationConfig[result.buyDecision.recommendation].label}
+                      </Badge>
+                    )}
+                    {/* E2: Begründungstyp */}
+                    {result.buyDecision && (
+                      <Badge variant="outline" className="text-xs border-border/60">
+                        {reasoningTypeLabel[result.buyDecision.reasoningType]}
+                      </Badge>
+                    )}
+                    {/* E3: Paket-Rolle (nur im Paket-Kontext) */}
+                    {result.packageRole && (
+                      <Badge variant="secondary" className={`text-xs ${packageRoleConfig[result.packageRole].badge}`}>
+                        {packageRoleConfig[result.packageRole].label}
+                      </Badge>
+                    )}
                     <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
                       {result.confidence}% Konfidenz
                     </Badge>
@@ -164,6 +189,12 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                       {L.tag}
                     </Badge>
                   </div>
+                  {/* E2: Begründungstext */}
+                  {result.buyDecision && (
+                    <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto lg:mx-0">
+                      {result.buyDecision.rationale}
+                    </p>
+                  )}
                 </div>
 
                 <Separator orientation="vertical" className="hidden lg:block h-24" />

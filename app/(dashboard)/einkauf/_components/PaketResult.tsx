@@ -18,8 +18,9 @@ import {
   CONDITION_DAT_LABEL,
   type EinkaufPackageVehicle,
 } from '@/lib/mock-data-paket'
+import { packageRoleConfig } from '@/lib/mock-data-einkauf'
 import { formatCurrency } from '@/lib/utils'
-import { Layers, ChevronRight, ArrowLeft, RefreshCw, Check, Sparkles, ArrowRight, Gavel, Info } from 'lucide-react'
+import { Layers, ChevronRight, ArrowLeft, RefreshCw, Check, Sparkles, ArrowRight, Gavel, Info, Scale } from 'lucide-react'
 
 interface PaketResultProps {
   vehicles: EinkaufPackageVehicle[]
@@ -45,7 +46,7 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
     const v = vehicles[drillIndex]
     // Zustand der (ggf. bearbeiteten) Liste in die Detailbewertung spiegeln —
     // ohne das geteilte Mock-Objekt zu mutieren.
-    const detail = { ...v.detail, dat: { ...v.detail.dat, condition: CONDITION_DAT_LABEL[v.condition] } }
+    const detail = { ...v.detail, packageRole: v.role, dat: { ...v.detail.dat, condition: CONDITION_DAT_LABEL[v.condition] } }
     return (
       <div className="space-y-5 animate-in fade-in duration-300">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -124,6 +125,10 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
                 <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
                   {totals.channelSplit.endkunde}× Endkunde · {totals.channelSplit.auktion}× Auktion
                 </Badge>
+                {/* F3: Treiber/Mitnahme-Split auf einen Blick */}
+                <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                  {totals.roleSplit.treiber} Treiber · {totals.roleSplit.mitnahme} Mitnahme
+                </Badge>
               </div>
             </div>
 
@@ -199,7 +204,13 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
                           <img src={v.imageUrl} alt={v.model} className="w-full h-full object-cover" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium truncate">{v.model}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium truncate">{v.model}</p>
+                            {/* E3: Treiber vs. Mitnahme visuell unterscheidbar */}
+                            <Badge variant="secondary" className={`shrink-0 text-[9px] px-1.5 py-0 ${packageRoleConfig[v.role].badge}`}>
+                              {packageRoleConfig[v.role].label}
+                            </Badge>
+                          </div>
                           <p className="text-[10px] text-muted-foreground truncate">{v.firstRegistration} · {v.equipmentSummary}</p>
                         </div>
                       </div>
@@ -256,6 +267,17 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
         <div className="px-5 pt-4 pb-3 bg-gradient-to-br from-indigo-50 via-card to-violet-50/40 dark:from-indigo-950/30 dark:via-card dark:to-violet-950/20 border-b border-border/60">
           <h3 className="text-sm font-semibold">Lohnt sich das Paket?</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">Ein Bündelpreis von der Drehscheibe für alle {vehicles.length} Fahrzeuge.</p>
+          {/* F3: Arbitrage-Sicht — starke + schwache Fahrzeuge gemeinsam gekauft, Netto-Empfehlung */}
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="inline-flex items-center gap-1 font-medium">
+              <Scale className="h-3.5 w-3.5 text-muted-foreground" />
+              Arbitrage: {totals.roleSplit.treiber} Treiber tragen {totals.roleSplit.mitnahme} Mitnahme-Fahrzeug{totals.roleSplit.mitnahme === 1 ? '' : 'e'}
+            </span>
+            <span className={`inline-flex items-center gap-1 rounded-full bg-card px-2 py-0.5 font-semibold ${verdict.tone}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${verdict.dot}`} />
+              Netto: {verdict.label}
+            </span>
+          </div>
         </div>
         <CardContent className="p-4 sm:p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-end gap-4">

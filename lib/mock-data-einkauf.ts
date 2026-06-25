@@ -157,6 +157,17 @@ export interface TrendSignal {
   drivers: string // welche Mock-Inputs das Signal speisen (D2)
 }
 
+// E1/E2/E3: Kaufempfehlung, Begründungstyp, Paket-Rolle.
+export type BuyRecommendation = 'kaufen' | 'pruefen' | 'ablehnen'
+export type ReasoningType = 'preis_marge' | 'verkaufsgeschwindigkeit'
+export type PackageRole = 'treiber' | 'mitnahme'
+
+export interface BuyDecision {
+  recommendation: BuyRecommendation
+  reasoningType: ReasoningType
+  rationale: string
+}
+
 export interface EinkaufPricingResult {
   recommendedMin: number
   recommendedMax: number
@@ -200,6 +211,8 @@ export interface EinkaufPricingResult {
   kbaDemand?: KbaDemand
   segmentSignal?: SegmentSignal
   trend?: TrendSignal // D1/D2: 8-Wochen-Trendserie (kombiniertes Signal)
+  buyDecision?: BuyDecision // E1/E2: Kaufempfehlung + Begründungstyp
+  packageRole?: PackageRole // E3: nur im Paket-Kontext gesetzt
 }
 
 // ─── Helper für regionale Marktsicht & KBA-Signale ───────────────────────────
@@ -310,6 +323,81 @@ export function computeTrendSignal(o: {
   })
   const drivers = `Standtage ${o.avgStandtage} T · Umschlagsrate ${o.umschlagsrate} % · KBA ${o.kbaChangePercent >= 0 ? '+' : ''}${o.kbaChangePercent} %`
   return { points, direction, changePercent, drivers }
+}
+
+// E1/E2: Kauf-/Nicht-Kauf-Empfehlung + Begründungstyp aus den Mock-Signalen (§4.1):
+// hohe Umschlagsrate → „dreht schnell" (Verkaufsgeschwindigkeit); unter Markt + gute
+// Marge → Preis/Marge. Negativer Segment-Trend stuft trotz guter Werte ab (B6-Kopplung).
+// TODO[real-backend]: KI/Scoring statt Heuristik.
+export function buildRecommendation(o: {
+  channel: VerwertungChannel
+  marginPercent: number
+  umschlagsrate: number
+  marketPercentile: number // niedrig = unter Markt (günstig im Einkauf)
+  segmentCaution: boolean
+}): BuyDecision {
+  const fast = o.umschlagsrate >= 8
+  const underMarket = o.marketPercentile <= 45
+  const marginKaufen = o.channel === 'auktion' ? 6 : 12
+  const marginPruefen = o.channel === 'auktion' ? 4 : 8
+
+  const reasoningType: ReasoningType =
+    underMarket && o.marginPercent >= marginKaufen
+      ? 'preis_marge'
+      : fast
+        ? 'verkaufsgeschwindigkeit'
+        : 'preis_marge'
+
+  let recommendation: BuyRecommendation =
+    o.marginPercent >= marginKaufen && (fast || underMarket)
+      ? 'kaufen'
+      : o.marginPercent >= marginPruefen
+        ? 'pruefen'
+        : 'ablehnen'
+  // §4.1: rückläufiger Segment-/Kraftstoff-Trend stuft „kaufen" auf „prüfen" ab.
+  if (o.segmentCaution && recommendation === 'kaufen') recommendation = 'pruefen'
+
+  const rationale =
+    recommendation === 'ablehnen'
+      ? 'Marge zu dünn / Nachfrage schwach — nur als Paket-Mitnahme vertretbar.'
+      : reasoningType === 'verkaufsgeschwindigkeit'
+        ? `Dreht schnell (Umschlagsrate ${o.umschlagsrate} %) — kurze Standzeit, schneller Kapitalrücklauf.`
+        : `${o.marginPercent.toFixed(1)} % erwartete Marge bei ${underMarket ? 'Preis unter Markt' : 'marktüblichem Preis'}.`
+  return { recommendation, reasoningType, rationale }
+}
+
+export function classifyRole(o: { channel: VerwertungChannel; marginPercent: number }): PackageRole {
+  return o.channel === 'endkunde' && o.marginPercent >= 12 ? 'treiber' : 'mitnahme'
+}
+
+// UI-Konfiguration (Ampel) für die Kaufempfehlung.
+export const buyRecommendationConfig: Record<BuyRecommendation, { label: string; tone: string; dot: string; badge: string }> = {
+  kaufen: {
+    label: 'Kaufen',
+    tone: 'text-emerald-700 dark:text-emerald-400',
+    dot: 'bg-emerald-500',
+    badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400',
+  },
+  pruefen: {
+    label: 'Prüfen',
+    tone: 'text-amber-700 dark:text-amber-400',
+    dot: 'bg-amber-500',
+    badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400',
+  },
+  ablehnen: {
+    label: 'Nicht kaufen',
+    tone: 'text-red-700 dark:text-red-400',
+    dot: 'bg-red-500',
+    badge: 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400',
+  },
+}
+export const reasoningTypeLabel: Record<ReasoningType, string> = {
+  preis_marge: 'Preis/Marge',
+  verkaufsgeschwindigkeit: 'Verkaufsgeschwindigkeit',
+}
+export const packageRoleConfig: Record<PackageRole, { label: string; badge: string }> = {
+  treiber: { label: 'Treiber', badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' },
+  mitnahme: { label: 'Mitnahme', badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300' },
 }
 
 // Kraftstoffart aus Modell-/Antriebsstring ableiten (Demo-Heuristik).
@@ -582,6 +670,7 @@ export const einkaufPricingResult: EinkaufPricingResult = {
   kbaDemand: buildKbaDemand({ besitzumschreibungen: 142, bestand: 980, trend: 'up', changePercent: 9 }),
   segmentSignal: buildSegmentSignal('benzin'),
   trend: computeTrendSignal({ baseValue: 52400, kbaTrend: 'up', kbaChangePercent: 9, umschlagsrate: 14.5, avgStandtage: 34 }),
+  buyDecision: buildRecommendation({ channel: 'endkunde', marginPercent: 17.8, umschlagsrate: 14.5, marketPercentile: 35, segmentCaution: false }),
 }
 
 // ─── Kanal-Labels (eine Quelle für alle kanal-bewussten Texte) ───────────────
@@ -875,4 +964,5 @@ export const einkaufAuktionPricingResult: EinkaufPricingResult = {
   kbaDemand: buildKbaDemand({ besitzumschreibungen: 41, bestand: 1720, trend: 'down', changePercent: -7 }),
   segmentSignal: buildSegmentSignal('benzin'),
   trend: computeTrendSignal({ baseValue: 12700, kbaTrend: 'down', kbaChangePercent: -7, umschlagsrate: 2.4, avgStandtage: 52 }),
+  buyDecision: buildRecommendation({ channel: 'auktion', marginPercent: 7.1, umschlagsrate: 2.4, marketPercentile: 55, segmentCaution: false }),
 }

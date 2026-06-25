@@ -132,14 +132,14 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 - [x] **D2** Chart zeigt Trendrichtung + %-Veränderung über das Datenfenster; Mock-Signal kombiniert Standtage, Regionalpreis und Besitzumschreibungen. — *`computeTrendSignal()` blendet KBA-Trend + Umschlagsrate + Standtage; `TrendArrow` zeigt Richtung+% , Caption listet die Signaltreiber.*
 
 ### Epic E — Kauf/Nicht-Kauf-Empfehlung pro Fahrzeug
-- [ ] **E1** Pro Fahrzeug klare Kaufen/Nicht-kaufen-Empfehlung (Badge/Ampel) aus Mock-Logik.
-- [ ] **E2** Begründungstyp sichtbar: „Preis/Marge" oder „Verkaufsgeschwindigkeit".
-- [ ] **E3** Treiber-Fahrzeuge vs. schwächere „Mitnahme"-Fahrzeuge visuell unterscheidbar markiert.
+- [x] **E1** Pro Fahrzeug klare Kaufen/Nicht-kaufen-Empfehlung (Badge/Ampel) aus Mock-Logik. — *`buildRecommendation()` → `BuyDecision`; Ampel-Badge (kaufen/prüfen/nicht kaufen) im Hero via `buyRecommendationConfig`. §4.1: Segment-Caution stuft „kaufen"→„prüfen" ab.*
+- [x] **E2** Begründungstyp sichtbar: „Preis/Marge" oder „Verkaufsgeschwindigkeit". — *`reasoningType` aus Umschlagsrate/Marktposition; Badge + Begründungstext im Hero.*
+- [x] **E3** Treiber-Fahrzeuge vs. schwächere „Mitnahme"-Fahrzeuge visuell unterscheidbar markiert. — *`classifyRole()` + `packageRole`; Badge im Hero (Drill-down) und in jeder PaketResult-Tabellenzeile (emerald=Treiber / slate=Mitnahme).*
 
 ### Epic F — Paket-/Zug-Bewertung (Aggregat)
 - [x] **F1** Paket-Ansicht zeigt empfohlenen **Gesamt-EK** zusätzlich zum EK pro Fahrzeug. — *Ist bereits vorhanden (`PaketResult` Hero `totals.ekRecommendation` + Σ-Footer).*
 - [x] **F2** Erwartete **Gesamt-Marge** + **Gesamt-Gewinn/-Verlust** dargestellt. — *Ist bereits vorhanden (`totals.expectedMarginTotal`/`%` + Bundle-Rechner).*
-- [ ] **F3** **Arbitrage-Sicht**: starke + schwache Fahrzeuge gemeinsam gekauft sichtbar („X Treiber, Y Mitnahme") inkl. Netto-Empfehlung.
+- [x] **F3** **Arbitrage-Sicht**: starke + schwache Fahrzeuge gemeinsam gekauft sichtbar („X Treiber, Y Mitnahme") inkl. Netto-Empfehlung. — *`roleSplit` in den Totals; Hero-Badge „X Treiber · Y Mitnahme"; Arbitrage-Banner im Bundle-Rechner „X Treiber tragen Y Mitnahme-Fahrzeuge" + Netto-Verdict (reagiert auf Paketpreis).*
 
 ### Epic G — Transporter-Modus (~20 %)
 - [ ] **G1** Umschalter PKW ⇄ Transporter; im Transporter-Modus abweichende Mock-Logik/Darstellung.
