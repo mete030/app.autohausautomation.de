@@ -7,10 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { einkaufPackageVehicles, type EinkaufPackageVehicle, type EinkaufCondition } from '@/lib/mock-data-paket'
+import { einkaufPackageVehicles, MB_MODEL_NAMES, type EinkaufPackageVehicle, type EinkaufCondition } from '@/lib/mock-data-paket'
 import { CheckCircle2, Plus, X, Sparkles, Settings2, Layers } from 'lucide-react'
-
-const GLC_VARIANTS = ['GLC 200 4MATIC', 'GLC 220 d 4MATIC', 'GLC 300 4MATIC', 'GLC 300 e 4MATIC', 'GLC 400 e 4MATIC', 'GLC 43 AMG']
 const CONDITIONS: { value: EinkaufCondition; label: string }[] = [
   { value: 'sehr_gut', label: 'Sehr gut' },
   { value: 'gut', label: 'Gut' },
@@ -62,7 +60,7 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
               <Select value={v.model} onValueChange={(val) => update(i, { model: val })}>
                 <SelectTrigger className="mt-0.5 h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {GLC_VARIANTS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {MB_MODEL_NAMES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                 </SelectContent>
               </Select>
               {/* Identifizierte Stammdaten (A4): EZ + Kraftstoff */}

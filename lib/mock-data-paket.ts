@@ -382,6 +382,9 @@ const MB_MODELS: MbModelSpec[] = [
   { name: 'E 220 d', re: /\bE\s?220\s?d\b/i, baseVk: 42000, fuel: 'Diesel', image: 'mb_e_klasse' },
 ]
 const DEFAULT_MODEL: MbModelSpec = { name: 'C 220 d', re: /(?!)/, baseVk: 35000, fuel: 'Diesel', image: 'mb_c_klasse' }
+
+// Alle Modellnamen für Auswahl-Dropdowns — bleibt automatisch in Sync mit dem Parser/der Registry.
+export const MB_MODEL_NAMES = MB_MODELS.map((m) => m.name)
 const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/i
 
 function matchModel(line: string): MbModelSpec {
