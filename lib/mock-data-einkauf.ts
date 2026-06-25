@@ -102,6 +102,48 @@ export interface AuctionResult {
   benchmarks: AuctionBenchmark[]
 }
 
+// ─── B1–B7: Regionale Marktsicht & KBA-/Nachfrage-Signale (8-Wochen-Fenster) ──
+// Glaubwürdige Demo-Mocks. Echte Quellen docken hier an:
+// TODO[real-backend]: mobile.de Umkreissuche (PLZ + Radius) für region/regionalMobile.
+// TODO[real-backend]: KBA-Signale via Marktdaten-Anbieter (nicht roh vom KBA) für kbaDemand/segmentSignal.
+
+export type SearchRadiusKm = 50 | 100
+export type TrendDirection = 'up' | 'down' | 'flat'
+export type Kraftstoffart = 'diesel' | 'benzin' | 'hybrid' | 'bev'
+
+export const DEFAULT_REGION_LOCATION = 'Nagold'
+export const DEFAULT_RADIUS_KM: SearchRadiusKm = 50
+export const DATA_WINDOW_LABEL = 'Letzte 8 Wochen' // B4: erstklassiges Datenfenster
+export const SECONDARY_REFERENCE_NOTE = 'Referenz, nicht tagesaktuell' // B4: DAT/Historie nachrangig
+
+export interface RegionalMarket {
+  location: string
+  radiusKm: SearchRadiusKm
+  avgOfferPrice: number // Ø regionaler mobile.de-Angebotspreis
+  priceRange: { min: number; max: number }
+  countSameModelInRegion: number // gleiches Modell im Umkreis
+  avgStandtage: number // Ø Standtage in der Region
+}
+
+export interface KbaDemand {
+  besitzumschreibungenLast8Weeks: number // rohe Umschreibungszahl (B3 — in B5 sekundär)
+  trendDirection: TrendDirection
+  changePercent: number // ggü. Vorperiode
+  windowLabel: string // 'Letzte 8 Wochen'
+  regionalerBestand: number // zugel. Fahrzeuge des Modells in Region (B5)
+  umschlagsrate: number // = Umschreibungen ÷ Bestand · 100 (B5 — hervorgehoben)
+}
+
+export interface SegmentSignal {
+  segment: string
+  kraftstoffart: Kraftstoffart
+  segmentTrendLabel: string // z.B. 'Diesel −12 % · Hybrid +18 % (Quartal)'
+  segmentTrendDirection: TrendDirection
+  caution: boolean // true => Vorsicht-Flag an der Empfehlung (B6)
+  neuzulassungsTrendPercent?: number // B7 (optional, v.a. Transporter)
+  neuzulassungsHinweis?: string // B7 Warnhinweis
+}
+
 export interface EinkaufPricingResult {
   recommendedMin: number
   recommendedMax: number
@@ -138,6 +180,97 @@ export interface EinkaufPricingResult {
   // B2B-kohärente Werte (gleiche Render-Komponenten, kanal-bewusste Labels).
   channel?: VerwertungChannel
   auction?: AuctionResult
+
+  // Regionale & KBA-/Nachfrage-Signale (8-Wochen-Fenster) — alle optional, damit
+  // Bestands-Render nicht bricht. region = 50-km-Basis; regionalMarketFor() skaliert.
+  region?: RegionalMarket
+  kbaDemand?: KbaDemand
+  segmentSignal?: SegmentSignal
+}
+
+// ─── Helper für regionale Marktsicht & KBA-Signale ───────────────────────────
+
+// B1: Radius-Änderung skaliert die regionalen Mock-Aggregate sichtbar. Die in
+// `result.region` gespeicherte Basis gilt als 50-km-Wert; 100 km wird hochskaliert
+// (mehr Angebot → leicht niedrigerer Ø-Preis, etwas trägere Standtage).
+// TODO[real-backend]: mobile.de Umkreissuche (PLZ + Radius).
+export function regionalMarketFor(result: EinkaufPricingResult, radiusKm: SearchRadiusKm): RegionalMarket {
+  const base = result.region
+  if (!base) {
+    return {
+      location: DEFAULT_REGION_LOCATION,
+      radiusKm,
+      avgOfferPrice: result.mobileDe.averagePrice,
+      priceRange: { min: result.mobileDe.lowestPrice, max: result.mobileDe.highestPrice },
+      countSameModelInRegion: radiusKm === 100 ? 18 : 8,
+      avgStandtage: radiusKm === 100 ? 41 : 34,
+    }
+  }
+  if (radiusKm === base.radiusKm) return base
+  const grow = radiusKm === 100 ? 2.2 : 1 / 2.2
+  return {
+    ...base,
+    radiusKm,
+    countSameModelInRegion: Math.round(base.countSameModelInRegion * grow),
+    avgOfferPrice: base.avgOfferPrice + (radiusKm === 100 ? -300 : 300),
+    avgStandtage: radiusKm === 100 ? base.avgStandtage + 7 : Math.max(18, base.avgStandtage - 7),
+  }
+}
+
+// B3/B5: KBA-Nachfrage-Signal inkl. abgeleiteter Umschlagsrate.
+// TODO[real-backend]: KBA-Signale via Marktdaten-Anbieter (nicht roh vom KBA).
+export function buildKbaDemand(o: {
+  besitzumschreibungen: number
+  bestand: number
+  trend: TrendDirection
+  changePercent: number
+}): KbaDemand {
+  return {
+    besitzumschreibungenLast8Weeks: o.besitzumschreibungen,
+    trendDirection: o.trend,
+    changePercent: o.changePercent,
+    windowLabel: DATA_WINDOW_LABEL,
+    regionalerBestand: o.bestand,
+    umschlagsrate: o.bestand ? Math.round((o.besitzumschreibungen / o.bestand) * 1000) / 10 : 0,
+  }
+}
+
+// B6/B7: Segment-/Kraftstoff-Makrotrend. Diesel kippt → Vorsicht-Flag, auch wenn
+// die Einzelwerte gut aussehen. neuzulassungs* optional (B7, v.a. Transporter).
+// TODO[real-backend]: KBA-Signale via Marktdaten-Anbieter (nicht roh vom KBA).
+export function buildSegmentSignal(
+  kraftstoffart: Kraftstoffart,
+  opts?: { segment?: string; neuzulassungsTrendPercent?: number },
+): SegmentSignal {
+  const map: Record<Kraftstoffart, { dir: TrendDirection; caution: boolean; label: string }> = {
+    diesel: { dir: 'down', caution: true, label: 'Diesel −12 % · Hybrid +18 % · Benzin +4 % (Quartal)' },
+    benzin: { dir: 'up', caution: false, label: 'Benziner +4 % · Hybrid +18 % · Diesel −12 % (Quartal)' },
+    hybrid: { dir: 'up', caution: false, label: 'Hybrid +18 % · Benzin +4 % · Diesel −12 % (Quartal)' },
+    bev: { dir: 'up', caution: false, label: 'BEV +24 % · Hybrid +18 % · Diesel −12 % (Quartal)' },
+  }
+  const m = map[kraftstoffart]
+  const nz = opts?.neuzulassungsTrendPercent
+  return {
+    segment: opts?.segment ?? 'Premium-SUV (kompakt)',
+    kraftstoffart,
+    segmentTrendLabel: m.label,
+    segmentTrendDirection: m.dir,
+    caution: m.caution,
+    neuzulassungsTrendPercent: nz,
+    neuzulassungsHinweis:
+      nz != null && nz > 15
+        ? `Neuzulassungen aktuell +${nz} % — künftig mehr Gebrauchtangebot, Preisdruck möglich.`
+        : undefined,
+  }
+}
+
+// Kraftstoffart aus Modell-/Antriebsstring ableiten (Demo-Heuristik).
+export function kraftstoffartFromModel(model: string, fuelType?: string): Kraftstoffart {
+  const s = `${model} ${fuelType ?? ''}`.toLowerCase()
+  if (/\beq|\bbev|elektro/.test(s)) return 'bev'
+  if (/hybrid|\d+\s*e\b|plug/.test(s)) return 'hybrid'
+  if (/\bd\b|diesel|220\s*d|300\s*d/.test(s)) return 'diesel'
+  return 'benzin'
 }
 
 // ─── Mock: VIN-Decode ────────────────────────────────────────────────────────
@@ -388,6 +521,18 @@ export const einkaufPricingResult: EinkaufPricingResult = {
   },
 
   channel: 'endkunde',
+
+  // Regionale Marktsicht (50-km-Basis) + heiße KBA-Nachfrage (junger, gefragter GLC).
+  region: {
+    location: DEFAULT_REGION_LOCATION,
+    radiusKm: 50,
+    avgOfferPrice: 52271,
+    priceRange: { min: 46900, max: 57800 },
+    countSameModelInRegion: 9,
+    avgStandtage: 34,
+  },
+  kbaDemand: buildKbaDemand({ besitzumschreibungen: 142, bestand: 980, trend: 'up', changePercent: 9 }),
+  segmentSignal: buildSegmentSignal('benzin'),
 }
 
 // ─── Kanal-Labels (eine Quelle für alle kanal-bewussten Texte) ───────────────
@@ -668,4 +813,16 @@ export const einkaufAuktionPricingResult: EinkaufPricingResult = {
     avgDaysToHammer: 5,
     benchmarks: einkaufAuctionBenchmarks,
   },
+
+  // Regionale Marktsicht + kalte KBA-Nachfrage (alter, hochlaufiger GLC 250).
+  region: {
+    location: DEFAULT_REGION_LOCATION,
+    radiusKm: 50,
+    avgOfferPrice: 12650,
+    priceRange: { min: 10900, max: 14200 },
+    countSameModelInRegion: 14,
+    avgStandtage: 52,
+  },
+  kbaDemand: buildKbaDemand({ besitzumschreibungen: 41, bestand: 1720, trend: 'down', changePercent: -7 }),
+  segmentSignal: buildSegmentSignal('benzin'),
 }

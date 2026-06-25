@@ -10,6 +10,11 @@
 
 import {
   einkaufPricingResult,
+  buildKbaDemand,
+  buildSegmentSignal,
+  kraftstoffartFromModel,
+  DEFAULT_REGION_LOCATION,
+  DEFAULT_RADIUS_KM,
   type EinkaufPricingResult,
   type HistoricalSale,
   type DATAdjustment,
@@ -197,6 +202,22 @@ function makeQuickDetail(o: {
       ],
     }
   }
+
+  // Regionale Marktsicht + KBA-/Segment-Signale (B1–B6) — je Fahrzeug abgeleitet,
+  // damit Paket- und geparste Fahrzeuge dieselben Nachfrage-Signale tragen.
+  const kraftstoffart = kraftstoffartFromModel(model)
+  result.region = {
+    location: DEFAULT_REGION_LOCATION,
+    radiusKm: DEFAULT_RADIUS_KM,
+    avgOfferPrice: result.mobileDe.averagePrice,
+    priceRange: { min: result.mobileDe.lowestPrice, max: result.mobileDe.highestPrice },
+    countSameModelInRegion: isAuction ? 13 : 7 + (year % 4),
+    avgStandtage: isAuction ? 49 : 30 + (mileage > 80000 ? 9 : 0),
+  }
+  result.kbaDemand = isAuction
+    ? buildKbaDemand({ besitzumschreibungen: 38 + (year % 6), bestand: 1700, trend: 'down', changePercent: -(5 + (year % 4)) })
+    : buildKbaDemand({ besitzumschreibungen: 124 + (year % 5) * 6, bestand: 960, trend: 'up', changePercent: 6 + (year % 4) })
+  result.segmentSignal = buildSegmentSignal(kraftstoffart)
 
   return result
 }

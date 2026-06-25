@@ -118,10 +118,10 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 - [x] **A4** Jede Fahrzeugkarte zeigt Stammdaten (Marke/Modell/Variante, EZ, km, Ausstattungs-Highlights). — *PaketConfirm-Zeile zeigt jetzt EZ + Kraftstoff (Modell/km/Ausstattung waren bereits da); Drill-down-Header zeigt EZ/km/Ausstattung.*
 
 ### Epic B — Regionale Marktanalyse pro Fahrzeug
-- [ ] **B1** Standort + einstellbarer Radius (50/100 km), Default Demo-Standort; Radius-Änderung aktualisiert sichtbar die Mock-Marktdaten.
-- [ ] **B2** Pro Fahrzeug regionale mobile.de-Marktdaten (Mock): Ø/Range Angebotspreis, Anzahl gleicher Modelle in Region, Ø Standtage.
-- [ ] **B3** KBA-Besitzumschreibungen des Modells in der Region, letzte 8 Wochen, als Zahl + Trendpfeil (↑/↓), klar als **Nachfrage-Indikator** gelabelt.
-- [ ] **B4** Datenfenster „letzte 8 Wochen / 1–2 Monate" sichtbar erste Klasse (Label/Filter). DAT-Wert + historischer VK gezeigt, aber **visuell nachrangig** (ausgegraut / „Referenz, nicht tagesaktuell"), nie als Primäranker.
+- [x] **B1** Standort + einstellbarer Radius (50/100 km), Default Demo-Standort; Radius-Änderung aktualisiert sichtbar die Mock-Marktdaten. — *Radius-Umschalter (50/100 km) in SingleVehicleResult; `regionalMarketFor()` skaliert Anzahl/Ø-Preis/Standtage sichtbar; Default-Standort Nagold.*
+- [x] **B2** Pro Fahrzeug regionale mobile.de-Marktdaten (Mock): Ø/Range Angebotspreis, Anzahl gleicher Modelle in Region, Ø Standtage. — *Regional-Karte mit Ø Angebotspreis, Preis-Range, Anzahl im Umkreis, Ø Standtage; `RegionalMarket`-Feld.*
+- [x] **B3** KBA-Besitzumschreibungen des Modells in der Region, letzte 8 Wochen, als Zahl + Trendpfeil (↑/↓), klar als **Nachfrage-Indikator** gelabelt. — *`KbaDemand` mit Umschreibungszahl + `TrendArrow`; gelabelt „Nachfrage-Indikator (KBA · Besitzumschreibungen)".*
+- [x] **B4** Datenfenster „letzte 8 Wochen / 1–2 Monate" sichtbar erste Klasse (Label/Filter). DAT-Wert + historischer VK gezeigt, aber **visuell nachrangig** (ausgegraut / „Referenz, nicht tagesaktuell"), nie als Primäranker. — *Regional-Karte trägt „Letzte 8 Wochen"-Badge; DAT- & Historisch-Karten `opacity-80` + Caption „Referenz, nicht tagesaktuell".*
 
 ### Epic C — Preis-/Margenlogik pro Fahrzeug
 - [ ] **C1** Empfohlener EK = regionaler mobile-VK − Zielmarge; Zielmarge einstellbar, Default 8–10 %.
@@ -160,9 +160,9 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 - [x] **Q5** Bestehende Design-Sprache/Komponenten wiederverwendet; keine fremde UI-Lib. — *Ist bereits gegeben; beibehalten.*
 
 ### Erweiterung 1 — KBA-/Nachfrage-Signale (Amendment, koppelt an 4.1)
-- [ ] **B5** Pro Fahrzeug **Umschlagsrate** (Besitzumschreibungen ÷ regionaler Bestand) als **hervorgehobene** Nachfragekennzahl. Verfeinert B3: rohe Umschreibungszahl bleibt sichtbar, aber **sekundär**. Rate fließt nachvollziehbar in die Empfehlungs-Logik (4.1) ein (hohe Rate → „dreht schnell").
-- [ ] **B6** Über dem Einzelfahrzeug ein **Makro-Badge** mit Segment-/Kraftstoffart-Trend (z. B. „Diesel −12 % / Hybrid +18 %", Mock). Gute Einzelwerte + negativer Segment-/Kraftstoff-Trend → sichtbares **Vorsicht-Flag** an der Empfehlung (Kopplung 4.1).
-- [ ] **B7** *(optional — v. a. Transporter & Vorratskauf)* **Neuzulassungs-Frühindikator**: heutige Neuzulassungs-Schwemme → künftiges Gebrauchtangebot/Preisdruck als Warnhinweis. Für PKW-Schnelldreher ausblendbar/nachrangig.
+- [x] **B5** Pro Fahrzeug **Umschlagsrate** (Besitzumschreibungen ÷ regionaler Bestand) als **hervorgehobene** Nachfragekennzahl. Verfeinert B3: rohe Umschreibungszahl bleibt sichtbar, aber **sekundär**. Rate fließt nachvollziehbar in die Empfehlungs-Logik (4.1) ein (hohe Rate → „dreht schnell"). — *`umschlagsrate` als 3xl-Zahl + Label „Dreht schnell/Mittel/Träge"; rohe Umschreibungen ÷ Bestand als kleine Caption. Speist E1/E2 (folgt).*
+- [x] **B6** Über dem Einzelfahrzeug ein **Makro-Badge** mit Segment-/Kraftstoffart-Trend (z. B. „Diesel −12 % / Hybrid +18 %", Mock). Gute Einzelwerte + negativer Segment-/Kraftstoff-Trend → sichtbares **Vorsicht-Flag** an der Empfehlung (Kopplung 4.1). — *`SegmentSignal` Makro-Badge über dem Hero; Diesel → `caution` → amber Vorsicht-Flag „Empfehlung kritisch prüfen".*
+- [ ] **B7** *(optional — v. a. Transporter & Vorratskauf)* **Neuzulassungs-Frühindikator**: heutige Neuzulassungs-Schwemme → künftiges Gebrauchtangebot/Preisdruck als Warnhinweis. Für PKW-Schnelldreher ausblendbar/nachrangig. — *Feld `neuzulassungsTrend*` vorhanden; Anzeige folgt im Transporter-Modus (Epic G).*
 
 ## 6. Definition of Done
 - Alle Boxen in Abschnitt 5 abgehakt + Notiz.

@@ -1,13 +1,22 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { priceCategoryConfig } from '@/lib/constants'
-import { channelLabels, type EinkaufPricingResult, type VerwertungChannel } from '@/lib/mock-data-einkauf'
+import {
+  channelLabels,
+  regionalMarketFor,
+  DATA_WINDOW_LABEL,
+  SECONDARY_REFERENCE_NOTE,
+  type EinkaufPricingResult,
+  type VerwertungChannel,
+  type SearchRadiusKm,
+  type TrendDirection,
+} from '@/lib/mock-data-einkauf'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Clock, ShieldCheck, Globe, Gavel, BarChart3 } from 'lucide-react'
+import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -30,10 +39,34 @@ interface SingleVehicleResultProps {
 
 const chartColors = ['#2563eb', '#10b981', '#f97316', '#7c3aed']
 
+// Trendpfeil (grün ↑ / rot ↓ / neutral) für KBA-Nachfrage & Co.
+function TrendArrow({ dir, pct }: { dir: TrendDirection; pct: number }) {
+  const Icon = dir === 'up' ? TrendingUp : dir === 'down' ? TrendingDown : Minus
+  const tone =
+    dir === 'up'
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : dir === 'down'
+        ? 'text-red-600 dark:text-red-400'
+        : 'text-muted-foreground'
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums ${tone}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {pct >= 0 ? '+' : ''}{pct}%
+    </span>
+  )
+}
+
 export function SingleVehicleResult({ result, resultsView, channel: channelProp, empfehlungInsert }: SingleVehicleResultProps) {
   const channel: VerwertungChannel = channelProp ?? result.channel ?? 'endkunde'
   const isAuction = channel === 'auktion'
   const L = channelLabels[channel]
+
+  // B1: einstellbarer Radius; B2: regionale Aggregate skalieren sichtbar mit.
+  const [radiusKm, setRadiusKm] = useState<SearchRadiusKm>(result.region?.radiusKm ?? 50)
+  const regional = result.region ? regionalMarketFor(result, radiusKm) : null
+  const demand = result.kbaDemand
+  const segment = result.segmentSignal
+  const umschlagLabel = (rate: number) => (rate >= 8 ? 'Dreht schnell' : rate >= 4 ? 'Mittel' : 'Träge')
 
   const sellPrice = isAuction ? (result.auction?.expectedHammerPrice ?? result.mobileDe.medianPrice) : result.mobileDe.medianPrice
   const spread = isAuction ? (result.auction?.spread ?? sellPrice - result.sweetSpot) : sellPrice - result.sweetSpot
@@ -62,6 +95,27 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
       {/* ── Recommendation View ── */}
       {resultsView === 'empfehlung' && (
         <div className="space-y-5 animate-in fade-in duration-300">
+          {/* B6: Makro-Badge — Segment-/Kraftstoff-Trend über dem Fahrzeug, mit Vorsicht-Flag */}
+          {segment && (
+            <div
+              className={`flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border px-4 py-2.5 text-xs ${
+                segment.caution
+                  ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
+                  : 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/15'
+              }`}
+            >
+              <span className="font-semibold">Segment-Trend</span>
+              <Badge variant="secondary" className="text-[10px]">{segment.segment}</Badge>
+              <span className="text-muted-foreground">{segment.segmentTrendLabel}</span>
+              {segment.caution && (
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Vorsicht: Segment-/Kraftstoff-Trend rückläufig — Empfehlung kritisch prüfen
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Hero Price Card */}
           <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
             <CardContent className="p-6 sm:p-8">
@@ -123,12 +177,107 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
             </CardContent>
           </Card>
 
+          {/* B1/B2/B3/B5: Regionaler Markt & KBA-Nachfrage (Datenfenster „Letzte 8 Wochen" = erste Klasse) */}
+          {regional && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Regionaler Markt
+                    <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-0">
+                      {DATA_WINDOW_LABEL}
+                    </Badge>
+                  </CardTitle>
+                  {/* B1: Standort + Radius-Umschalter */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Umkreis {regional.location}</span>
+                    <div className="flex gap-1 rounded-lg border bg-muted p-1">
+                      {([50, 100] as SearchRadiusKm[]).map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => setRadiusKm(r)}
+                          className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                            radiusKm === r ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {r} km
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* B2: regionale mobile.de-Marktdaten */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Ø Angebotspreis (Region)</p>
+                    <p className="text-lg font-bold tabular-nums">{formatCurrency(regional.avgOfferPrice)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Preis-Range</p>
+                    <p className="text-sm font-semibold tabular-nums mt-1.5">
+                      {formatCurrency(regional.priceRange.min)} &ndash; {formatCurrency(regional.priceRange.max)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Gleiches Modell im Umkreis</p>
+                    <p className="text-lg font-bold tabular-nums">{regional.countSameModelInRegion}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Ø Standtage (Region)</p>
+                    <p className="text-lg font-bold tabular-nums">{regional.avgStandtage} Tage</p>
+                  </div>
+                </div>
+
+                {/* B3/B5: KBA-Nachfrage — Umschlagsrate hervorgehoben, rohe Umschreibungszahl sekundär */}
+                {demand && (
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Nachfrage-Indikator (KBA · Besitzumschreibungen)
+                        </p>
+                        <div className="flex items-baseline gap-2 mt-0.5">
+                          <span className="text-3xl font-bold tabular-nums">{demand.umschlagsrate}%</span>
+                          <span className="text-xs text-muted-foreground">Umschlagsrate / 8 Wo.</span>
+                          <TrendArrow dir={demand.trendDirection} pct={demand.changePercent} />
+                        </div>
+                        {/* B3: rohe Umschreibungszahl bleibt sichtbar, aber sekundär */}
+                        <p className="text-[11px] text-muted-foreground mt-1 tabular-nums">
+                          {demand.besitzumschreibungenLast8Weeks} Besitzumschreibungen ÷ {demand.regionalerBestand.toLocaleString('de-DE')} regionaler Bestand
+                        </p>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className={`text-[11px] ${
+                          demand.umschlagsrate >= 8
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                            : demand.umschlagsrate >= 4
+                              ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+                              : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'
+                        }`}
+                      >
+                        {umschlagLabel(demand.umschlagsrate)}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-muted-foreground">
+                  Quelle: mobile.de Umkreissuche + KBA-Signale (Demo) &middot; Fenster {DATA_WINDOW_LABEL}.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Optional inserted block (e.g. Listenplatz-Rechner) */}
           {empfehlungInsert}
 
           {/* Three Source Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="border-border/60 hover:shadow-md transition-shadow">
+            <Card className="border-border/60 hover:shadow-md transition-shadow opacity-80">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
@@ -147,11 +296,12 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                   <span className="text-xs text-muted-foreground">
                     Ø {result.historical.averageDaysOnLot.toFixed(0)} Tage {isAuction ? 'bis Zuschlag' : 'Standzeit'}
                   </span>
+                  <p className="text-[10px] italic text-muted-foreground/80 mt-1">{SECONDARY_REFERENCE_NOTE}</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 hover:shadow-md transition-shadow">
+            <Card className="border-border/60 hover:shadow-md transition-shadow opacity-80">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
@@ -168,6 +318,7 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                   <span className="text-xs text-muted-foreground">
                     Basis {formatCurrency(result.dat.baseValue)} + {result.dat.adjustments.length} Korrekturen
                   </span>
+                  <p className="text-[10px] italic text-muted-foreground/80 mt-1">{SECONDARY_REFERENCE_NOTE}</p>
                 </div>
               </CardContent>
             </Card>
