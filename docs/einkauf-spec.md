@@ -90,7 +90,24 @@ Alle Mock-Daten zentral (`lib/mock-data-einkauf*.ts`, `lib/mock-data-paket.ts`, 
 
 Pro **Fahrzeug** (Felder auf `EinkaufPricingResult` / `EinkaufVehicleData`): VIN, Marke/Modell/Variante, EZ/Baujahr, km, Ausstattung, `vehicleType` (pkw|transporter); regionaler mobile-Preis (Ø+Range), Anzahl Modell in Region, Ø Standtage; KBA-Besitzumschreibungen (8 Wo.) + Trend + %; DAT-Wert + historischer VK (nachrangig); empfohlener EK, erwartete Marge (€/%), Empfehlung (kaufen/nicht), Begründungstyp (preis_marge|geschwindigkeit), Rolle (treiber|mitnahme); Trend-Serie; KI-Text.
 
+**KBA-/Nachfrage-Signale (Erweiterung 1):**
+- `regionalerBestand` — zugelassene Fahrzeuge dieses Modells in der Region (KBA, Stichtag) [Mock]
+- `umschlagsrate` — = Besitzumschreibungen ÷ `regionalerBestand` [abgeleitet]
+- `segment`, `kraftstoffart` (`diesel` | `benzin` | `hybrid` | `bev`)
+- `segmentTrend` — Trend des Segments/der Kraftstoffart (z. B. „Diesel −12 % / Hybrid +18 % im Quartal") [Mock]
+- `neuzulassungsTrend` *(optional)* — Neuzulassungs-Trend des Modells [Mock]
+
 Pro **Paket** („Zug"): Fahrzeugliste, Anzahl, Gesamt-EK, Gesamt-Marge, Gesamt-Gewinn/-Verlust, Treiber vs. Mitnahme, Netto-Empfehlung, KI-Gesamteinschätzung.
+
+### 4.1 Empfehlungs-Logik (Kopplung der Signale)
+
+Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Trend-Signal (D2) speisen sich **nachvollziehbar** aus den Mock-Signalen — nicht als isolierte Deko:
+- Hohe **Umschlagsrate** (B5) → Tendenz „dreht schnell" → Begründungstyp `verkaufsgeschwindigkeit`, stärkt „kaufen".
+- Unterangebot/gute Marge + Übernachfrage → Begründungstyp `preis_marge`.
+- Negativer **Segment-/Kraftstoff-Trend** (B6) → sichtbares **Vorsicht-Flag** an der Empfehlung, selbst wenn die Einzelwerte gut aussehen.
+- **Neuzulassungs-Schwemme** (B7) → künftiger Preisdruck → Warnhinweis (v. a. Transporter/Vorratskauf).
+
+**Backend-Naht KBA:** modellscharfe, regionale 8-Wochen-Granularität liefert das KBA roh vermutlich nicht (offizielle Reihen meist monatlich, Marken-/Segmentebene). Real kommt diese Sicht wahrscheinlich über einen **Marktdaten-Anbieter, der KBA-Daten anreichert** → Codestellen mit `// TODO[real-backend]: KBA-Signale via Marktdaten-Anbieter (nicht roh vom KBA)` markieren.
 
 ## 5. Akzeptanzkriterien — Checkliste (SSOT)
 
@@ -141,6 +158,11 @@ Pro **Paket** („Zug"): Fahrzeugliste, Anzahl, Gesamt-EK, Gesamt-Marge, Gesamt-
 - [ ] **Q3** Alle künftigen Backend-Nahtstellen mit `// TODO[real-backend]: …` markiert.
 - [x] **Q4** UI-Texte Deutsch; Code in Repo-Konvention. — *Ist bereits gegeben; beibehalten.*
 - [x] **Q5** Bestehende Design-Sprache/Komponenten wiederverwendet; keine fremde UI-Lib. — *Ist bereits gegeben; beibehalten.*
+
+### Erweiterung 1 — KBA-/Nachfrage-Signale (Amendment, koppelt an 4.1)
+- [ ] **B5** Pro Fahrzeug **Umschlagsrate** (Besitzumschreibungen ÷ regionaler Bestand) als **hervorgehobene** Nachfragekennzahl. Verfeinert B3: rohe Umschreibungszahl bleibt sichtbar, aber **sekundär**. Rate fließt nachvollziehbar in die Empfehlungs-Logik (4.1) ein (hohe Rate → „dreht schnell").
+- [ ] **B6** Über dem Einzelfahrzeug ein **Makro-Badge** mit Segment-/Kraftstoffart-Trend (z. B. „Diesel −12 % / Hybrid +18 %", Mock). Gute Einzelwerte + negativer Segment-/Kraftstoff-Trend → sichtbares **Vorsicht-Flag** an der Empfehlung (Kopplung 4.1).
+- [ ] **B7** *(optional — v. a. Transporter & Vorratskauf)* **Neuzulassungs-Frühindikator**: heutige Neuzulassungs-Schwemme → künftiges Gebrauchtangebot/Preisdruck als Warnhinweis. Für PKW-Schnelldreher ausblendbar/nachrangig.
 
 ## 6. Definition of Done
 - Alle Boxen in Abschnitt 5 abgehakt + Notiz.
