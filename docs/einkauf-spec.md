@@ -153,7 +153,7 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 - [x] **H2** Auf Paketebene KI-Gesamteinschätzung („Paket lohnt/lohnt nicht, weil …", Mock); Codestelle mit `// TODO[real-backend]: KI` markiert. — *`buildPackageVerdictText()` (reagiert auf Paketpreis, nutzt roleSplit + Verdict); „KI-Gesamteinschätzung"-Karte in PaketResult. `// TODO[real-backend]: KI`.*
 
 ### Querschnitt — Qualität
-- [ ] **Q1** Build/Dev-Server nach jeder Änderung fehlerfrei; nichts Bestehendes bricht.
+- [x] **Q1** Build/Dev-Server nach jeder Änderung fehlerfrei; nichts Bestehendes bricht. — *`npm run build` nach jedem Epic grün; tsc + eslint sauber; Dev-Server liefert `/einkauf` mit HTTP 200. Keine Regression (alle Bestandsrouten bauen weiter).*
 - [x] **Q2** Alle Mock-Daten zentral, realistisch, leicht austauschbar. — *Ist bereits gegeben; Muster beibehalten.*
 - [x] **Q3** Alle künftigen Backend-Nahtstellen mit `// TODO[real-backend]: …` markiert. — *21 Marker: mobile.de (Umkreissuche), KBA (Marktdaten-Anbieter), DAT/Schwacke, OCR (Paket-Screenshot), VIN-/HSN-Decode, Auktionen (B2B + Händler-Einkaufssignale), KI (pro Fahrzeug + Paket + Scoring).*
 - [x] **Q4** UI-Texte Deutsch; Code in Repo-Konvention. — *Ist bereits gegeben; beibehalten.*
@@ -170,5 +170,37 @@ Die Kauf-/Nicht-Kauf-Empfehlung (E1) und ihr Begründungstyp (E2) sowie das Tren
 - Build grün, keine Regression.
 - Mock-Daten zentral & glaubwürdig; alle Nahtstellen markiert.
 
-## 7. Abschlussbericht (am Ende)
-1. Current State vs. Umgesetzt. 2. Geänderte/neue Dateien (je 1 Satz). 3. Gemockte Nahtstellen (je Fundort `TODO[real-backend]`). 4. Bekannte Lücken / Demo-Vereinfachungen.
+## 7. Abschlussbericht
+
+**Status: alle Akzeptanzkriterien abgehakt (A1–A4, B1–B7, C1–C2, D1–D2, E1–E3, F1–F3, G1–G5, H1–H2, Q1–Q5). Build grün.**
+
+### 1. Current State vs. Umgesetzt
+- **Vorher vorhanden:** Einkaufs-Wizard (VIN/HSN/Manuell/Paket), Einzelfahrzeug-Ergebnis mit Balkenchart, Verwertungskanal-Routing, Listenplatz-Rechner, Paket-Flow mit Aggregat + Bundle-Rechner, zentrale Mockdaten. F1/F2 (Paket-Gesamt-EK/-Marge) und Q2/Q4/Q5 waren bereits erfüllt.
+- **Additiv ergänzt:** input-getriebene Paket-Erkennung (1–16, Parser); regionale Marktsicht + Radius; KBA-Besitzumschreibungen + Umschlagsrate; 8-Wochen-Fenster (DAT/Historie nachrangig); Zielmarge → EK-Rückrechnung; Trade-Republic-Trendchart; Kauf-Ampel + Begründungstyp; Treiber/Mitnahme + Arbitrage-Sicht; kompletter Transporter-Modus; KI-Texte pro Fahrzeug + Paket. **Kein Rewrite** — alle bestehenden Strukturen erweitert/wiederverwendet.
+
+### 2. Geänderte / neue Dateien
+- `lib/mock-data-einkauf.ts` — zentrale Typen + Helper für Region/KBA/Trend/Empfehlung/Rolle/Transporter/KI; beide Demo-Ergebnisse befüllt.
+- `lib/mock-data-einkauf-transporter.ts` *(neu)* — paralleler Transporter-Mock (Sprinter 317 CDI Kühlkoffer) mit Saison/Nische/Vorratskauf/Händlersignalen.
+- `lib/mock-data-paket.ts` — Transcript-Parser (A1/A2), Rolle + roleSplit (E3/F3), Paket-KI-Text (H2); `makeQuickDetail` erbt alle neuen Signale.
+- `app/(dashboard)/einkauf/page.tsx` — PKW⇄Transporter-Toggle, Transcript-/Origin-Wiring, Transporter-Demo + Ergebnis-Routing.
+- `app/(dashboard)/einkauf/_components/SingleVehicleResult.tsx` — Regional-/KBA-Karte, Trendchart, Margenkalkulation, Kauf-/Begründungs-/Rolle-Badges, Transporter-Panels, KI-Empfehlung.
+- `app/(dashboard)/einkauf/_components/PaketIdentify.tsx` — echtes Datei-Feld, Origin-Tracking, 8er-Demo-Zug.
+- `app/(dashboard)/einkauf/_components/PaketConfirm.tsx` — EZ/Kraftstoff, „aus Paket identifiziert", Zug/Paket-Count.
+- `app/(dashboard)/einkauf/_components/PaketResult.tsx` — Rolle-Badges, Arbitrage-Banner, Paket-KI-Karte.
+- `docs/einkauf-spec.md` — diese Spec (SSOT) + Gap-Analyse + Bericht.
+
+### 3. Gemockte Nahtstellen (`TODO[real-backend]`)
+- **mobile.de** Umkreissuche (PLZ+Radius) → `mock-data-einkauf.ts` (region/regionalMarketFor), `-transporter.ts` (Ausstattungsfilter).
+- **KBA** via Marktdaten-Anbieter (nicht roh) → `mock-data-einkauf.ts` (kbaDemand/segmentSignal), `-transporter.ts`.
+- **DAT/Schwacke** → `mock-data-einkauf.ts` (einkaufDATValuation).
+- **OCR** Paket-Screenshot → `PaketIdentify.tsx` (onFileSelected), `mock-data-paket.ts` (parsePaketTranscript).
+- **VIN-/HSN-Decode** → `-transporter.ts` (VIN-Mock).
+- **Auktionen** (B2B-Hammerpreise + Händler-Einkaufssignale) → `mock-data-einkauf.ts` (einkaufAuctionBenchmarks), `-transporter.ts` (dealerBuyingSignals).
+- **KI** (pro Fahrzeug + Paket + Empfehlungs-Scoring) → `mock-data-einkauf.ts` (buildKiSummary/buildRecommendation), `mock-data-paket.ts` (buildPackageVerdictText).
+
+### 4. Bekannte Lücken / Demo-Vereinfachungen
+- Alle Zahlen sind Mock (deterministische Heuristiken), kein echtes Backend.
+- Transporter nutzt mangels Asset ein **Platzhalter-Bild** (GLC) — `TODO[real-backend]: Transporter-Bilder`.
+- Paket-Parser schätzt Stammdaten heuristisch aus Freitext; reine VIN-Zeilen → generisches GLC-Profil.
+- PaketConfirm-Edits (Modell/km/Zustand) rechnen Preise nicht live neu (bewusste Demo-Vereinfachung).
+- Runtime-Verifikation via Build-Prerender + Dev-SSR (HTTP 200) + Code-Trace; ein finaler manueller Klick-Durchlauf im Browser wird vor der Pilot-Demo empfohlen (kein Headless-Browser im Repo).
