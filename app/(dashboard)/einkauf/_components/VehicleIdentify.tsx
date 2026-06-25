@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { einkaufVinMock, einkaufVinMockAuktion, type VehicleType } from '@/lib/mock-data-einkauf'
 import { einkaufTransporterVinMock } from '@/lib/mock-data-einkauf-transporter'
 import { PAKET_DEMO_VINS, type PaketVehicleOrigin } from '@/lib/mock-data-paket'
-import { ScanLine, Upload, Search, Loader2, Mic, Sparkles, Gavel, Layers, Truck, Car } from 'lucide-react'
+import { ScanLine, Upload, Search, Loader2, Sparkles, Gavel, Layers, Truck, Car } from 'lucide-react'
 
 interface VehicleIdentifyProps {
   vehicleType: VehicleType
@@ -59,16 +59,6 @@ export function VehicleIdentify({ vehicleType, onVehicleTypeChange, onSubmit, bu
       setVoiceState('idle')
     }, 1100)
     e.target.value = ''
-  }
-
-  const simulateVoice = () => {
-    setVoiceState('listening')
-    setTimeout(() => setVoiceState('processing'), 1200)
-    setTimeout(() => {
-      setValue((prev) => (prev ? prev + '\n' : '') + ocrFill)
-      setOrigin('voice')
-      setVoiceState('idle')
-    }, 2200)
   }
 
   const lineCount = value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).length
@@ -156,16 +146,6 @@ export function VehicleIdentify({ vehicleType, onVehicleTypeChange, onSubmit, bu
                 <><Upload className="h-4 w-4 mr-2" />Screenshot hochladen</>
               )}
             </Button>
-            {/* DEZENT: Spracheingabe */}
-            <button
-              type="button"
-              onClick={simulateVoice}
-              disabled={voiceState !== 'idle'}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              <Mic className="h-3.5 w-3.5" />
-              {voiceState === 'listening' ? 'Ich höre zu…' : 'oder einsprechen'}
-            </button>
           </div>
 
           <Button onClick={() => onSubmit(value, origin)} disabled={!value.trim() || busy} className="shrink-0">
