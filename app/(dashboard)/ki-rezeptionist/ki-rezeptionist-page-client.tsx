@@ -14,6 +14,7 @@ import {
   Search,
   CalendarDays,
   ListFilter,
+  Tag,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -36,13 +37,17 @@ import { WaitingSince } from '@/components/ki-rezeptionist/waiting-since'
 import {
   kiCategoryConfig,
   kiStatusConfig,
+  kiMarkeConfig,
   KI_RECEPTION_CATEGORIES,
+  KI_MARKEN,
 } from '@/lib/ki-rezeptionist/ki-reception-config'
 import { formatExact, formatDuration } from '@/lib/ki-rezeptionist/format'
-import type { KiReceptionCallDto, KiReceptionCategory } from '@/lib/ki-rezeptionist/types'
+import type { KiReceptionCallDto, KiReceptionCategory, KiMarke } from '@/lib/ki-rezeptionist/types'
 
 type FilterMode = 'offen' | 'erledigt' | 'alle'
 type DateRange = 'alle' | 'heute' | '7tage' | '30tage'
+// Marken-Filter: konkrete Marke, „alle" oder „ohne" (keine Marke erfasst).
+type MarkeFilter = KiMarke | 'alle' | 'ohne'
 
 const FILTERS: { value: FilterMode; label: string }[] = [
   { value: 'offen', label: 'Offen' },
@@ -63,6 +68,7 @@ export default function KiRezeptionistPageClient() {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterMode>('offen')
   const [categoryFilter, setCategoryFilter] = useState<KiReceptionCategory | 'alle'>('alle')
+  const [markeFilter, setMarkeFilter] = useState<MarkeFilter>('alle')
   const [dateRange, setDateRange] = useState<DateRange>('alle')
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -133,6 +139,13 @@ export default function KiRezeptionistPageClient() {
 
     if (categoryFilter !== 'alle') result = result.filter((c) => c.category === categoryFilter)
 
+    if (markeFilter !== 'alle') {
+      result =
+        markeFilter === 'ohne'
+          ? result.filter((c) => !c.marke)
+          : result.filter((c) => c.marke === markeFilter)
+    }
+
     if (dateRange !== 'alle') {
       if (dateRange === 'heute') {
         const today = new Date().toDateString()
@@ -155,7 +168,7 @@ export default function KiRezeptionistPageClient() {
       )
     }
     return result
-  }, [calls, filter, query, categoryFilter, dateRange])
+  }, [calls, filter, query, categoryFilter, markeFilter, dateRange])
 
   const kpis = useMemo(() => {
     const today = new Date().toDateString()
@@ -326,6 +339,25 @@ export default function KiRezeptionistPageClient() {
                 </SelectItem>
               )
             })}
+          </SelectContent>
+        </Select>
+
+        <Select value={markeFilter} onValueChange={(v) => setMarkeFilter(v as MarkeFilter)}>
+          <SelectTrigger className="h-9 w-auto min-w-[170px] gap-2">
+            <Tag className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alle">Alle Marken</SelectItem>
+            {KI_MARKEN.map((markeKey) => (
+              <SelectItem key={markeKey} value={markeKey}>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={cn('h-2 w-2 rounded-full', kiMarkeConfig[markeKey].color)} />
+                  {kiMarkeConfig[markeKey].label}
+                </span>
+              </SelectItem>
+            ))}
+            <SelectItem value="ohne">Ohne Angabe</SelectItem>
           </SelectContent>
         </Select>
 
@@ -520,6 +552,21 @@ function CategoryChip({ category, dimmed }: { category: KiReceptionCategory; dim
   )
 }
 
+function MarkeChip({ marke, dimmed }: { marke: KiMarke; dimmed?: boolean }) {
+  const m = kiMarkeConfig[marke]
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
+        dimmed ? 'bg-muted text-muted-foreground' : m.color,
+      )}
+    >
+      <Tag className="h-3 w-3" />
+      {m.label}
+    </span>
+  )
+}
+
 function CallRow({
   call,
   expanded,
@@ -566,6 +613,7 @@ function CallRow({
                 {call.customerName}
               </span>
               <CategoryChip category={call.category} dimmed={isDone} />
+              {call.marke && <MarkeChip marke={call.marke} dimmed={isDone} />}
               {inProgress && (
                 <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', kiStatusConfig.in_bearbeitung.color)}>
                   In Bearbeitung
@@ -705,6 +753,7 @@ function CallRow({
             <MetaItem label="Eingegangen" value={formatExact(call.receivedAt)} />
             <MetaItem label="Dauer" value={duration ?? '—'} />
             <MetaItem label="Anliegen" value={cat.label} />
+            {call.marke && <MetaItem label="Marke" value={kiMarkeConfig[call.marke].label} />}
             {call.customerPhone && <MetaItem label="Telefon" value={call.customerPhone} />}
           </div>
 

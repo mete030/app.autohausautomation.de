@@ -12,6 +12,8 @@ export interface KiLeadEmailPayload {
   /** Menschlich lesbares Anliegen-Label. */
   categoryLabel: string
   summary: string
+  /** Marken-Label (z. B. „Mercedes-Benz") — null/weglassen, wenn unbekannt. */
+  markeLabel?: string | null
   vehicle?: string | null
   desiredAppt?: string | null
   durationLabel?: string | null
@@ -72,6 +74,7 @@ export function renderKiLeadEmail(payload: KiLeadEmailPayload): {
     { label: 'Anliegen', value: payload.categoryLabel },
   ]
   if (zustand) rows.push({ label: 'Fahrzeug-Zustand', value: zustand.label })
+  if (payload.markeLabel?.trim()) rows.push({ label: 'Marke', value: payload.markeLabel.trim() })
   if (payload.vehicle?.trim()) rows.push({ label: 'Fahrzeug', value: payload.vehicle.trim() })
   if (payload.desiredAppt?.trim()) rows.push({ label: 'Wunschtermin', value: payload.desiredAppt.trim() })
   if (payload.durationLabel?.trim()) rows.push({ label: 'Gesprächsdauer', value: payload.durationLabel.trim() })

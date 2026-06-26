@@ -11,6 +11,7 @@ import {
   FileText,
   Clock,
   Forward,
+  Tag,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WaitingSince } from '@/components/ki-rezeptionist/waiting-since'
@@ -30,7 +31,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { kiCategoryConfig, kiStatusConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
+import { kiCategoryConfig, kiStatusConfig, kiMarkeConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
 import { formatExact, formatDuration, germanizeTranscriptSpeakers } from '@/lib/ki-rezeptionist/format'
 import { slugifyName, downloadBlob } from '@/lib/ki-rezeptionist/download'
 import type { KiReceptionCallDto } from '@/lib/ki-rezeptionist/types'
@@ -72,6 +73,7 @@ export function KiCallDetailDialog({
 
   const cat = kiCategoryConfig[shown.category]
   const CatIcon = cat.icon
+  const marke = shown.marke ? kiMarkeConfig[shown.marke] : null
   const status = kiStatusConfig[shown.status]
   const isDone = shown.status === 'erledigt'
   const duration = formatDuration(shown.callDurationSec)
@@ -104,6 +106,17 @@ export function KiCallDetailDialog({
               <CatIcon className="h-3 w-3" />
               {cat.label}
             </span>
+            {marke && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                  marke.color,
+                )}
+              >
+                <Tag className="h-3 w-3" />
+                {marke.label}
+              </span>
+            )}
             <span
               className={cn(
                 'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
@@ -184,6 +197,7 @@ export function KiCallDetailDialog({
                 }
               />
               <DetailRow label="Anliegen" value={cat.label} />
+              {marke && <DetailRow label="Marke" value={marke.label} />}
               {shown.vehicle && <DetailRow label="Fahrzeug" value={shown.vehicle} />}
               {shown.desiredAppt && <DetailRow label="Wunschtermin" value={shown.desiredAppt} />}
               {isDone && shown.completedAt && (

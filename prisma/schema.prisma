@@ -148,6 +148,7 @@ model KiReceptionCallRecord {
   category        KiReceptionCategory @default(sonstiges)
   summary         String              @default("") // Kurz-Zusammenfassung der KI
   vehicle         String? // genanntes Wunschmodell/Fahrzeug
+  marke           String? // Fahrzeug-Marke (mercedes/smart/lucid/skoda/byd/fuso/andere)
   desiredAppt     String? // Wunschtermin (Probefahrt/Werkstatt)
   transcript      String?
   recordingUrl    String?

@@ -13,7 +13,7 @@ import {
   HelpCircle,
   type LucideIcon,
 } from 'lucide-react'
-import type { KiReceptionCategory, KiReceptionStatus } from './types'
+import type { KiReceptionCategory, KiReceptionStatus, KiMarke } from './types'
 
 export type KiUrgency = 'niedrig' | 'mittel' | 'hoch'
 
@@ -157,3 +157,47 @@ export function normalizeCategory(raw?: string | null): KiReceptionCategory {
 }
 
 export const KI_RECEPTION_CATEGORIES = Object.keys(kiCategoryConfig) as KiReceptionCategory[]
+
+// ===== Fahrzeug-Marke — Badge + Filter (Wackenhut-Marken) =====
+// Eigene, vom Anliegen entkoppelte Taxonomie. „andere" = Fremdmarke (z. B. bei
+// Inzahlungnahme), „null"/fehlend wird in der UI als „Ohne Angabe" geführt.
+export const kiMarkeConfig: Record<KiMarke, { label: string; color: string }> = {
+  mercedes: { label: 'Mercedes-Benz', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300' },
+  smart:    { label: 'smart',         color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400' },
+  lucid:    { label: 'Lucid Motors',  color: 'bg-violet-100 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400' },
+  skoda:    { label: 'Škoda',         color: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400' },
+  byd:      { label: 'BYD',           color: 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400' },
+  fuso:     { label: 'Fuso',          color: 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400' },
+  andere:   { label: 'Andere Marke',  color: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-400' },
+}
+
+export const KI_MARKEN = Object.keys(kiMarkeConfig) as KiMarke[]
+
+/**
+ * Erkennt die Marke aus einem freien String (Famulor-`marke` oder Fahrzeug-Feld)
+ * inkl. typischer Modell-Hinweise. Liefert null, wenn nichts Eindeutiges passt.
+ */
+export function detectMarke(raw?: string | null): KiMarke | null {
+  if (!raw) return null
+  const r = raw.toLowerCase()
+  if (/\bbyd\b|atto\s?3|\bdolphin\b|\bseal\b|\bhan\b|\btang\b/.test(r)) return 'byd'
+  if (/\bfuso\b|\bcanter\b|ecanter/.test(r)) return 'fuso'
+  if (/\blucid\b|lucid\s?(air|gravity)/.test(r)) return 'lucid'
+  if (/mercedes|mercedes-benz|\bbenz\b|\bmb\b|[abcesgv]-klasse|\bgl[abcse]\b|\bcla\b|\bcle\b|\beq[abcesv]\b|\bvito\b|\bsprinter\b|\bcitan\b/.test(r)) return 'mercedes'
+  if (/(škoda|skoda|octavia|fabia|superb|kodiaq|karoq|kamiq|enyaq|scala|elroq|kushaq)/.test(r)) return 'skoda'
+  if (/\bsmart\b|fortwo|forfour/.test(r)) return 'smart'
+  return null
+}
+
+/**
+ * Bestimmt die Marke aus dem expliziten Famulor-Feld; fällt sonst auf die
+ * Ableitung aus dem Fahrzeug-Text zurück. Ein gesetztes, aber unbekanntes
+ * Marken-Feld (z. B. „Audi") wird zu 'andere', nicht null.
+ */
+export function resolveMarke(rawMarke?: string | null, vehicle?: string | null): KiMarke | null {
+  const m = rawMarke?.trim()
+  if (m && !/^(unklar|keine?|kein|none|n\/?a|-+|unbekannt)$/i.test(m)) {
+    return detectMarke(m) ?? 'andere'
+  }
+  return vehicle ? detectMarke(vehicle) : null
+}

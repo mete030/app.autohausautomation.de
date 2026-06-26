@@ -6,6 +6,7 @@ import type {
   KiReceptionCallDto,
   KiReceptionCategory,
   KiReceptionStatus,
+  KiMarke,
 } from '@/lib/ki-rezeptionist/types'
 
 export interface UpsertKiCallInput {
@@ -15,6 +16,7 @@ export interface UpsertKiCallInput {
   category: KiReceptionCategory
   summary: string
   vehicle?: string | null
+  marke?: KiMarke | null
   desiredAppt?: string | null
   transcript?: string | null
   recordingUrl?: string | null
@@ -40,6 +42,7 @@ function mapRecordToDto(record: KiReceptionCallRecord): KiReceptionCallDto {
     category: record.category as KiReceptionCategory,
     summary: record.summary,
     vehicle: record.vehicle ?? undefined,
+    marke: (record.marke as KiMarke | null) ?? undefined,
     desiredAppt: record.desiredAppt ?? undefined,
     transcript: record.transcript ?? undefined,
     recordingUrl: record.recordingUrl ?? undefined,
@@ -85,6 +88,7 @@ export async function upsertKiReceptionCallFromWebhook(
     category: input.category,
     summary: input.summary,
     vehicle: input.vehicle ?? null,
+    marke: input.marke ?? null,
     desiredAppt: input.desiredAppt ?? null,
     transcript: input.transcript ?? null,
     recordingUrl: input.recordingUrl ?? null,

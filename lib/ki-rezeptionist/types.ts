@@ -6,6 +6,9 @@ export type KiReceptionStatus = 'offen' | 'in_bearbeitung' | 'erledigt'
 /** Fahrzeug-Zustand aus Famulor `extracted_variables.fahrzeug_zustand`. */
 export type FahrzeugZustand = 'neuwagen' | 'gebrauchtwagen' | 'unklar'
 
+/** Fahrzeug-Marke (aus Famulor `extracted_variables.marke`, sonst aus dem Fahrzeug abgeleitet). */
+export type KiMarke = 'mercedes' | 'smart' | 'lucid' | 'skoda' | 'byd' | 'fuso' | 'andere'
+
 export type KiReceptionCategory =
   | 'neuwagen'
   | 'gebrauchtwagen'
@@ -25,6 +28,7 @@ export interface KiReceptionCallDto {
   category: KiReceptionCategory
   summary: string
   vehicle?: string
+  marke?: KiMarke
   desiredAppt?: string
   transcript?: string
   recordingUrl?: string

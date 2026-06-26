@@ -9,7 +9,7 @@ import {
   updateKiReceptionCall,
 } from '@/lib/server/ki-reception-records'
 import { sendKiForwardEmail } from '@/lib/server/ki-forward-email'
-import { kiCategoryConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
+import { kiCategoryConfig, kiMarkeConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
 import { formatDuration } from '@/lib/ki-rezeptionist/format'
 import { isAllowedForwardEmail } from '@/lib/ki-rezeptionist/forward-recipients'
 
@@ -71,6 +71,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       customerPhone: call.customerPhone,
       categoryLabel: kiCategoryConfig[call.category].label,
       summary: call.summary,
+      markeLabel: call.marke ? kiMarkeConfig[call.marke].label : null,
       vehicle: call.vehicle,
       desiredAppt: call.desiredAppt,
       durationLabel: formatDuration(call.callDurationSec),

@@ -1,9 +1,9 @@
 import 'server-only'
 
 import { createHash } from 'crypto'
-import { normalizeCategory } from '@/lib/ki-rezeptionist/ki-reception-config'
+import { normalizeCategory, resolveMarke } from '@/lib/ki-rezeptionist/ki-reception-config'
 import { germanizeTranscriptSpeakers } from '@/lib/ki-rezeptionist/format'
-import type { KiReceptionCategory, FahrzeugZustand } from '@/lib/ki-rezeptionist/types'
+import type { KiReceptionCategory, FahrzeugZustand, KiMarke } from '@/lib/ki-rezeptionist/types'
 
 /**
  * Defensive Famulor-Webhook-Parser.
@@ -22,6 +22,8 @@ export interface NormalizedFamulorCall {
   category: KiReceptionCategory
   summary: string
   vehicle: string | null
+  /** Fahrzeug-Marke (extracted_variables.marke, sonst aus dem Fahrzeug abgeleitet) — null = unbekannt. */
+  marke: KiMarke | null
   desiredAppt: string | null
   transcript: string | null
   recordingUrl: string | null
@@ -212,6 +214,11 @@ export function parseFamulorPayload(raw: unknown): NormalizedFamulorCall {
       'transcript_summary', 'conversation_summary', 'notes',
     ]), MAX.summary) ?? ''
   const vehicle = cap(pickString(lookup, ['fahrzeug', 'vehicle', 'wunschmodell', 'model', 'fahrzeugmodell']), MAX.vehicle)
+  // Marke: explizites Famulor-Feld bevorzugt, sonst aus dem Fahrzeug-Text abgeleitet.
+  const marke = resolveMarke(
+    pickString(lookup, ['marke', 'fahrzeugmarke', 'hersteller', 'brand', 'make', 'vehicle_brand']),
+    vehicle,
+  )
   const desiredAppt = cap(pickString(lookup, ['wunschtermin', 'desired_appointment', 'appointment', 'termin', 'preferred_time']), MAX.appt)
   // Transkript: fertiger String ODER Array von Gesprächs-Turns.
   // Deutsche Schreibweise `transkript`/`transkription` (Famulor-Variable)
@@ -262,6 +269,7 @@ export function parseFamulorPayload(raw: unknown): NormalizedFamulorCall {
     category: normalizeCategory(rawCategory),
     summary,
     vehicle,
+    marke,
     desiredAppt,
     transcript,
     recordingUrl,

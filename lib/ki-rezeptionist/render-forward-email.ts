@@ -14,6 +14,8 @@ export interface KiForwardEmailPayload {
   /** Menschlich lesbares Anliegen-Label (z. B. „Probefahrt / Besichtigung"). */
   categoryLabel: string
   summary: string
+  /** Marken-Label (z. B. „Mercedes-Benz") — null/weglassen, wenn unbekannt. */
+  markeLabel?: string | null
   vehicle?: string | null
   desiredAppt?: string | null
   /** Formatierte Anrufdauer (z. B. „2:14") oder null. */
@@ -66,6 +68,7 @@ export function renderKiForwardEmail(payload: KiForwardEmailPayload): {
     { label: 'Telefon', value: payload.customerPhone.trim() || '—' },
     { label: 'Anliegen', value: payload.categoryLabel },
   ]
+  if (payload.markeLabel?.trim()) rows.push({ label: 'Marke', value: payload.markeLabel.trim() })
   if (payload.vehicle?.trim()) rows.push({ label: 'Fahrzeug', value: payload.vehicle.trim() })
   if (payload.desiredAppt?.trim()) rows.push({ label: 'Wunschtermin', value: payload.desiredAppt.trim() })
   if (payload.durationLabel?.trim()) rows.push({ label: 'Gesprächsdauer', value: payload.durationLabel.trim() })

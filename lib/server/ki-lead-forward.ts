@@ -3,7 +3,7 @@ import 'server-only'
 import { getKiAutoForwardLeadEnabled } from '@/lib/server/ki-settings'
 import { sendKiBrevoEmail } from '@/lib/server/ki-forward-email'
 import { renderKiLeadEmail } from '@/lib/ki-rezeptionist/render-lead-email'
-import { kiCategoryConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
+import { kiCategoryConfig, kiMarkeConfig } from '@/lib/ki-rezeptionist/ki-reception-config'
 import { formatDuration } from '@/lib/ki-rezeptionist/format'
 import type { KiReceptionCallDto, FahrzeugZustand } from '@/lib/ki-rezeptionist/types'
 
@@ -38,6 +38,7 @@ export async function maybeForwardNewCallToLead(
       customerPhone: call.customerPhone,
       categoryLabel: kiCategoryConfig[call.category].label,
       summary: call.summary,
+      markeLabel: call.marke ? kiMarkeConfig[call.marke].label : null,
       vehicle: call.vehicle,
       desiredAppt: call.desiredAppt,
       durationLabel: formatDuration(call.callDurationSec),
