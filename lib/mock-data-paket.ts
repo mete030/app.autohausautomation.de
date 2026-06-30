@@ -95,6 +95,52 @@ export const CONDITION_DAT_LABEL: Record<EinkaufCondition, string> = {
   unfallschaden: 'Mangelhaft (Note 4)',
 }
 
+// ─── Anreicherung der Vergleichsangebote (Bild / Ausstattung / Distanz) ──────
+
+// Modellname → Demo-Bild-Key. Leitet aus dem Baureihen-Präfix ab (MB_MODELS-Bilder),
+// Fallback 'mb_c_klasse'. Bewusst simpel/deterministisch — reine Demo-Optik.
+function imageKeyForModel(model: string): string {
+  const m = model.toUpperCase()
+  if (/\bGLC\s?300\b/.test(m)) return 'glc_300_spektralblau'
+  if (/\bGLC\s?220\s?D\b/.test(m)) return 'glc_220d_selenitgrau_2022'
+  if (/\bGLC\s?200\b/.test(m)) return 'glc_200_polarweiss'
+  if (/\bGLC\s?250\b/.test(m)) return 'glc_250_obsidianschwarz'
+  if (/\bGLE\b/.test(m)) return 'mb_gle'
+  if (/\bGLB\b/.test(m)) return 'mb_glb'
+  if (/\bGLA\b/.test(m)) return 'mb_gla'
+  if (/\bCLA\b/.test(m)) return 'mb_cla'
+  if (/\bA\s?\d/.test(m)) return 'mb_a_klasse'
+  if (/\bB\s?\d/.test(m)) return 'mb_b_klasse'
+  if (/\bE\s?\d/.test(m)) return 'mb_e_klasse'
+  if (/\bC\s?\d/.test(m)) return 'mb_c_klasse'
+  return 'mb_c_klasse'
+}
+
+// Grobe PS-Schätzung aus der Motorisierungs-Zahl im Modellnamen (Demo).
+function powerForModel(model: string): number {
+  const m = model.match(/\b(180|200|220|250|300|350|400)\b/)
+  const n = m ? Number(m[1]) : 200
+  const isDiesel = /\bd\b/i.test(model)
+  const map: Record<number, number> = isDiesel
+    ? { 180: 116, 200: 150, 220: 194, 250: 194, 300: 245, 350: 272, 400: 330 }
+    : { 180: 136, 200: 163, 220: 197, 250: 211, 300: 258, 350: 299, 400: 367 }
+  return map[n] ?? 163
+}
+
+// Kleiner Ausstattungs-Pool je Linie — deterministisch über den Index gewählt.
+const COMP_EQUIPMENT_POOL_ENDKUNDE = [
+  ['AMG Line', 'LED High Performance', 'Rückfahrkamera'],
+  ['Progressive', 'MBUX', 'Sitzheizung'],
+  ['AMG Line', 'Panorama-Schiebedach', 'Head-up-Display'],
+  ['Night-Paket', '360-Grad-Kamera', 'Burmester'],
+]
+const COMP_EQUIPMENT_POOL_AUKTION = [
+  ['Basis', 'Klimaautomatik'],
+  ['Avantgarde', 'Navi'],
+  ['Style', 'PARKTRONIC'],
+  ['Basis', 'AHK'],
+]
+
 // ─── Generator für vereinfachte Einzelfahrzeug-Detailergebnisse ──────────────
 
 function makeQuickDetail(o: {
@@ -147,6 +193,11 @@ function makeQuickDetail(o: {
     ? [vk - 1400, vk - 600, vk + 500, vk + 1500]
     : [vk - 3200, vk - 1100, vk + 1400, vk + 4200]
   const categories: MobileDeComparable['priceCategory'][] = ['sehr_gut', 'gut', 'gut', 'erhoht']
+  const compImage = einkaufDemoImage(imageKeyForModel(model))
+  const compFuel = kraftstoffartFromModel(model) === 'diesel' ? 'Diesel' : kraftstoffartFromModel(model) === 'hybrid' ? 'Plug-in-Hybrid' : 'Benzin'
+  const compTransmission = /\bd\b/i.test(model) || /hybrid/i.test(compFuel) ? '9G-TRONIC' : '7G-DCT'
+  const compPower = powerForModel(model)
+  const compEquipPool = isAuction ? COMP_EQUIPMENT_POOL_AUKTION : COMP_EQUIPMENT_POOL_ENDKUNDE
   const comparables: MobileDeComparable[] = compPrices.map((price, i) => ({
     id: `${o.model}-c${i + 1}`,
     title: isAuction ? `${model} · ${['BCA', 'Autobid.de', 'BCA', 'MB Remarketing'][i]}` : `Mercedes-Benz ${model}`,
@@ -154,10 +205,18 @@ function makeQuickDetail(o: {
     mileage: mileage + (i - 1) * 6000,
     year,
     firstRegistration: ez,
-    location: isAuction ? ['BCA Hamburg', 'Autobid.de', 'BCA München', 'MB Remarketing'][i] : ['Stuttgart', 'München', 'Hamburg', 'Berlin'][i],
+    location: isAuction ? ['BCA Hamburg', 'Autobid.de', 'BCA München', 'MB Remarketing'][i] : ['Stuttgart', 'Pforzheim', 'Tübingen', 'Böblingen'][i],
     dealerName: isAuction ? ['BCA', 'Autobid.de', 'BCA', 'Mercedes-Benz Remarketing'][i] : ['Stern Center', 'AutoNova', 'Hanse Automobile', 'Stern Berlin'][i],
     daysListed: isAuction ? 1 + i : 8 + i * 6,
     priceCategory: categories[i],
+    imageUrl: compImage,
+    fuelType: compFuel,
+    transmission: compTransmission,
+    power: compPower,
+    color: ['Polarweiß', 'Obsidianschwarz', 'Selenitgrau metallic', 'Spektralblau metallic'][i],
+    equipment: compEquipPool[i % compEquipPool.length],
+    distanceKm: 10 + i * 9 + (mileage % 7), // 10..45, deterministisch
+    url: '#',
   }))
 
   const result: EinkaufPricingResult = {
@@ -442,7 +501,8 @@ function parseEquipment(line: string): string {
   const extras = parts.filter(
     (p) => !/^\s*20[0-2]\d\s*$/.test(p) && !/km/i.test(p) && !VIN_RE.test(p) && !/^\d/.test(p) && !MODEL_TOKEN_RE.test(p),
   )
-  return extras.length ? extras.join(' · ') : 'Serienausstattung'
+  // Keine Extras geparst → leerer String (Daten unbekannt), KEIN synthetischer Default.
+  return extras.length ? extras.join(' · ') : ''
 }
 
 function makePackageVehicleFromLine(line: string, index: number, origin: PaketVehicleOrigin): EinkaufPackageVehicle {
@@ -472,7 +532,11 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
 
   const condition: EinkaufCondition =
     mileage >= 120000 || ageYears >= 7 ? 'maengel' : mileage >= 80000 || ageYears >= 4 ? 'gut' : 'sehr_gut'
-  const ez = effectiveLine.match(/\b(0?[1-9]|1[0-2])\/(20[0-2]\d)\b/)?.[0] ?? `0${1 + (index % 9)}/${year}`
+  // EZ nur, wenn die Zeile ein echtes MM/YYYY enthält — sonst '' (EZ unbekannt),
+  // KEIN synthetisches '0X/jahr'. Für die Einzel-Detailbewertung (Sales/Comparables)
+  // brauchen wir dennoch eine plausible EZ → ezForDetail bleibt immer befüllt.
+  const ez = effectiveLine.match(/\b(0?[1-9]|1[0-2])\/(20[0-2]\d)\b/)?.[0] ?? ''
+  const ezForDetail = ez || `0${1 + (index % 9)}/${year}`
   const equipmentSummary = parseEquipment(effectiveLine)
 
   // Hero-GLC (volle Bewertung aus Feature 1/2) wiederverwenden, wenn die Zeile passt —
@@ -480,7 +544,7 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
   const isHero = model === 'GLC 300 4MATIC' && year === 2023 && Math.abs(mileage - 32400) <= 1500
   const detail = isHero
     ? einkaufPricingResult
-    : makeQuickDetail({ model, ez, year, mileage, sweetSpot, vk, confidence: isAuction ? 84 : 88, channel, condition })
+    : makeQuickDetail({ model, ez: ezForDetail, year, mileage, sweetSpot, vk, confidence: isAuction ? 84 : 88, channel, condition })
 
   return {
     id: `pkg-${origin}-${index + 1}`,
@@ -508,14 +572,56 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
   }
 }
 
+// Kuratiertes 8er-Demo-Paket mit gezielten Stammdaten-Lücken (je nach Upload mal
+// vorhanden, mal nicht). Aufbau über makePackageVehicleFromLine je Demo-Zeile,
+// danach gezielt die fehlenden Felder auf '' — so bleiben EK/VK/Marge/Kanal/detail
+// konsistent. Reihenfolge == PAKET_DEMO_ENTRIES.
+// Lücken (genau so):
+//   #1 C 220 d        → alles bekannt
+//   #2 A 200          → equipmentSummary '' (Ausstattung unbekannt)
+//   #3 GLC 300 4MATIC → alles bekannt (Hero, volle Detail = einkaufPricingResult)
+//   #4 CLA 200        → firstRegistration '' (EZ unbekannt)
+//   #5 GLA 200        → fuelType '' (Kraftstoff unbekannt)
+//   #6 E 220 d        → alles bekannt (Auktion)
+//   #7 GLB 200        → equipmentSummary '' UND firstRegistration ''
+//   #8 B 180          → alles bekannt (Auktion)
+function buildCuratedDemoVehicles(origin: PaketVehicleOrigin): EinkaufPackageVehicle[] {
+  return PAKET_DEMO_ENTRIES.map((entry, i) => {
+    const v = makePackageVehicleFromLine(entry.vin, i, origin)
+    switch (i) {
+      case 1: // A 200 — Ausstattung unbekannt
+        return { ...v, equipmentSummary: '' }
+      case 3: // CLA 200 — EZ unbekannt
+        return { ...v, firstRegistration: '' }
+      case 4: // GLA 200 — Kraftstoff unbekannt
+        return { ...v, fuelType: '' }
+      case 6: // GLB 200 — Screenshot ohne Ausstattung UND EZ
+        return { ...v, equipmentSummary: '', firstRegistration: '' }
+      default: // #1, #3, #6, #8 — alles bekannt
+        return v
+    }
+  })
+}
+
+// Erkennt, ob der Eingabetext exakt den Demo-VIN-Satz enthält (alle Zeilen sind
+// PAKET_DEMO_VINS, Anzahl == PAKET_DEMO_VINS.length). Dann wird das kuratierte
+// Demo-Paket zurückgegeben; andernfalls per-Zeile geparst.
+function isDemoVinSet(lines: string[]): boolean {
+  if (lines.length !== PAKET_DEMO_VINS.length) return false
+  const demo = new Set(PAKET_DEMO_VINS.map((v) => v.toUpperCase()))
+  return lines.every((l) => demo.has(l.trim().toUpperCase()))
+}
+
 // 1–16 Zeilen → bewertete Paket-Fahrzeuge. Leerer Text => leeres Array (Aufrufer
-// fällt dann auf das kuratierte Demo-Paket zurück).
+// fällt dann auf das kuratierte Demo-Paket zurück). Enthält der Text GENAU den
+// Demo-VIN-Satz, wird die kuratierte 8er-Liste mit gezielten Lücken geliefert.
 export function parsePaketTranscript(text: string, origin: PaketVehicleOrigin = 'text'): EinkaufPackageVehicle[] {
   const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean)
     .slice(0, MAX_PAKET_VEHICLES)
+  if (isDemoVinSet(lines)) return buildCuratedDemoVehicles(origin)
   return lines.map((line, i) => makePackageVehicleFromLine(line, i, origin))
 }
 

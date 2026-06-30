@@ -4,10 +4,10 @@ import { useState, type ReactNode } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { priceCategoryConfig } from '@/lib/constants'
 import {
   channelLabels,
   regionalMarketFor,
+  buildMarktDynamik,
   recommendedEk,
   buyRecommendationConfig,
   reasoningTypeLabel,
@@ -21,8 +21,9 @@ import {
   type TrendDirection,
   type EquipmentCoverage,
 } from '@/lib/mock-data-einkauf'
+import { InserateTable } from './InserateTable'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, Calculator, Sun, Snowflake, Package, Boxes, ShoppingCart, Sparkles } from 'lucide-react'
+import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle, Calculator, Sun, Snowflake, Package, Boxes, ShoppingCart } from 'lucide-react'
 import {
   Area,
   AreaChart,
@@ -83,14 +84,23 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
   const derivedEk = recommendedEk(regionalVk, targetMarginPct)
   const derivedMarginEur = regionalVk - derivedEk
 
-  // D1/D2: Trade-Republic-Trend — Farbe grün bei Aufwärts-, rot bei Abwärtstrend.
-  const trend = result.trend
-  const trendColor = trend?.direction === 'down' ? '#ef4444' : trend?.direction === 'up' ? '#10b981' : '#94a3b8'
-  const trendVals = trend?.points.map((p) => p.value) ?? []
-  const trendMin = trendVals.length ? Math.min(...trendVals) : 0
-  const trendMax = trendVals.length ? Math.max(...trendVals) : 0
-  const trendPad = (trendMax - trendMin) * 0.4 || 500
-  const trendDomain: [number, number] = [Math.round(trendMin - trendPad), Math.round(trendMax + trendPad)]
+  // Markt im Umkreis: Angebot (8-Wochen-Inseratezahl) vs. Nachfrage (KBA) +
+  // Klartext-Verdict zum Ankauf-Timing. Reaktiv auf den Radius.
+  const markt = result.region ? buildMarktDynamik(result, radiusKm) : null
+  // Farbe der Angebotskurve an das Verdict koppeln (gut=emerald, schwach=red, neutral=slate).
+  const marktTone = markt?.verdict.tone ?? 'neutral'
+  const marktColor = marktTone === 'gut' ? '#10b981' : marktTone === 'schwach' ? '#ef4444' : '#94a3b8'
+  const marktDotClass =
+    marktTone === 'gut' ? 'bg-emerald-500' : marktTone === 'schwach' ? 'bg-red-500' : 'bg-slate-400'
+  const angebotVals = markt?.angebot.points.map((p) => p.value) ?? []
+  const angebotMin = angebotVals.length ? Math.min(...angebotVals) : 0
+  const angebotMax = angebotVals.length ? Math.max(...angebotVals) : 0
+  const angebotPad = Math.max(1, Math.round((angebotMax - angebotMin) * 0.5))
+  const angebotDomain: [number, number] = [Math.max(0, angebotMin - angebotPad), angebotMax + angebotPad]
+  // Eigene Ausstattung des bewerteten Fahrzeugs als Vergleichsbasis für die Tabelle.
+  const subjectEquipment = result.dat.adjustments
+    .filter((a) => a.amount > 0)
+    .map((a) => a.label)
 
   // G1–G5/B7: Transporter-spezifische Blöcke (nur im Transporter-Modus gesetzt).
   const transporter = result.vehicleType === 'transporter'
@@ -132,26 +142,33 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
       {/* ── Recommendation View ── */}
       {resultsView === 'empfehlung' && (
         <div className="space-y-5 animate-in fade-in duration-300">
-          {/* B6: Makro-Badge — Segment-/Kraftstoff-Trend über dem Fahrzeug, mit Vorsicht-Flag */}
-          {segment && (
-            <div
-              className={`flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border px-4 py-2.5 text-xs ${
-                segment.caution
-                  ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
-                  : 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/15'
-              }`}
-            >
-              <span className="font-semibold">Segment-Trend</span>
-              <Badge variant="secondary" className="text-[10px]">{segment.segment}</Badge>
-              <span className="text-muted-foreground">{segment.segmentTrendLabel}</span>
-              {segment.caution && (
-                <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Vorsicht: Segment-/Kraftstoff-Trend rückläufig — Empfehlung kritisch prüfen
+          {/* B6: Segment-/Kraftstoff-Trend — eine kompakte, scannbare Zeile */}
+          {segment && (() => {
+            const dir = segment.segmentTrendDirection
+            const TrendIcon = dir === 'up' ? TrendingUp : dir === 'down' ? TrendingDown : Minus
+            const fuelLabel = segment.kraftstoffart.charAt(0).toUpperCase() + segment.kraftstoffart.slice(1)
+            return (
+              <div
+                className={`flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border px-4 py-2.5 text-xs ${
+                  segment.caution
+                    ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
+                    : 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/15'
+                }`}
+              >
+                <TrendIcon className={`h-4 w-4 ${segment.caution ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                <Badge variant="secondary" className="text-[10px]">{segment.segment}</Badge>
+                <span className={`font-medium ${segment.caution ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                  {fuelLabel}-Trend {dir === 'up' ? 'steigend' : dir === 'down' ? 'rückläufig' : 'seitwärts'}
                 </span>
-              )}
-            </div>
-          )}
+                {segment.caution && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                    <AlertTriangle className="h-3 w-3" />
+                    Kraftstoff-Trend rückläufig — kritisch prüfen
+                  </span>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Hero Price Card */}
           <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
@@ -242,56 +259,19 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
             </CardContent>
           </Card>
 
-          {/* D1/D2: Markttrend im Trade-Republic-Stil (8 Wochen, grün ↑ / rot ↓) */}
-          {trend && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-1">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                    Markttrend
-                    <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-0">
-                      {DATA_WINDOW_LABEL}
-                    </Badge>
-                  </CardTitle>
-                  <TrendArrow dir={trend.direction} pct={trend.changePercent} />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-1">
-                <div className="h-[120px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trend.points} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
-                      <defs>
-                        <linearGradient id="einkaufTrendFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={trendColor} stopOpacity={0.35} />
-                          <stop offset="100%" stopColor={trendColor} stopOpacity={0.02} />
-                        </linearGradient>
-                      </defs>
-                      <YAxis hide domain={trendDomain} />
-                      <XAxis dataKey="week" hide />
-                      <RechartsTooltip formatter={(v) => formatCurrency(Number(v))} labelStyle={{ fontWeight: 600 }} />
-                      <Area type="monotone" dataKey="value" stroke={trendColor} strokeWidth={2} fill="url(#einkaufTrendFill)" dot={false} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">Signal kombiniert: {trend.drivers}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* B1/B2/B3/B5: Regionaler Markt & KBA-Nachfrage (Datenfenster „Letzte 8 Wochen" = erste Klasse) */}
-          {regional && (
+          {/* Markt im Umkreis: Angebot vs. Nachfrage + Klartext-Ankauf-Timing (8 Wochen) */}
+          {regional && markt && (
             <Card className="border-border/60">
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-base flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-primary" />
-                    Regionaler Markt
+                    Markt im Umkreis
                     <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-0">
                       {DATA_WINDOW_LABEL}
                     </Badge>
                   </CardTitle>
-                  {/* B1: Standort + Radius-Umschalter */}
+                  {/* Standort + Radius-Umschalter */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">Umkreis {regional.location}</span>
                     <div className="flex gap-1 rounded-lg border bg-muted p-1">
@@ -311,46 +291,96 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* B2: regionale mobile.de-Marktdaten */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <p className="text-[11px] text-muted-foreground">Ø Angebotspreis (Region)</p>
-                    <p className="text-lg font-bold tabular-nums">{formatCurrency(regional.avgOfferPrice)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-muted-foreground">Preis-Range</p>
-                    <p className="text-sm font-semibold tabular-nums mt-1.5">
-                      {formatCurrency(regional.priceRange.min)} &ndash; {formatCurrency(regional.priceRange.max)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-muted-foreground">Gleiches Modell im Umkreis</p>
-                    <p className="text-lg font-bold tabular-nums">{regional.countSameModelInRegion}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-muted-foreground">Ø Standtage (Region)</p>
-                    <p className="text-lg font-bold tabular-nums">{regional.avgStandtage} Tage</p>
-                  </div>
+                {/* Verdict-Zeile: farbiger Punkt + Klartext-Fazit zum Ankauf-Timing */}
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+                  <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${marktDotClass}`} />
+                  <span className="text-sm font-semibold">{markt.verdict.headline}</span>
+                  <span className="w-full text-xs text-muted-foreground sm:w-auto sm:flex-1">
+                    {markt.verdict.sentence}
+                  </span>
                 </div>
 
-                {/* B3/B5: KBA-Nachfrage — Umschlagsrate hervorgehoben, rohe Umschreibungszahl sekundär */}
-                {demand && (
-                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Nachfrage-Indikator (KBA · Besitzumschreibungen)
-                        </p>
-                        <div className="flex items-baseline gap-2 mt-0.5">
-                          <span className="text-3xl font-bold tabular-nums">{demand.umschlagsrate}%</span>
-                          <span className="text-xs text-muted-foreground">Umschlagsrate / 8 Wo.</span>
-                          <TrendArrow dir={demand.trendDirection} pct={demand.changePercent} />
-                        </div>
-                        {/* B3: rohe Umschreibungszahl bleibt sichtbar, aber sekundär */}
-                        <p className="text-[11px] text-muted-foreground mt-1 tabular-nums">
-                          {demand.besitzumschreibungenLast8Weeks} Besitzumschreibungen ÷ {demand.regionalerBestand.toLocaleString('de-DE')} regionaler Bestand
-                        </p>
+                {/* Angebot vs. Nachfrage — zwei klar getrennte Blöcke */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* ANGEBOT (Supply) */}
+                  <div className="rounded-xl border border-border/60 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Angebot</p>
+                      <TrendArrow dir={markt.angebot.direction} pct={markt.angebot.changePercent} />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold tabular-nums">{markt.angebot.current}</span>
+                      <span className="text-xs text-muted-foreground">vergleichbare Fahrzeuge</span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
+                      <span>Ø {markt.standtage} Tage Standzeit</span>
+                      <span>
+                        {formatCurrency(regional.priceRange.min)} &ndash; {formatCurrency(regional.priceRange.max)}
+                      </span>
+                    </div>
+
+                    {/* 8-Wochen-Angebotskurve mit beschrifteten Achsen */}
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-1">
+                        Angebot im Umkreis &mdash; letzte 8 Wochen (Anzahl vergleichbarer Inserate)
+                      </p>
+                      <div className="h-[112px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={markt.angebot.points} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
+                            <defs>
+                              <linearGradient id="einkaufAngebotFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor={marktColor} stopOpacity={0.32} />
+                                <stop offset="100%" stopColor={marktColor} stopOpacity={0.02} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                            <YAxis
+                              domain={angebotDomain}
+                              allowDecimals={false}
+                              width={32}
+                              tick={{ fontSize: 9 }}
+                              tickLine={false}
+                              axisLine={false}
+                            />
+                            <XAxis
+                              dataKey="week"
+                              interval={1}
+                              tick={{ fontSize: 9 }}
+                              tickLine={false}
+                              axisLine={false}
+                            />
+                            <RechartsTooltip
+                              formatter={(v) => [`${v} Inserate`, 'Angebot']}
+                              labelStyle={{ fontWeight: 600 }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="value"
+                              stroke={marktColor}
+                              strokeWidth={2}
+                              fill="url(#einkaufAngebotFill)"
+                              dot={false}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* NACHFRAGE (Demand) */}
+                  <div className="rounded-xl border border-border/60 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Nachfrage</p>
+                      <TrendArrow dir={markt.nachfrage.direction} pct={markt.nachfrage.changePercent} />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold tabular-nums">{markt.nachfrage.umschlagsrate}%</span>
+                      <span className="text-xs text-muted-foreground">Umschlagsrate / 8 Wo.</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground tabular-nums">
+                      {markt.nachfrage.besitzumschreibungen} Besitzumschreibungen im Umkreis
+                    </p>
+                    {demand && (
                       <Badge
                         variant="secondary"
                         className={`text-[11px] ${
@@ -363,9 +393,22 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                       >
                         {umschlagLabel(demand.umschlagsrate)}
                       </Badge>
+                    )}
+                    <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <p className="text-[11px] text-muted-foreground">Ø Angebotspreis (Region)</p>
+                      <p className="text-lg font-bold tabular-nums mt-0.5">{formatCurrency(regional.avgOfferPrice)}</p>
                     </div>
                   </div>
-                )}
+                </div>
+
+                {/* Echte vergleichbare Inserate als Tabelle */}
+                <InserateTable
+                  comparables={result.mobileDe.comparables}
+                  radiusKm={radiusKm}
+                  location={regional.location}
+                  subjectEquipment={subjectEquipment}
+                  isAuction={isAuction}
+                />
 
                 <p className="text-[10px] text-muted-foreground">
                   Quelle: mobile.de Umkreissuche + KBA-Signale (Demo) &middot; Fenster {DATA_WINDOW_LABEL}.
@@ -668,21 +711,6 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
               </ResponsiveContainer>
             </CardContent>
           </Card>
-
-          {/* H1: KI-Empfehlung — fasst Trends + (nachrangig) Historie zusammen */}
-          {result.kiSummary && (
-            <Card className="border-border/60 bg-gradient-to-br from-primary/[0.04] via-card to-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  KI-Empfehlung
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed text-foreground/90">{result.kiSummary}</p>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
@@ -794,30 +822,13 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {result.mobileDe.comparables.map((comp) => {
-                  const cat = priceCategoryConfig[comp.priceCategory]
-                  return (
-                    <div key={comp.id} className="rounded-lg border border-border/60 p-3 hover:shadow-sm transition-shadow">
-                      <p className="text-sm font-medium line-clamp-2 mb-2 min-h-[2.5rem]">{comp.title}</p>
-                      <div className="text-xl font-bold tabular-nums mb-1">{formatCurrency(comp.price)}</div>
-                      <div className="flex flex-wrap gap-x-1.5 text-[10px] text-muted-foreground">
-                        <span>{comp.mileage.toLocaleString('de-DE')} km</span>
-                        <span>&middot;</span>
-                        <span>EZ {comp.firstRegistration}</span>
-                        <span>&middot;</span>
-                        <span>{comp.location}</span>
-                      </div>
-                      <div className="mt-2.5 flex items-center justify-between">
-                        <Badge variant="secondary" className={`${cat.bg} ${cat.color} text-[10px]`}>
-                          {cat.label}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground">{comp.daysListed}d {isAuction ? 'Gebot' : 'online'}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <InserateTable
+                comparables={result.mobileDe.comparables}
+                radiusKm={radiusKm}
+                location={regional?.location ?? 'Nagold'}
+                subjectEquipment={subjectEquipment}
+                isAuction={isAuction}
+              />
             </CardContent>
           </Card>
         </div>

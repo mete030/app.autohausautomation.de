@@ -64,6 +64,15 @@ export interface MobileDeComparable {
   dealerName: string
   daysListed: number
   priceCategory: PriceCategory
+  // Optionale Anreicherung für eine reichhaltige Inserate-Tabelle (Phase-UI).
+  imageUrl?: string // Fahrzeugbild, Pfad aus public/einkauf-demo/ via einkaufDemoImage('<key>')
+  fuelType?: string // z.B. 'Benzin'
+  transmission?: string // z.B. '9G-TRONIC'
+  power?: number // PS
+  color?: string // z.B. 'Spektralblau metallic'
+  equipment?: string[] // Ausstattungs-Chips, z.B. ['AMG Line','Night-Paket','Panorama']
+  distanceKm?: number // Entfernung im Umkreis (Nagold), z.B. 14, 27, 42
+  url?: string // Link "Zum Inserat" (Mock: '#')
 }
 
 // ─── Verwertungskanal (Endkunde vs. Auktion/Remarketing) ─────────────────────
@@ -360,6 +369,76 @@ export function computeTrendSignal(o: {
   return { points, direction, changePercent, drivers }
 }
 
+// Marktdynamik (Ankauf-Timing): Angebot (Anzahl vergleichbarer Inserate im Umkreis
+// über 8 Wochen) vs. Nachfrage (Umschlagsrate + Besitzumschreibungen). Sinkendes
+// Angebot bei hoher Nachfrage = knapper Markt = günstiger Ankaufszeitpunkt.
+// Rein deterministisch aus result.region (über regionalMarketFor skaliert) + kbaDemand;
+// kein Date.now/Math.random. Die 8-Wochen-Serie endet beim aktuellen `current`.
+export function buildMarktDynamik(
+  result: EinkaufPricingResult,
+  radiusKm: SearchRadiusKm,
+): {
+  angebot: { current: number; points: { week: string; value: number }[]; direction: TrendDirection; changePercent: number }
+  nachfrage: { umschlagsrate: number; besitzumschreibungen: number; direction: TrendDirection; changePercent: number }
+  standtage: number
+  verdict: { tone: 'gut' | 'neutral' | 'schwach'; headline: string; sentence: string }
+} {
+  const region = regionalMarketFor(result, radiusKm)
+  const current = region.countSameModelInRegion
+  const standtage = region.avgStandtage
+  const kba = result.kbaDemand
+  const umschlagsrate = kba?.umschlagsrate ?? 0
+  const besitzumschreibungen = kba?.besitzumschreibungenLast8Weeks ?? 0
+  const nachfrageDir: TrendDirection = kba?.trendDirection ?? 'flat'
+  const nachfrageChange = kba?.changePercent ?? 0
+
+  // Angebots-Richtung: starke Nachfrage (hohe Umschlagsrate, niedrige Standtage) →
+  // knapperes Angebot (sinkend); schwache Nachfrage → wachsendes Angebot (steigend).
+  const strong = umschlagsrate >= 8 && standtage <= 38
+  const weak = umschlagsrate < 4 || standtage >= 48
+  const angebotDir: TrendDirection = strong ? 'down' : weak ? 'up' : 'flat'
+  // Veränderung über das Fenster: sinkend ⇒ negativ, steigend ⇒ positiv.
+  const angebotChange = strong ? -16 : weak ? 14 : 4
+
+  // 8 Wochenpunkte, enden beim aktuellen `current` (KW 8). Linearer Drift gemäß
+  // Richtung + kleines deterministisches Rauschen (kein Random).
+  const weeks = 8
+  const points = Array.from({ length: weeks }, (_, i) => {
+    const t = i / (weeks - 1)
+    const drift = -(angebotChange / 100) * current * (1 - t) // KW 1 weicht ab, KW 8 == current
+    const wobble = ((i % 3) - 1) * Math.max(1, Math.round(current * 0.04))
+    const value = i === weeks - 1 ? current : Math.max(1, Math.round(current + drift + wobble))
+    return { week: `KW ${i + 1}`, value }
+  })
+
+  const tone: 'gut' | 'neutral' | 'schwach' = strong ? 'gut' : weak ? 'schwach' : 'neutral'
+  const verdict =
+    tone === 'gut'
+      ? {
+          tone,
+          headline: 'Günstiger Ankaufszeitpunkt',
+          sentence: 'Nachfrage zieht an, Angebot im Umkreis sinkt — günstiger Ankaufszeitpunkt.',
+        }
+      : tone === 'schwach'
+        ? {
+            tone,
+            headline: 'Ungünstiger Ankaufszeitpunkt',
+            sentence: 'Nachfrage schwächt ab, Angebot im Umkreis steigt — Ankauf eher zurückstellen.',
+          }
+        : {
+            tone,
+            headline: 'Neutraler Markt',
+            sentence: 'Angebot und Nachfrage im Umkreis halten sich die Waage — kein klarer Timing-Vorteil.',
+          }
+
+  return {
+    angebot: { current, points, direction: angebotDir, changePercent: angebotChange },
+    nachfrage: { umschlagsrate, besitzumschreibungen, direction: nachfrageDir, changePercent: nachfrageChange },
+    standtage,
+    verdict,
+  }
+}
+
 // E1/E2: Kauf-/Nicht-Kauf-Empfehlung + Begründungstyp aus den Mock-Signalen (§4.1):
 // hohe Umschlagsrate → „dreht schnell" (Verkaufsgeschwindigkeit); unter Markt + gute
 // Marge → Preis/Marge. Negativer Segment-Trend stuft trotz guter Werte ab (B6-Kopplung).
@@ -607,6 +686,14 @@ export const einkaufMobileDeComparables: MobileDeComparable[] = [
     dealerName: 'Stern Center Stuttgart',
     daysListed: 12,
     priceCategory: 'gut',
+    imageUrl: einkaufDemoImage('glc_300_spektralblau'),
+    fuelType: 'Benzin',
+    transmission: '9G-TRONIC',
+    power: 258,
+    color: 'Spektralblau metallic',
+    equipment: ['AMG Line', 'Night-Paket', 'Panorama-Schiebedach', 'Head-up-Display'],
+    distanceKm: 38,
+    url: '#',
   },
   {
     id: 'mde-2',
@@ -615,10 +702,18 @@ export const einkaufMobileDeComparables: MobileDeComparable[] = [
     mileage: 42100,
     year: 2023,
     firstRegistration: '01/2023',
-    location: 'München',
+    location: 'Pforzheim',
     dealerName: 'AutoNova GmbH',
     daysListed: 34,
     priceCategory: 'zufriedenstellend',
+    imageUrl: einkaufDemoImage('glc_220d_selenitgrau_2022'),
+    fuelType: 'Benzin',
+    transmission: '9G-TRONIC',
+    power: 258,
+    color: 'Selenitgrau metallic',
+    equipment: ['Spurhalte-Assistent', 'PARKTRONIC', 'Sitzheizung'],
+    distanceKm: 27,
+    url: '#',
   },
   {
     id: 'mde-3',
@@ -627,10 +722,18 @@ export const einkaufMobileDeComparables: MobileDeComparable[] = [
     mileage: 19800,
     year: 2023,
     firstRegistration: '06/2023',
-    location: 'Hamburg',
+    location: 'Tübingen',
     dealerName: 'Hanse Automobile',
     daysListed: 8,
     priceCategory: 'gut',
+    imageUrl: einkaufDemoImage('glc_200_polarweiss'),
+    fuelType: 'Benzin',
+    transmission: '9G-TRONIC',
+    power: 258,
+    color: 'Polarweiß',
+    equipment: ['AMG Line', 'Panorama-Schiebedach', 'Burmester', '360-Grad-Kamera'],
+    distanceKm: 31,
+    url: '#',
   },
   {
     id: 'mde-4',
@@ -639,10 +742,18 @@ export const einkaufMobileDeComparables: MobileDeComparable[] = [
     mileage: 51200,
     year: 2022,
     firstRegistration: '11/2022',
-    location: 'Frankfurt',
+    location: 'Calw',
     dealerName: 'Main Auto Center',
     daysListed: 45,
     priceCategory: 'sehr_gut',
+    imageUrl: einkaufDemoImage('glc_250_obsidianschwarz'),
+    fuelType: 'Benzin',
+    transmission: '9G-TRONIC',
+    power: 258,
+    color: 'Obsidianschwarz',
+    equipment: ['LED High Performance', 'Rückfahrkamera', 'Tempomat'],
+    distanceKm: 12,
+    url: '#',
   },
   {
     id: 'mde-5',
@@ -651,10 +762,18 @@ export const einkaufMobileDeComparables: MobileDeComparable[] = [
     mileage: 31600,
     year: 2023,
     firstRegistration: '04/2023',
-    location: 'Düsseldorf',
+    location: 'Böblingen',
     dealerName: 'Rhein-Ruhr Sterne',
     daysListed: 19,
     priceCategory: 'gut',
+    imageUrl: einkaufDemoImage('glc_220d_iridiumsilber_2019'),
+    fuelType: 'Benzin',
+    transmission: '9G-TRONIC',
+    power: 258,
+    color: 'Iridiumsilber',
+    equipment: ['AMG Line', 'Night-Paket', 'Sitzheizung'],
+    distanceKm: 42,
+    url: '#',
   },
   {
     id: 'mde-6',
@@ -663,10 +782,18 @@ export const einkaufMobileDeComparables: MobileDeComparable[] = [
     mileage: 15200,
     year: 2023,
     firstRegistration: '08/2023',
-    location: 'Berlin',
+    location: 'Reutlingen',
     dealerName: 'Stern Berlin',
     daysListed: 6,
     priceCategory: 'erhoht',
+    imageUrl: einkaufDemoImage('glc_300_spektralblau'),
+    fuelType: 'Benzin',
+    transmission: '9G-TRONIC',
+    power: 258,
+    color: 'Spektralblau metallic',
+    equipment: ['AMG Line', 'Head-up-Display', 'Panorama-Schiebedach', 'Burmester'],
+    distanceKm: 48,
+    url: '#',
   },
   {
     id: 'mde-7',
@@ -675,10 +802,18 @@ export const einkaufMobileDeComparables: MobileDeComparable[] = [
     mileage: 35800,
     year: 2023,
     firstRegistration: '02/2023',
-    location: 'Köln',
+    location: 'Herrenberg',
     dealerName: 'Kölner Stern',
     daysListed: 22,
     priceCategory: 'gut',
+    imageUrl: einkaufDemoImage('glc_220d_selenitgrau_2022'),
+    fuelType: 'Benzin',
+    transmission: '9G-TRONIC',
+    power: 258,
+    color: 'Selenitgrau metallic',
+    equipment: ['AMG Line', '360-Grad-Kamera', 'PARKTRONIC'],
+    distanceKm: 21,
+    url: '#',
   },
 ]
 

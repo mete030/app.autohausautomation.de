@@ -22,6 +22,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isNachrichten = pathname?.startsWith('/nachrichten')
   const isKiRezeptionist = pathname?.startsWith('/ki-rezeptionist')
   const isEinkauf = pathname?.startsWith('/einkauf')
+  const isInserate = pathname?.startsWith('/inserate')
+  const isCallcenter = pathname?.startsWith('/callcenter')
 
   useEffect(() => {
     const nextMode = isTablet ? 'tablet' : isLargeDesktop ? 'desktop' : null
@@ -86,8 +88,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </div>
 
-        {/* Voice Control — auf KI-Rezeptionist- & Einkauf-Seite ausgeblendet */}
-        {!isKiRezeptionist && !isEinkauf && <VoiceControl />}
+        {/* Voice Control — auf KI-Rezeptionist-, Einkauf-, Inserate- & Callcenter-Seite ausgeblendet */}
+        {!isKiRezeptionist && !isEinkauf && !isInserate && !isCallcenter && <VoiceControl />}
         <CallcenterCallbackNotificationProvider />
       </div>
     </TooltipProvider>

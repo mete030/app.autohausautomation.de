@@ -248,28 +248,28 @@ export default function EinkaufPage() {
     setComputePhase(
       paket
         ? `${paketVehicles.length} Fahrzeuge werden identifiziert...`
-        : 'Historische Verkaufsdaten werden analysiert...',
+        : 'KBA-/Zulassungsdaten im Umkreis werden analysiert...',
     )
 
     setTimeout(() => {
       setComputeProgress(35)
-      setComputePhase(paket ? 'Historische Verkaufsdaten je Fahrzeug werden analysiert...' : 'DAT/Schwacke-Bewertung wird abgerufen...')
+      setComputePhase(paket ? 'KBA-/Zulassungsdaten je Fahrzeug im Umkreis werden analysiert...' : 'KBA-/Zulassungsdaten im Umkreis werden analysiert...')
     }, 1000)
 
     setTimeout(() => {
       setComputeProgress(70)
       setComputePhase(
         paket
-          ? 'Markt- & Verwertungskanal je Fahrzeug werden bestimmt...'
+          ? 'mobile.de Umkreissuche je Fahrzeug wird ausgewertet...'
           : isAuktionVin
             ? 'B2B-Auktionsbenchmarks (BCA / Autobid.de / MB Remarketing) werden verglichen...'
-            : 'mobile.de Marktdaten werden verglichen...',
+            : 'mobile.de Umkreissuche wird ausgewertet...',
       )
     }, 2000)
 
     setTimeout(() => {
       setComputeProgress(100)
-      setComputePhase(paket ? 'Paket-Kalkulation wird erstellt...' : 'Verwertungskanal & Preisempfehlung werden erstellt...')
+      setComputePhase(paket ? 'Historie & DAT/Schwacke werden je Fahrzeug ausgewertet...' : 'Historie & DAT/Schwacke werden ausgewertet...')
     }, 2800)
 
     setTimeout(() => {
@@ -528,9 +528,9 @@ export default function EinkaufPage() {
               <div className="space-y-2">
                 <Progress value={computeProgress} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className={computeProgress >= 35 ? 'text-primary font-medium' : ''}>Historische Daten</span>
-                  <span className={computeProgress >= 70 ? 'text-primary font-medium' : ''}>DAT-Bewertung</span>
-                  <span className={computeProgress >= 100 ? 'text-primary font-medium' : ''}>mobile.de</span>
+                  <span className={computeProgress >= 35 ? 'text-primary font-medium' : ''}>KBA-Daten im Umkreis</span>
+                  <span className={computeProgress >= 70 ? 'text-primary font-medium' : ''}>mobile.de im Umkreis</span>
+                  <span className={computeProgress >= 100 ? 'text-primary font-medium' : ''}>Historie / DAT</span>
                 </div>
               </div>
             </div>

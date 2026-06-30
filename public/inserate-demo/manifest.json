@@ -154,5 +154,107 @@
     "url": "https://v3b.fal.media/files/b/0a98feee/zGkc7R_MEXtevsaU717h3_sMRllm5J.png",
     "model": "fal-ai/nano-banana-2/edit",
     "ts": "2026-05-05T13:49:33.772Z"
+  },
+  "backdrop_smart": {
+    "file": "backdrop_smart.png",
+    "url": "https://v3b.fal.media/files/b/0aa049d4/MCQiN-102R448ZOWpfP20_Sny7VXkq.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:23:37.450Z"
+  },
+  "backdrop_mercedes": {
+    "file": "backdrop_mercedes.png",
+    "url": "https://v3b.fal.media/files/b/0aa049d5/Tvzrz7LdGNufO4ALgyDV2_H7toTgNI.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:23:49.984Z"
+  },
+  "glc_seite_links_lot": {
+    "file": "glc_seite_links_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049d7/cWTO4ou--JqeQgf7W-6_B_eD8hjlIF.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:24:05.054Z"
+  },
+  "glc_seite_rechts_lot": {
+    "file": "glc_seite_rechts_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049d8/zBj6oraVbQI3DUWEbezni_yeBmDfjv.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:24:23.572Z"
+  },
+  "glc_front_lot": {
+    "file": "glc_front_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049da/5zrivTZDs95uWwoUyPwpH_csaHxPYX.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:24:42.054Z"
+  },
+  "glc_heck_lot": {
+    "file": "glc_heck_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049dc/IyCfvpbscqAWn2QdTHa79_YIk6c98a.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:24:58.809Z"
+  },
+  "glc_seite_links_studio": {
+    "file": "glc_seite_links_studio.png",
+    "url": "https://v3b.fal.media/files/b/0aa049dd/uA360pExlBDU8XeRvxsh5_RAltVB7n.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:25:15.068Z"
+  },
+  "glc_seite_rechts_studio": {
+    "file": "glc_seite_rechts_studio.png",
+    "url": "https://v3b.fal.media/files/b/0aa049df/p-XrfjpozHCGsxyf4GzMB_Q3zClIqJ.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:25:29.948Z"
+  },
+  "glc_front_studio": {
+    "file": "glc_front_studio.png",
+    "url": "https://v3b.fal.media/files/b/0aa049e1/4yWVNXUGCtwRa0fH5nUF__6CdMqJPB.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:25:45.655Z"
+  },
+  "glc_heck_studio": {
+    "file": "glc_heck_studio.png",
+    "url": "https://v3b.fal.media/files/b/0aa049e2/pByjc349TOucc9-dNyXIQ_6bfH3nyH.png",
+    "model": "fal-ai/nano-banana-2/edit",
+    "ts": "2026-06-29T21:25:58.382Z"
+  },
+  "glc_cockpit_lot": {
+    "file": "glc_cockpit_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049e3/C8aVvGxotmfl9dricTNMK_WvlWj7CI.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-06-29T21:26:13.202Z"
+  },
+  "glc_lenkrad_lot": {
+    "file": "glc_lenkrad_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049e5/N1sK6uyrYGm2oYouXsmet_U1zVB5c9.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-06-29T21:26:28.498Z"
+  },
+  "glc_sitze_vorne_lot": {
+    "file": "glc_sitze_vorne_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049e6/N8U3A_wvjjjnLggiKkJys_2QkyJjsL.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-06-29T21:26:40.204Z"
+  },
+  "glc_ruckbank_lot": {
+    "file": "glc_ruckbank_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049e8/7_dI7-bUP2HtbS2M7oygX_FfLf2XdI.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-06-29T21:26:56.158Z"
+  },
+  "glc_mittelkonsole_lot": {
+    "file": "glc_mittelkonsole_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049e9/5k7z2Dgi6Y_gMXIuI9Ftn_V6nTsS2E.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-06-29T21:27:08.442Z"
+  },
+  "glc_einstieg_fahrer_lot": {
+    "file": "glc_einstieg_fahrer_lot.png",
+    "url": "https://v3b.fal.media/files/b/0aa049f4/lyoxMGHNc7o-glZfoJt9r_3jclj2aY.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-06-29T21:27:21.988Z"
+  },
+  "fahrzeugschein": {
+    "file": "fahrzeugschein.png",
+    "url": "https://v3b.fal.media/files/b/0aa05c03/ggN3BFzOZZ1knmCJvme1K_14yr0O1P.png",
+    "model": "fal-ai/nano-banana-2",
+    "ts": "2026-06-30"
   }
 }

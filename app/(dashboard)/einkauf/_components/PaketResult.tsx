@@ -14,14 +14,13 @@ import {
   buildPackageTotals,
   evaluatePackageBundle,
   allocateBundle,
-  buildPackageVerdictText,
   paketVerdictConfig,
   CONDITION_DAT_LABEL,
   type EinkaufPackageVehicle,
 } from '@/lib/mock-data-paket'
 import { packageRoleConfig } from '@/lib/mock-data-einkauf'
 import { formatCurrency } from '@/lib/utils'
-import { Layers, ChevronRight, ArrowLeft, RefreshCw, Check, Sparkles, ArrowRight, Gavel, Info, Scale } from 'lucide-react'
+import { Layers, ChevronRight, ChevronDown, ArrowLeft, RefreshCw, Check, Sparkles, ArrowRight, Gavel, Info } from 'lucide-react'
 
 interface PaketResultProps {
   vehicles: EinkaufPackageVehicle[]
@@ -34,11 +33,11 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
   const [drillIndex, setDrillIndex] = useState<number | null>(null)
   const [drillView, setDrillView] = useState<'empfehlung' | 'details'>('empfehlung')
   const [bundlePrice, setBundlePrice] = useState<string>(String(totals.defaultBundlePrice))
+  const [showAllocation, setShowAllocation] = useState(false)
 
   const priceNum = Number(bundlePrice) || 0
   const result = useMemo(() => ({ vehicles, totals }), [vehicles, totals])
   const bundle = evaluatePackageBundle(result, priceNum)
-  const kiVerdict = buildPackageVerdictText(result, priceNum) // H2
   const allocation = allocateBundle(vehicles, priceNum, totals.ekRecommendation)
   const maxAlloc = Math.max(1, ...allocation.map((a) => a.alloc))
   const verdict = paketVerdictConfig[bundle.verdict]
@@ -265,25 +264,23 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
       </Card>
 
       {/* Bundle calculator */}
-      <Card className="border-border/60 overflow-hidden">
-        <div className="px-5 pt-4 pb-3 bg-gradient-to-br from-indigo-50 via-card to-violet-50/40 dark:from-indigo-950/30 dark:via-card dark:to-violet-950/20 border-b border-border/60">
-          <h3 className="text-sm font-semibold">Lohnt sich das Paket?</h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Ein Bündelpreis von der Drehscheibe für alle {vehicles.length} Fahrzeuge.</p>
-          {/* F3: Arbitrage-Sicht — starke + schwache Fahrzeuge gemeinsam gekauft, Netto-Empfehlung */}
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="inline-flex items-center gap-1 font-medium">
-              <Scale className="h-3.5 w-3.5 text-muted-foreground" />
-              Arbitrage: {totals.roleSplit.treiber} Treiber tragen {totals.roleSplit.mitnahme} Mitnahme-Fahrzeug{totals.roleSplit.mitnahme === 1 ? '' : 'e'}
-            </span>
-            <span className={`inline-flex items-center gap-1 rounded-full bg-card px-2 py-0.5 font-semibold ${verdict.tone}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${verdict.dot}`} />
-              Netto: {verdict.label}
-            </span>
-          </div>
-        </div>
-        <CardContent className="p-4 sm:p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-            <div>
+      <Card className="border-border/60">
+        <CardContent className="p-5 sm:p-6 space-y-5">
+          {/* Hero: ein klarer Verdict mit Marge */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${verdict.dot}`} />
+                <span className="text-sm font-medium text-muted-foreground">Lohnt sich das Paket?</span>
+              </div>
+              <p className={`mt-1 text-3xl sm:text-4xl font-bold tracking-tight ${verdict.tone}`}>{verdict.label}</p>
+              <p className="mt-1 text-base font-semibold tabular-nums">
+                {formatCurrency(bundle.blendedMargin)}{' '}
+                <span className="text-sm font-medium text-muted-foreground">Marge ({bundle.blendedMarginPercent.toFixed(1)}% auf Paketpreis)</span>
+              </p>
+            </div>
+
+            <div className="shrink-0">
               <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Drehscheiben-Paketpreis</Label>
               <div className="relative mt-1 w-[200px]">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-base font-medium">€</span>
@@ -295,59 +292,39 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
                   className="pl-8 h-11 text-lg font-bold tabular-nums"
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5 tabular-nums">
-                {bundle.premiumVsSingleEk >= 0 ? '+' : ''}{bundle.premiumVsSingleEk.toFixed(1)}% vs. Summe Einzel-EK
-              </p>
             </div>
+          </div>
 
-            <div className="flex-1 rounded-xl border border-border/60 bg-muted/30 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Blended-Marge</p>
-                  <p className={`text-xl font-bold tabular-nums ${verdict.tone}`}>
-                    {formatCurrency(bundle.blendedMargin)}{' '}
-                    <span className="text-sm font-medium">({bundle.blendedMarginPercent.toFixed(1)}% auf Paketpreis)</span>
-                  </p>
-                </div>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${verdict.tone}`}>
-                  <span className={`h-2 w-2 rounded-full ${verdict.dot}`} />
-                  {verdict.label}
-                </span>
+          {/* Ein schlichter Erklärsatz + genau eine Kennzahl */}
+          <p className="text-sm text-muted-foreground">
+            {totals.roleSplit.treiber} starke Fahrzeuge tragen {totals.roleSplit.mitnahme} schwächere — der Mischpreis entscheidet.
+            Break-even bei <span className="tabular-nums font-medium text-foreground">{formatCurrency(bundle.breakEven)}</span>.
+          </p>
+
+          {/* Aufteilung — standardmäßig eingeklappt */}
+          <div className="border-t border-border/60 pt-3">
+            <button
+              onClick={() => setShowAllocation((s) => !s)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${showAllocation ? 'rotate-180' : ''}`} />
+              Aufteilung {showAllocation ? 'ausblenden' : 'anzeigen'}
+            </button>
+            {showAllocation && (
+              <div className="mt-3 space-y-2 animate-in fade-in duration-200">
+                {allocation.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3">
+                    <span className="text-xs font-medium w-[120px] truncate">{a.model}</span>
+                    <Progress value={(a.alloc / maxAlloc) * 100} className="h-2 flex-1" />
+                    <span className="text-xs tabular-nums w-[72px] text-right">{formatCurrency(a.alloc)}</span>
+                    <span className={`text-[11px] tabular-nums w-[88px] text-right ${a.margin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                      {a.margin >= 0 ? '+' : ''}{formatCurrency(a.margin)} ({a.marginPercent.toFixed(0)}%)
+                    </span>
+                  </div>
+                ))}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2 tabular-nums">
-                Break-even bei {formatCurrency(bundle.breakEven)} · grenzwertig ab ~{formatCurrency(Math.round(bundle.grenzwertigAbove))}
-              </p>
-            </div>
+            )}
           </div>
-
-          {/* Allocation ladder */}
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Aufteilung des Paketpreises (∝ Einzel-EK)</p>
-            <div className="space-y-2">
-              {allocation.map((a) => (
-                <div key={a.id} className="flex items-center gap-3">
-                  <span className="text-xs font-medium w-[120px] truncate">{a.model}</span>
-                  <Progress value={(a.alloc / maxAlloc) * 100} className="h-2 flex-1" />
-                  <span className="text-xs tabular-nums w-[72px] text-right">{formatCurrency(a.alloc)}</span>
-                  <span className={`text-[11px] tabular-nums w-[88px] text-right ${a.margin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                    {a.margin >= 0 ? '+' : ''}{formatCurrency(a.margin)} ({a.marginPercent.toFixed(0)}%)
-                  </span>
-                </div>
-              ))}
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-2">Summe der Aufteilung entspricht exakt dem eingegebenen Paketpreis.</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* H2: KI-Gesamteinschätzung des Pakets */}
-      <Card className="border-border/60 bg-gradient-to-br from-primary/[0.04] via-card to-card">
-        <CardContent className="p-4 sm:p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold">KI-Gesamteinschätzung</span>
-          </div>
-          <p className="text-sm leading-relaxed text-foreground/90">{kiVerdict}</p>
         </CardContent>
       </Card>
 
