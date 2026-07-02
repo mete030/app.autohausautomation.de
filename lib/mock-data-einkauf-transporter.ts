@@ -166,24 +166,21 @@ export const einkaufTransporterPricingResult: EinkaufPricingResult = {
     segmentTrendLabel: 'Gewerbe-Diesel stabil · Kühl-Nische +14 % (Saison)',
     segmentTrendDirection: 'up',
     caution: false,
+    // Fakten-Modus: nur der Neuzulassungs-Prozentwert (gerendert als neutrale Zahl),
+    // KEIN interpretierender Hinweis ("Preisdruck möglich").
     neuzulassungsTrendPercent: 19,
-    neuzulassungsHinweis:
-      'eSprinter-Neuzulassungen +19 % — mittelfristig mehr gebrauchte Stromer am Markt; die Diesel-Kühl-Nische bleibt vorerst knapp.',
   },
 
   trend: computeTrendSignal({ baseValue: 42900, kbaTrend: 'up', kbaChangePercent: 12, umschlagsrate: 11.7, avgStandtage: 78 }),
 
-  // Im Transporter-Modus zählt die Nische, nicht die Tagesgeschwindigkeit (G4).
+  // buyDecision bleibt als Datenfeld erhalten (nicht mehr gerendert), damit die
+  // gemeinsame Ergebnis-Komponente typkonform bleibt — es wird keine Empfehlung
+  // mehr angezeigt (Fakten-Modus).
   buyDecision: {
     recommendation: 'kaufen',
     reasoningType: 'preis_marge',
-    rationale:
-      'Knappe Kühl-Nische unter Markt, Marge > 15 % — lange Standzeit unkritisch, Vorratskauf vor der Sommersaison sinnvoll.',
+    rationale: '',
   },
-
-  // TODO[real-backend]: KI — Begründungstext aus echtem Modell.
-  kiSummary:
-    'KI-Fazit: Kaufempfehlung. Knappe Kühl-Nische unter Markt mit über 15 % Marge; die saisonale Nachfrage zieht zum Sommer deutlich an (Umschlagsrate 11,7 %, steigend). Lange Standzeit ist im antizyklischen Vorratskauf einkalkuliert und kein Nachteil. Nachrangig: eigene Kühl-Sprinter-Historie mit 15,3 % Marge.',
 
   vehicleType: 'transporter',
 
@@ -192,7 +189,6 @@ export const einkaufTransporterPricingResult: EinkaufPricingResult = {
     region: DEFAULT_REGION_LOCATION,
     summerIndex: 118,
     winterIndex: 88,
-    note: 'Kühl-Sprinter drehen im Sommer deutlich besser — antizyklisch im Winter günstig einkaufen.',
     points: [
       { month: 'Jan', value: 88 },
       { month: 'Feb', value: 90 },
@@ -218,17 +214,14 @@ export const einkaufTransporterPricingResult: EinkaufPricingResult = {
     { feature: 'Klimaautomatik', comparableInRegion: 22, rarity: 'verbreitet' },
   ],
 
-  // G4: Vorratskauf statt Schnelldreher-Logik.
-  vorratskauf: {
-    recommended: true,
-    note: 'Antizyklischer Vorratskauf im Winter: bis zur Sommersaison einlagern, dann mit Nischenaufschlag verkaufen. Lange Standzeit ist hier kalkuliert, kein Nachteil.',
-  },
+  // G4 (Vorratskauf) entfernt — Fakten-Modus zeigt keine Einlager-/Timing-Empfehlung.
 
   // G5: Was kaufen andere MB-Händler aktuell ein? (Nachfrage-Frühindikator, nur Beobachtung)
+  // Fakten-Modus: nur Modell + Count + Trend-Richtung, KEIN interpretierender Text.
   // TODO[real-backend]: Auktions-/Großhandels-Einkaufssignale (BCA/Autobid/MB Remarketing) — nur Beobachtung, kein Bieten.
   dealerBuyingSignals: [
-    { model: 'Sprinter 317 CDI Kühlkoffer', dealersBuying: 6, trend: 'up', note: 'Sechs MB-Händler im 100-km-Umkreis kaufen aktuell Kühl-Sprinter ein — Nachfrage zieht vor der Saison an.' },
-    { model: 'Vito 116 CDI Kühlkasten', dealersBuying: 3, trend: 'flat', note: 'Stabile Nachfrage im kompakten Kühlsegment.' },
-    { model: 'Sprinter 319 CDI Tiefkühl', dealersBuying: 4, trend: 'up', note: 'Tiefkühl-Aufbauten zunehmend gesucht (Lebensmittel-Logistik).' },
+    { model: 'Sprinter 317 CDI Kühlkoffer', dealersBuying: 6, trend: 'up' },
+    { model: 'Vito 116 CDI Kühlkasten', dealersBuying: 3, trend: 'flat' },
+    { model: 'Sprinter 319 CDI Tiefkühl', dealersBuying: 4, trend: 'up' },
   ],
 }

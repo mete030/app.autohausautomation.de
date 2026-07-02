@@ -417,7 +417,54 @@ export const mercedesInventoryListings: Listing[] = [
     id: 'l1',
     vehicleId: 'v3',
     title: 'Mercedes-Benz CLA 250 e Coupé AMG Line - Night-Paket, MBUX, Kamera',
-    description: 'Sportlich gezeichnetes Mercedes-Benz CLA 250 e Coupé in Kosmosschwarz metallic mit AMG Line und Night-Paket. Das Plug-in-Hybrid-System mit 218 PS verbindet souveräne Fahrleistungen mit elektrischer Kurzstreckentauglichkeit. MBUX Navigation Premium, Rückfahrkamera, Sitzheizung vorne und LED High Performance sind bereits an Bord. Scheckheftgepflegt und aus erster Hand.',
+    // Kundenstil (mobile.de-Hausformat): Ausstattungspakete → Sonderausstattungen
+    // → JUNGER STERN → Serienausstattungen → Disclaimer. Listen = Datenblatt.
+    description: `Ausstattungspakete:
+Design- und Ausstattungslinie AMG Line: AMG Bodystyling, Sportsitze, Multifunktions-Sportlenkrad in Leder, 18″ AMG Leichtmetallräder schwarz
+Night-Paket: Außenspiegelgehäuse in Schwarz, Fensterrahmen hochglanzschwarz, Seitenscheiben hinten und Heckscheibe abgedunkelt
+Spiegel-Paket: Außenspiegel elektr. anklappbar, Außen-/Innenspiegel mit Abblendautomatik
+Infotainment-Paket: MBUX Navigation Premium, MBUX Augmented Reality für Navigation, Smartphone-Integration (Apple CarPlay & Android Auto)
+Park-Paket: Aktiver Park-Assistent mit PARKTRONIC, Rückfahrkamera
+
+
+Sonderausstattungen
+18″ AMG Leichtmetallräder schwarz
+Aktiver Park-Assistent mit PARKTRONIC
+AMG Line Exterieur
+AMG Line Interieur
+LED High Performance Scheinwerfer
+MBUX Augmented Reality für Navigation
+MBUX Navigation Premium
+Night-Paket
+Plug-in-Hybrid mit AC-Schnellladung
+Rückfahrkamera
+Sitzheizung vorne
+Smartphone-Integration (Apple CarPlay & Android Auto)
+Spiegel-Paket
+
+JUNGER STERN
+
+
+Serienausstattungen
+ABS
+Airbags vorne und seitlich
+Aktiver Brems-Assistent
+ASR
+Berganfahrhilfe
+Bordcomputer
+Elektr. Außenspiegel beheizt
+Elektr. Fensterheber
+ESP
+ISOFIX
+Klimaautomatik THERMATIC
+Knie-Airbag
+Multifunktionslenkrad
+Reifendruck-Kontrollsystem
+Spurhalte-Assistent
+Start-Stopp-Automatik
+Tempomat
+Zentralverriegelung mit Funk
+... Änderungen, Zwischenverkauf und Irrtümer vorbehalten. Das Fahrzeug verfügt über ein Batterie Zertifikat. Für weitere Informationen nehmen Sie bitte direkten Kontakt auf. #03,#04`,
     price: 32900,
     status: 'live',
     platform: ['mobile.de', 'autoscout24'],
@@ -503,7 +550,51 @@ export const mercedesInventoryListings: Listing[] = [
     id: 'l2',
     vehicleId: 'v6',
     title: 'Mercedes-Benz EQE 350+ - Burmester, Superscreen, AIRMATIC',
-    description: 'Vollelektrische Business-Limousine mit starker Ausstattung und effizientem 350+ Antrieb. Das Fahrzeug kombiniert Burmester 3D-Surround-Sound, MBUX Superscreen, AIRMATIC und umfangreiche Fahrassistenz für ein sehr hochwertiges Fahrerlebnis. Ladehistorie dokumentiert, sehr gepflegter Zustand, Junger Stern Garantie möglich.',
+    description: `Ausstattungspakete:
+Fahrassistenz-Paket Plus: Aktiver Abstands-Assistent DISTRONIC, Aktiver Lenk-Assistent, Aktiver Spurwechsel-Assistent, PRE-SAFE PLUS
+Memory-Paket: Sitze vorn elektrisch verstellbar mit Memory, Lenksäule elektrisch verstellbar, Außenspiegel mit Memory-Funktion
+Park-Paket mit 360°-Kamera: Aktiver Park-Assistent mit PARKTRONIC, 360°-Kamera
+Mercedes me Connect Pakete: Navigations-Dienste, Live Traffic, Remote & Charging Services
+
+
+Sonderausstattungen
+20″ AMG Leichtmetallräder
+360°-Kamera
+AIRMATIC-Luftfederung mit ADS+
+Burmester 3D-Surround-Soundsystem
+DIGITAL LIGHT mit Projektionsfunktion
+Energizing Komfortsteuerung
+Fahrassistenz-Paket Plus
+Head-up-Display
+Hinterachslenkung 10°
+MBUX Hyperscreen / Superscreen
+Memory-Paket für Sitze und Lenkrad
+Mercedes me Connect Pakete (Navigation, Live Traffic, Charging)
+Panorama-Schiebedach
+Sitzbelüftung und -heizung vorn
+
+JUNGER STERN
+
+
+Serienausstattungen
+ABS
+AC-Laden bis 11 kW
+Airbag-Paket (Front, Seite, Knie, Window)
+Aktiver Brems-Assistent mit Querverkehrsfunktion
+ASR
+Berganfahrhilfe
+Bordcomputer
+Combined Charging System bis 170 kW DC
+DISTRONIC adaptiver Tempomat
+Elektr. Fensterheber rundum
+Elektr. Heckklappe
+ESP
+Klimaautomatik THERMOTRONIC
+Multifunktions-Sportlenkrad
+Reifendruck-Kontrollsystem
+Spurhalte-Assistent
+Wärmepumpe
+... Änderungen, Zwischenverkauf und Irrtümer vorbehalten. Das Fahrzeug verfügt über ein Batterie Zertifikat. Für weitere Informationen nehmen Sie bitte direkten Kontakt auf. #03,#04`,
     price: 57900,
     status: 'live',
     platform: ['mobile.de'],
@@ -681,7 +772,51 @@ export const mercedesInventoryListings: Listing[] = [
     id: 'l4',
     vehicleId: 'v12',
     title: 'Mercedes-Benz E 220 d T-Modell Avantgarde - DIGITAL LIGHT, Burmester',
-    description: 'Modernes Mercedes-Benz E 220 d T-Modell mit Avantgarde Line, DIGITAL LIGHT und hochwertigem Burmester-Soundsystem. Der effiziente Diesel mit 9G-TRONIC eignet sich ideal für Vielfahrer, während das neue MBUX und das große Kofferraumvolumen echten Langstreckenkomfort liefern. Gepflegter Erstbesitz, vollständige Servicehistorie vorhanden.',
+    description: `Ausstattungspakete:
+Design- und Ausstattungslinie Avantgarde: Avantgarde Exterieur, Avantgarde Interieur, Dachreling silbern
+Fahrassistenz-Paket Plus: Aktiver Abstands-Assistent DISTRONIC, Aktiver Lenk-Assistent, Aktiver Spurwechsel-Assistent, PRE-SAFE PLUS
+Park-Paket mit 360°-Kamera: Aktiver Park-Assistent mit PARKTRONIC, 360°-Kamera, Rückfahrkamera
+Memory-Paket: Sitze vorn elektrisch verstellbar mit Memory, Lenksäule elektrisch verstellbar, Außenspiegel mit Memory-Funktion
+Anhängerkupplung (elektrisch ausklappbar):
+
+
+Sonderausstattungen
+19″ AMG Leichtmetallräder
+Anhängerkupplung elektrisch ausklappbar
+Avantgarde Exterieur
+Avantgarde Interieur
+Burmester-Soundsystem
+Dachreling silbern
+DIGITAL LIGHT mit Projektion
+Fahrassistenz-Paket Plus mit DISTRONIC
+Head-up-Display
+MBUX Navigation Premium mit Superscreen
+Memory-Paket Sitze und Lenkrad
+Park-Paket mit 360°-Kamera
+Sitzheizung vorne und hinten
+Smartphone-Integration kabellos
+
+JUNGER STERN
+
+
+Serienausstattungen
+ABS
+Aktiver Brems-Assistent
+ASR
+Berganfahrhilfe
+Bordcomputer
+Elektr. Heckklappe EASY-PACK
+ESP
+ISOFIX und i-Size hinten
+Klimaautomatik THERMATIC 2-Zonen
+Knie-Airbag
+Mild-Hybrid mit Rekuperation
+Multifunktionslenkrad in Leder
+Reifendruck-Kontrollsystem
+Spurhalte-Assistent
+Spurwechsel-Warner
+Tempomat mit Limiter
+... Änderungen, Zwischenverkauf und Irrtümer vorbehalten. #03,#04`,
     price: 63900,
     status: 'live',
     platform: ['mobile.de', 'autoscout24'],
@@ -884,8 +1019,169 @@ export const mercedesExtraOptions = [
 
 export const mercedesListingCreationAiMock = {
   title: 'Mercedes-Benz GLC 300 4MATIC AMG Line - Night-Paket, Pano, Burmester',
-  description: 'Gepflegter Mercedes-Benz GLC 300 4MATIC in Spektralblau metallic mit AMG Line und Night-Paket. Ausgestattet mit Panorama-Schiebedach, Burmester Soundsystem und 360°-Kamera. Der 258 PS starke Benziner bietet souveräne Fahrleistungen und hohen Langstreckenkomfort.\n\n✓ AMG Line\n✓ MBUX Navigation Premium\n✓ Panorama-Schiebedach\n✓ Burmester 3D-Surround-Sound\n✓ 360°-Kamera\n✓ Memory-Paket\n✓ Scheckheftgepflegt',
-  improvedDescription: 'Dieser Mercedes-Benz GLC 300 4MATIC AMG Line verbindet elegantes SUV-Design mit hochwertiger Technik und überzeugendem Alltagskomfort. Die Spektralblau-Metallic-Lackierung harmoniert perfekt mit dem Night-Paket, während das Panorama-Schiebedach und das Burmester 3D-Surround-Soundsystem den Premium-Charakter zusätzlich unterstreichen.\n\nDer kultivierte 258-PS-Benziner arbeitet souverän mit der 9G-TRONIC zusammen und macht den GLC sowohl in der Stadt als auch auf langen Strecken zu einem sehr ausgewogenen Begleiter.\n\n✓ AMG Line mit Night-Paket\n✓ Panorama-Schiebedach elektrisch\n✓ Burmester 3D-Surround-Soundsystem\n✓ 360°-Kamera und Park-Assistent\n✓ Memory-Paket und Sitzheizung vorne\n✓ 1 Vorbesitzer - lückenlos scheckheftgepflegt',
+  // Deterministic, 1:1 the customer's own mobile.de house style: starts directly
+  // with "Ausstattungspakete" (package → contents), then "Sonderausstattungen",
+  // "JUNGER STERN", "Serienausstattungen" and the standard closing disclaimer.
+  // Hardcoded verbatim from a real Wackenhut GLC listing (demo data) — no
+  // AI-invented intro paragraph, always identical output.
+  description: `Ausstattungspakete:
+Chrom-Paket: Dachreling (Aluminium), Unterfahrschutz (Chrom)
+Fahrassistenz-Paket High-End: Außenspiegel elektr. anklappbar, Außen-/Innenspiegel mit Abblendautomatik, Außenspiegel mit aktivem Totwinkel-Assistent, Fahrassistenz-System: aktiver Spurhalteassistent, Tempomat mit Abstandsregelung / Distronic Plus, PRE-SAFE-System Plus, Fahrassistenz-System: Bremsassistent Plus (BAS) mit Kreuzungs-Assistent, Abstandsregeltempomat Distronic Plus mit Lenk-Assistent, Spiegel-Paket, Fahrassistenz-Paket Plus
+Licht-Paket High-End: Intelligent Light System LED
+Exclusive Interieur: Lenkrad (Leder), Sitzbezug / Polsterung: Stoff / Ledernachbildung Artico, Armaturentafel in Ledernachbildung Artico, Innenhimmel Stoff, Innenausstattung: Holz Linde
+Komfort-Paket Advanced: Sitzheizung vorn, Sitz vorn links elektr. verstellbar (mit Memory), Sitz vorn rechts elektr. verstellbar (mit Memory)
+Ausstattungs-Paket: Business: Sitzheizung vorn, Lendenwirbelstützen vorn, Kraftstofftank: vergrößert, Fahrassistenz-System: aktiver Park-Assistent, sitz-komfort-paket, Smartphone integriert, Media-Display, Komfort-Paket, Infotainment-Paket Advanced, Konnektivität-Paket, Park-Paket mit Sensoren
+Infotainment-Paket High-End: Fahrassistenz-System: Verkehrszeichenerkennung, Smartphone integriert, Media-Display, Service-System: MBUX Augmented Reality für Navigation, Konnektivität-Paket
+Park-Paket High-End: Fahrassistenz-System: aktiver Park-Assistent, Kamerasystem 360 Grad, Park-Paket mit 360° Kamera, Park-Paket mit Sensoren
+Ablage-Paket: USB-Anschluss im Fond
+Off-Road-Styling-Paket: LM-Felgen, Federung für grosse Bodenfreiheit (Off-Road Fahrwerk)
+
+
+Sonderausstattungen
+Ablage-Paket
+Ausstattungs-Paket: Business
+EXCLUSIVE Interieur
+Fahrassistenz-Paket High-End
+Heckklappe mit automatischem Öffnungs- und Schließsystem
+Infotainment-Paket High-End
+Komfort-Paket Advanced
+Licht-Paket High-End
+Off-Road-Styling-Paket
+Panorama-Schiebedach
+Park-Paket High-End
+Scheibenwaschanlage beheizt
+Sitzbezug / Polsterung: Leder
+Wendematte und Ladekantenschutz
+
+JUNGER STERN
+
+
+Serienausstattungen
+Adaptives Bremslicht
+Airbag Beifahrerseite abschaltbar
+Airbag Fahrer-/Beifahrerseite
+Aktive Motorhaube
+Anti-Blockier-System (ABS)
+Antriebsart: Allradantrieb
+Außenspiegel Wagenfarbe
+Außenspiegel elektr. verstell- und heizbar, beide
+BREMSASSISTENT
+Beckenairbag vorn (Pelvisbag)
+Blinkleuchte in Außenspiegel integriert
+Chrom-Paket
+Direktlenkung mit variabler Lenkkraft-Unterstützung
+Einschaltautomatik für Fahrlicht
+Elektromotor 10 kW (Hybridantrieb)
+Elektron. Stabilitäts-Programm (ESP)
+Fahrassistenz-System: Agility Select / Dynamic Select (Fahrmodusschalter)
+Fahrassistenz-System: Attention-Assist (Müdigkeitserkennungs-Sensor)
+Fahrassistenz-System: Auffahrwarnsystem mit Bremsfunktion (Collision Prevention Assist)
+Fahrassistenz-System: Berganfahrhilfe
+Fahrassistenz-System: Verkehrs-Informations-System Live Traffic
+Fahrzeug-Monitoring (Fahrzeugortungssystem)
+Fensterheber elektrisch vorn + hinten
+Feststellbremse elektrisch
+Gepäckraumabdeckung / Rollo
+Getriebe Automatik - (9-Stufen)
+Getränkehalter vorn
+Heckleuchten LED
+Innenraumlicht-Paket
+Isofix-Aufnahmen für Kindersitz an Rücksitz
+Keyless Go Startanlage
+Klimaautomatik (Thermatic 2-Zonen)
+Knieairbag Fahrerseite
+Kommunikationsmodul (LTE) Vorbereitung Mercedes me connect
+Kopf-Airbag-System (Windowbag)
+Lenkrad (Sport) mit Multifunktion
+Mercedes-Benz Notrufsystem
+Multimedia-Infotainment-System MBUX (Connect 20 High)
+Radstand 2873 mm
+Reifendruck-Kontrollsystem
+Reiserechner
+Rücksitzlehne geteilt / klappbar
+Schadstoffarm nach Abgasnorm Euro 6d-TEMP
+Scheibenwischer mit Regensensor
+Seitenairbag (Sidebag) vorn
+Sprachbediensystem Erweiterte Funktionen (MBUX)
+Start/Stop-Anlage
+Stoßfänger Wagenfarbe
+Touchpad (Mittelkonsole)
+Warnanlage / Statusanzeige für Sicherheitsgurte im Fond
+Wegfahrsperre
+Wärmeschutzverglasung
+Zentralverriegelung mit Fernbedienung
+... Änderungen, Zwischenverkauf und Irrtümer vorbehalten. #03,#04`,
+  // "Verbessern" swaps to the second real customer GLC example (also verbatim).
+  improvedDescription: `Ausstattungspakete:
+Spiegel-Paket: Außenspiegel elektr. anklappbar, Außen-/Innenspiegel mit Abblendautomatik
+Design- und Ausstattungslinie AMG Line: Seitenscheiben hinten und Heckscheibe abgedunkelt, LM-Felgen, Dachreling (Aluminium)
+Fahrassistenz-Paket Plus: PRE-SAFE-System, Tempomat mit Abstandsregelung / Distronic Plus, PRE-SAFE-System Impuls Seite
+Anhängerkupplung (Kugelkopf schwenkbar):
+Winter-Paket: Sitzheizung vorn, Lenkrad heizbar, Scheibenwaschanlage beheizt
+Technik-Paket: Airmatic DC / Air Body Control (Luftfederung)
+Ausstattungs-Paket: Premium Plus: Sitz vorn links elektr. verstellbar, Sitz vorn rechts elektr. verstellbar, Fahrassistenz-System: Verkehrszeichenerkennung, Sitz vorn links elektr. verstellbar (mit Memory), Sitz vorn rechts elektr. verstellbar (mit Memory), Fahrassistenz-System: aktiver Park-Assistent, Einstiegsleisten beleuchtet, Keyless-Go Startanlage und Zentralverriegelung, Edelstahlpedale Sportdesign, Armaturentafel in Ledernachbildung Artico, Zentralverriegelung mit Infrarot - / Komfortbedienung, Außenspiegel mit Totwinkel-Assistent, Fahrassistenz-System: Fernlichtassistent Adaptive plus, Sitzbezug / Polsterung: Ledernachbildung Artico / Dinamica, Park-Paket mit 360° Kamera, Panorama-Schiebedach, Surround-System Burmester, Frontscheibe und Verbundsicherheitsglas (VSG) mit Akustikfolie, KEYLESS-Go-Paket, Memory-Paket, AMG-Line Interieur, Klimaautomatik (Thermotronik), Bremsanlage mit großen Bremsscheiben (Hochleistungs-Bremssystem), Service-System: MBUX Augmented Reality für Navigation, Head-up-Display (Frontsichtanzeige), Lenkrad (Leder Nappa, unten abgeflacht), Innenausstattung: Zierteile Metall Struktur, Digital Light, Digital Light mit Projektionsfunktion, Ambiente-Beleuchtung (Plus) mit direkter Lichtlinie
+
+
+Sonderausstattungen
+Armaturentafel Oberteil in Nappaoptik
+Ausstattungs-Paket: Premium Plus
+Fahrassistenz-Paket Plus
+Metallic-Lackierung
+Multimediasystem MBUX Entertainment
+Sound-System mit Soundpersonalisierung
+Technik-Paket
+Winter-Paket
+
+JUNGER STERN
+
+
+Serienausstattungen
+Ablage-Paket
+Airbag Fahrer-/Beifahrerseite
+Anhängerkupplung (Kugelkopf schwenkbar)
+Antriebsart: Allradantrieb
+Ausstattungs-Paket USB
+Design- und Ausstattungslinie AMG Line
+Digitales Instrumenten-Display
+Fahrassistenz-System: Verkehrs-Informations-System Live Traffic
+Fahrassistenz-System: aktiver Spurhalteassistent
+Gepäckraumabdeckung / Rollo
+Getriebe Automatik - (9-Stufen)
+Getränkehalter vorn (doppelt)
+Heckklappe mit automatischem Öffnungs- und Schließsystem
+Hybrid 245 kW (Motor 2,0 Ltr. - 145 kW Diesel)
+Induktionsladeschale für Smartphone
+Infotainment-System: Remote & Charging Services Plus
+Infotainment-System: Remote Service (Plus)
+Innenraumlicht-Paket
+Interieur-Paket Chrom
+Knieairbag Fahrerseite
+Kommunikationsmodul (LTE) Vorbereitung Mercedes me connect
+Kopf-Airbag-System (Windowbag)
+Ladekabel für öffentliche Ladesäulen
+Ladekabel mit Schukostecker
+Laderaum-Paket
+Lenkrad (Sport) mit Multifunktion
+Mercedes-Benz Notrufsystem
+Mittelkonsole schwarz hochglänzend
+Multimediasystem MBUX (Connect 20 MID)
+Navigationssystem: Festplattennavigation
+Niveauregulierung
+Radstand Standard
+Reifen-Reparaturset (Tirefit)
+Reifendruck-Kontrollsystem
+Rußpartikelfilter
+Schadstoffarm nach Abgasnorm Euro 6d
+Scheibenwischer mit Regensensor
+Seitenairbag (Sidebag) vorn
+Service-System: Fingerabdruck-Scanner für MBUX
+Service-System: MBUX Navigation Premium
+Sitzkomfortpaket
+Smartphone integriert
+Spiegel-Paket
+Sprachbediensystem Erweiterte Funktionen (MBUX)
+Vorrüstung car sharing
+... Änderungen, Zwischenverkauf und Irrtümer vorbehalten. Das Fahrzeug verfügt über ein Batterie Zertifikat. Für weitere Informationen nehmen Sie bitte direkten Kontakt auf. #03,#04`,
   kycScore: 78,
   improvedKycScore: 97,
   confidence: 94,

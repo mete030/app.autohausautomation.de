@@ -16,7 +16,6 @@ import {
   buildSegmentSignal,
   computeTrendSignal,
   buildRecommendation,
-  buildKiSummary,
   classifyRole,
   kraftstoffartFromModel,
   einkaufDemoImage,
@@ -43,7 +42,7 @@ export interface EinkaufPackageVehicle {
   fuelType: string
   mileage: number
   condition: EinkaufCondition
-  equipmentSummary: string
+  equipment: string[] // Sonderausstattung als Liste (Chip-Picker), leer = unbekannt
   imageUrl: string
   sweetSpot: number // EK-Empfehlung
   expectedSalePrice: number // erwarteter VK (bzw. Auktionserlös)
@@ -76,12 +75,6 @@ export interface EinkaufPackageResult {
   vehicles: EinkaufPackageVehicle[]
   totals: EinkaufPackageTotals
 }
-
-export type PaketVerdict = 'lohnt' | 'grenzwertig' | 'lohnt_nicht'
-
-// Verdict-Schwellen — Marge auf Paketpreis (Rendite auf das eingesetzte Kapital).
-export const PAKET_LOHNT_PCT = 15
-export const PAKET_GRENZWERTIG_PCT = 10
 
 const round = (n: number) => Math.round(n)
 const pct = (margin: number, vk: number) => (vk ? Math.round((margin / vk) * 1000) / 10 : 0)
@@ -300,7 +293,8 @@ function makeQuickDetail(o: {
     marketPercentile: result.marketPosition.percentile,
     segmentCaution: result.segmentSignal.caution,
   })
-  result.kiSummary = buildKiSummary(result) // H1
+  // Fakten-Modus: kein KI-Fazit-Text mehr (buyDecision bleibt als unrendered
+  // Datenfeld erhalten, damit buildRecommendation weiter genutzt wird).
 
   return result
 }
@@ -316,7 +310,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     fuelType: 'Diesel',
     mileage: 58000,
     condition: 'gut',
-    equipmentSummary: 'AMG Line · LED · Kamera',
+    equipment: ['AMG Line', 'LED', 'Kamera'],
     imageUrl: einkaufDemoImage('mb_c_klasse'),
     sweetSpot: 30000,
     expectedSalePrice: 35500,
@@ -337,7 +331,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     fuelType: 'Benzin',
     mileage: 49000,
     condition: 'sehr_gut',
-    equipmentSummary: 'AMG Line · Ambientebeleuchtung',
+    equipment: ['AMG Line', 'Ambientebeleuchtung'],
     imageUrl: einkaufDemoImage('mb_cla'),
     sweetSpot: 25500,
     expectedSalePrice: 30200,
@@ -358,7 +352,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     fuelType: 'Benzin',
     mileage: 32400,
     condition: 'gut',
-    equipmentSummary: 'AMG Line · Burmester · Panorama · HUD',
+    equipment: ['AMG Line', 'Burmester', 'Panorama', 'HUD'],
     imageUrl: einkaufDemoImage('glc_300_spektralblau'),
     sweetSpot: 43200,
     expectedSalePrice: 52400,
@@ -379,7 +373,7 @@ export const einkaufPackageVehicles: EinkaufPackageVehicle[] = [
     fuelType: 'Diesel',
     mileage: 168000,
     condition: 'maengel',
-    equipmentSummary: 'Avantgarde · Distronic · AHK',
+    equipment: ['Avantgarde', 'Distronic', 'AHK'],
     imageUrl: einkaufDemoImage('mb_e_klasse'),
     sweetSpot: 13500,
     expectedSalePrice: 14500, // erwarteter Auktionserlös (Zuschlag)
@@ -496,13 +490,13 @@ function parseMileage(text: string): number {
 
 // Modell-Token am Zeilenanfang (z.B. "C 220 d", "GLC 300") herausfiltern, Rest = Ausstattung.
 const MODEL_TOKEN_RE = /^(?:A|B|C|E|S|CLA|CLS|GLA|GLB|GLC|GLE|GLS|EQA|EQB|EQC|EQE|EQS)\s?\d{2,3}/i
-function parseEquipment(line: string): string {
+function parseEquipmentList(line: string): string[] {
   const parts = line.split(/[,·]/).map((s) => s.trim()).filter(Boolean)
   const extras = parts.filter(
     (p) => !/^\s*20[0-2]\d\s*$/.test(p) && !/km/i.test(p) && !VIN_RE.test(p) && !/^\d/.test(p) && !MODEL_TOKEN_RE.test(p),
   )
-  // Keine Extras geparst → leerer String (Daten unbekannt), KEIN synthetischer Default.
-  return extras.length ? extras.join(' · ') : ''
+  // Keine Extras geparst → leeres Array (Daten unbekannt), KEIN synthetischer Default.
+  return extras
 }
 
 function makePackageVehicleFromLine(line: string, index: number, origin: PaketVehicleOrigin): EinkaufPackageVehicle {
@@ -537,7 +531,7 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
   // brauchen wir dennoch eine plausible EZ → ezForDetail bleibt immer befüllt.
   const ez = effectiveLine.match(/\b(0?[1-9]|1[0-2])\/(20[0-2]\d)\b/)?.[0] ?? ''
   const ezForDetail = ez || `0${1 + (index % 9)}/${year}`
-  const equipmentSummary = parseEquipment(effectiveLine)
+  const equipment = parseEquipmentList(effectiveLine)
 
   // Hero-GLC (volle Bewertung aus Feature 1/2) wiederverwenden, wenn die Zeile passt —
   // so bleibt im Demo-Drill-down die ausführliche Einzelanalyse erhalten.
@@ -554,7 +548,7 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
     fuelType: spec.fuel,
     mileage,
     condition,
-    equipmentSummary,
+    equipment,
     imageUrl: einkaufDemoImage(spec.image),
     sweetSpot,
     expectedSalePrice: vk,
@@ -578,25 +572,25 @@ function makePackageVehicleFromLine(line: string, index: number, origin: PaketVe
 // konsistent. Reihenfolge == PAKET_DEMO_ENTRIES.
 // Lücken (genau so):
 //   #1 C 220 d        → alles bekannt
-//   #2 A 200          → equipmentSummary '' (Ausstattung unbekannt)
+//   #2 A 200          → equipment [] (Ausstattung unbekannt)
 //   #3 GLC 300 4MATIC → alles bekannt (Hero, volle Detail = einkaufPricingResult)
 //   #4 CLA 200        → firstRegistration '' (EZ unbekannt)
 //   #5 GLA 200        → fuelType '' (Kraftstoff unbekannt)
 //   #6 E 220 d        → alles bekannt (Auktion)
-//   #7 GLB 200        → equipmentSummary '' UND firstRegistration ''
+//   #7 GLB 200        → equipment [] UND firstRegistration ''
 //   #8 B 180          → alles bekannt (Auktion)
 function buildCuratedDemoVehicles(origin: PaketVehicleOrigin): EinkaufPackageVehicle[] {
   return PAKET_DEMO_ENTRIES.map((entry, i) => {
     const v = makePackageVehicleFromLine(entry.vin, i, origin)
     switch (i) {
       case 1: // A 200 — Ausstattung unbekannt
-        return { ...v, equipmentSummary: '' }
+        return { ...v, equipment: [] }
       case 3: // CLA 200 — EZ unbekannt
         return { ...v, firstRegistration: '' }
       case 4: // GLA 200 — Kraftstoff unbekannt
         return { ...v, fuelType: '' }
       case 6: // GLB 200 — Screenshot ohne Ausstattung UND EZ
-        return { ...v, equipmentSummary: '', firstRegistration: '' }
+        return { ...v, equipment: [], firstRegistration: '' }
       default: // #1, #3, #6, #8 — alles bekannt
         return v
     }
@@ -657,50 +651,17 @@ export const einkaufPackageResult: EinkaufPackageResult = {
   totals: buildPackageTotals(einkaufPackageVehicles),
 }
 
-// Verdict-Farben/Label für die UI.
-export const paketVerdictConfig: Record<PaketVerdict, { label: string; tone: string; dot: string }> = {
-  lohnt: { label: 'Lohnt sich', tone: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  grenzwertig: { label: 'Grenzwertig', tone: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-500' },
-  lohnt_nicht: { label: 'Lohnt nicht', tone: 'text-red-600 dark:text-red-400', dot: 'bg-red-500' },
-}
-
-// ─── Reine Helper für die "Lohnt sich das Paket?"-Logik ──────────────────────
+// ─── Reine Helper für die Paket-Kennzahlen (Fakten, kein Verdict) ────────────
 
 export function evaluatePackageBundle(result: EinkaufPackageResult, bundlePrice: number) {
   const { expectedSaleTotal, ekRecommendation } = result.totals
   const blendedMargin = expectedSaleTotal - bundlePrice
   const blendedMarginPercent = bundlePrice ? (blendedMargin / bundlePrice) * 100 : 0
   const premiumVsSingleEk = ekRecommendation ? ((bundlePrice - ekRecommendation) / ekRecommendation) * 100 : 0
-  const verdict: PaketVerdict =
-    blendedMarginPercent >= PAKET_LOHNT_PCT
-      ? 'lohnt'
-      : blendedMarginPercent >= PAKET_GRENZWERTIG_PCT
-        ? 'grenzwertig'
-        : 'lohnt_nicht'
-  // Referenzpreise für den Break-even-Hinweis:
-  const breakEven = expectedSaleTotal // Marge = 0
-  const grenzwertigAbove = expectedSaleTotal / (1 + PAKET_LOHNT_PCT / 100) // darüber: nicht mehr "lohnt"
-  return { blendedMargin, blendedMarginPercent, premiumVsSingleEk, verdict, breakEven, grenzwertigAbove }
-}
-
-// H2: KI-Gesamteinschätzung des Pakets (Mock) — formuliert die Arbitrage-Logik in
-// einem Satz, reagiert auf den eingegebenen Paketpreis.
-// TODO[real-backend]: KI — echtes Modell bewertet das Paket gesamthaft.
-export function buildPackageVerdictText(result: EinkaufPackageResult, bundlePrice: number): string {
-  const { totals } = result
-  const bundle = evaluatePackageBundle(result, bundlePrice)
-  const { treiber, mitnahme } = totals.roleSplit
-  const eur = (n: number) => `${Math.round(n).toLocaleString('de-DE')} €`
-  const verdictWord = bundle.verdict === 'lohnt' ? 'lohnt sich' : bundle.verdict === 'grenzwertig' ? 'ist grenzwertig' : 'lohnt sich nicht'
-  const driverNote =
-    treiber >= mitnahme
-      ? `Die ${treiber} Treiber tragen die ${mitnahme} schwächeren Mitnahme-Fahrzeug${mitnahme === 1 ? '' : 'e'}`
-      : `Achtung: nur ${treiber} Treiber für ${mitnahme} Mitnahme-Fahrzeuge — dünne Arbitrage-Basis`
-  return (
-    `KI-Gesamteinschätzung: Das Paket ${verdictWord}. ${driverNote}. ` +
-    `Bei ${eur(bundlePrice)} Paketpreis ergibt sich eine Blended-Marge von ${eur(bundle.blendedMargin)} (${bundle.blendedMarginPercent.toFixed(1)} %), Break-even bei ${eur(bundle.breakEven)}. ` +
-    `Die starken Fahrzeuge subventionieren die schwachen, solange die Gesamtmarge über ${PAKET_LOHNT_PCT} % bleibt.`
-  )
+  // Break-even (Marge = 0) = Summe der erwarteten Einzel-VK. Fakten-Modus: kein
+  // „lohnt/lohnt-nicht"-Urteil — der Nutzer liest Marge, %, Break-even selbst.
+  const breakEven = expectedSaleTotal
+  return { blendedMargin, blendedMarginPercent, premiumVsSingleEk, breakEven }
 }
 
 // Aufteilung des Paketpreises ∝ Einzel-EK; Σ === bundlePrice exakt (letzte Zeile

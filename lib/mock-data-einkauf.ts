@@ -190,7 +190,7 @@ export interface SeasonalTrend {
   summerIndex: number // relativer Nachfrage-/Preisindex Sommer (100 = Jahresschnitt)
   winterIndex: number
   points: { month: string; value: number }[] // 12 Monate für den Saison-Chart
-  note: string
+  note?: string // Fakten-Modus: nicht mehr gerendert (UI zeigt Index-Caption)
 }
 export interface EquipmentCoverage {
   feature: string // z.B. 'Kühlkoffer'
@@ -201,7 +201,7 @@ export interface DealerBuyingSignal {
   model: string
   dealersBuying: number // Anzahl Händler, die das Modell aktuell EINKAUFEN (Nachfrage-Frühindikator)
   trend: TrendDirection
-  note: string
+  note?: string // Fakten-Modus: nicht mehr gerendert (Zeile zeigt Count + neutralen Trend-Token)
 }
 
 export interface EinkaufPricingResult {
@@ -381,7 +381,6 @@ export function buildMarktDynamik(
   angebot: { current: number; points: { week: string; value: number }[]; direction: TrendDirection; changePercent: number }
   nachfrage: { umschlagsrate: number; besitzumschreibungen: number; direction: TrendDirection; changePercent: number }
   standtage: number
-  verdict: { tone: 'gut' | 'neutral' | 'schwach'; headline: string; sentence: string }
 } {
   const region = regionalMarketFor(result, radiusKm)
   const current = region.countSameModelInRegion
@@ -411,31 +410,14 @@ export function buildMarktDynamik(
     return { week: `KW ${i + 1}`, value }
   })
 
-  const tone: 'gut' | 'neutral' | 'schwach' = strong ? 'gut' : weak ? 'schwach' : 'neutral'
-  const verdict =
-    tone === 'gut'
-      ? {
-          tone,
-          headline: 'Günstiger Ankaufszeitpunkt',
-          sentence: 'Nachfrage zieht an, Angebot im Umkreis sinkt — günstiger Ankaufszeitpunkt.',
-        }
-      : tone === 'schwach'
-        ? {
-            tone,
-            headline: 'Ungünstiger Ankaufszeitpunkt',
-            sentence: 'Nachfrage schwächt ab, Angebot im Umkreis steigt — Ankauf eher zurückstellen.',
-          }
-        : {
-            tone,
-            headline: 'Neutraler Markt',
-            sentence: 'Angebot und Nachfrage im Umkreis halten sich die Waage — kein klarer Timing-Vorteil.',
-          }
-
+  // Fakten-Modus: KEIN Timing-Urteil („günstiger/ungünstiger Ankaufszeitpunkt").
+  // Die UI stellt Angebot (mobile.de) und Nachfrage (KBA) nur nebeneinander — der
+  // Nutzer zieht den Schluss selbst. `strong`/`weak` steuern nur noch die
+  // Angebots-Richtung/-Veränderung (Fakten), nicht mehr eine Bewertung.
   return {
     angebot: { current, points, direction: angebotDir, changePercent: angebotChange },
     nachfrage: { umschlagsrate, besitzumschreibungen, direction: nachfrageDir, changePercent: nachfrageChange },
     standtage,
-    verdict,
   }
 }
 
@@ -484,28 +466,8 @@ export function classifyRole(o: { channel: VerwertungChannel; marginPercent: num
   return o.channel === 'endkunde' && o.marginPercent >= 12 ? 'treiber' : 'mitnahme'
 }
 
-// H1: KI-Begründungstext pro Fahrzeug — fasst die aktuellen Signale (Trend, KBA-
-// Nachfrage) zusammen und stützt sich NACHRANGIG auf die eigene Historie.
-// TODO[real-backend]: KI — echtes Modell formuliert die Begründung.
-export function buildKiSummary(r: EinkaufPricingResult): string {
-  const rec = r.buyDecision?.recommendation
-  const recWord = rec === 'kaufen' ? 'Kaufempfehlung' : rec === 'pruefen' ? 'mit Vorbehalt prüfen' : 'eher ablehnen'
-  const trendWord = r.trend
-    ? r.trend.direction === 'up'
-      ? `steigender Markttrend (${r.trend.changePercent >= 0 ? '+' : ''}${r.trend.changePercent} % über 8 Wochen)`
-      : r.trend.direction === 'down'
-        ? `fallender Markttrend (${r.trend.changePercent} % über 8 Wochen)`
-        : 'seitwärts laufender Markt'
-    : 'verfügbarer Markttrend'
-  const demandWord = r.kbaDemand
-    ? `Umschlagsrate ${r.kbaDemand.umschlagsrate} % (${
-        r.kbaDemand.trendDirection === 'up' ? 'Nachfrage zieht an' : r.kbaDemand.trendDirection === 'down' ? 'Nachfrage schwächt ab' : 'stabil'
-      })`
-    : 'regionale Nachfrage'
-  const hist = `historisch ${r.historical.averageMarginPercent.toFixed(1)} % Marge bei Ø ${r.historical.averageDaysOnLot.toFixed(0)} Tagen Standzeit`
-  const caution = r.segmentSignal?.caution ? ' Achtung: rückläufiger Segment-/Kraftstoff-Trend dämpft die Empfehlung.' : ''
-  return `KI-Fazit: ${recWord}. Die aktuellen Signale dominieren — ${trendWord}, ${demandWord}. Nachrangig stützt die eigene Verkaufshistorie (${hist}).${caution}`
-}
+// Fakten-Modus: Es gibt keinen KI-Fazit-/Empfehlungstext mehr. Die UI zeigt nur
+// gemessene Zahlen (KBA / mobile.de / DAT / Historie) nebeneinander.
 
 // UI-Konfiguration (Ampel) für die Kaufempfehlung.
 export const buyRecommendationConfig: Record<BuyRecommendation, { label: string; tone: string; dot: string; badge: string }> = {
@@ -532,8 +494,11 @@ export const reasoningTypeLabel: Record<ReasoningType, string> = {
   preis_marge: 'Preis/Marge',
   verkaufsgeschwindigkeit: 'Verkaufsgeschwindigkeit',
 }
+// Fakten-Modus: Rollen-Labels bleiben (aus Marge/Kanal abgeleitete Fakten), aber
+// neutral eingefärbt — die UI unterscheidet Treiber/Mitnahme über Füllung (gefüllt
+// vs. Umriss), nicht über eine grün/grau-Wertung.
 export const packageRoleConfig: Record<PackageRole, { label: string; badge: string }> = {
-  treiber: { label: 'Treiber', badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' },
+  treiber: { label: 'Treiber', badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300' },
   mitnahme: { label: 'Mitnahme', badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300' },
 }
 
@@ -865,9 +830,6 @@ export const einkaufPricingResult: EinkaufPricingResult = {
   segmentSignal: buildSegmentSignal('benzin'),
   trend: computeTrendSignal({ baseValue: 52400, kbaTrend: 'up', kbaChangePercent: 9, umschlagsrate: 14.5, avgStandtage: 34 }),
   buyDecision: buildRecommendation({ channel: 'endkunde', marginPercent: 17.8, umschlagsrate: 14.5, marketPercentile: 35, segmentCaution: false }),
-  // TODO[real-backend]: KI — Begründungstext aus echtem Modell.
-  kiSummary:
-    'KI-Fazit: Klare Kaufempfehlung. Die aktuellen Signale dominieren — steigender Markttrend (+9 % über 8 Wochen) und hohe regionale Nachfrage (Umschlagsrate 14,5 %, Tendenz steigend). Unter Markt eingekauft entsteht eine attraktive Endkundenmarge. Nachrangig stützt die eigene Historie (17,8 % Marge bei Ø 23 Tagen Standzeit).',
 }
 
 // ─── Kanal-Labels (eine Quelle für alle kanal-bewussten Texte) ───────────────
@@ -1163,7 +1125,4 @@ export const einkaufAuktionPricingResult: EinkaufPricingResult = {
   segmentSignal: buildSegmentSignal('benzin'),
   trend: computeTrendSignal({ baseValue: 12700, kbaTrend: 'down', kbaChangePercent: -7, umschlagsrate: 2.4, avgStandtage: 52 }),
   buyDecision: buildRecommendation({ channel: 'auktion', marginPercent: 7.1, umschlagsrate: 2.4, marketPercentile: 55, segmentCaution: false }),
-  // TODO[real-backend]: KI — Begründungstext aus echtem Modell.
-  kiSummary:
-    'KI-Fazit: Mit Vorbehalt prüfen. Aktuelle Signale: fallender Markttrend (−10 % über 8 Wochen) und schwache Nachfrage (Umschlagsrate 2,4 %, Tendenz fallend). Als Endkundenfahrzeug ungeeignet — nur über die B2B-Auktion mit dünnem Spread verwertbar, im Paket als Mitnahme vertretbar. Nachrangig: eigene Auktions-Historie 6,7 % Spread bei Ø 5 Tagen bis Zuschlag.',
 }

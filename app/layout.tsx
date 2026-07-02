@@ -37,8 +37,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased pt-6`}>
-        {children}
+      {/* pt-6 = Platz für das fixe PROTOTYP-Banner. Bewusst NICHT auf <body>:
+          Radix-Overlays (Select/Dialog/Popover) sperren beim Öffnen den Scroll
+          via react-remove-scroll und überschreiben dabei das Body-Padding —
+          das ließ die ganze Seite um 24px nach oben/unten springen. Auf einem
+          Wrapper-<div> wird das Padding nicht angefasst. */}
+      <body className={`${inter.variable} font-sans antialiased`}>
+        <div className="pt-6">{children}</div>
         <PrototypeIndicator />
         <Analytics />
       </body>

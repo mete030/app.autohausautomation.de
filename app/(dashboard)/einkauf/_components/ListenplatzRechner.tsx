@@ -230,7 +230,7 @@ export function ListenplatzRechner({ listPrice, onListPriceChange, sweetSpot, on
                         <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Ziel-Seite</Label>
                         <Select value={String(targetSeite)} onValueChange={(v) => setTargetSeite(Number(v))}>
                           <SelectTrigger className="mt-1 h-9 w-[110px]"><SelectValue /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent position="popper">
                             {Array.from({ length: MAX_SEITE }, (_, i) => i + 1).map((s) => (
                               <SelectItem key={s} value={String(s)}>Seite {s}</SelectItem>
                             ))}
@@ -241,7 +241,7 @@ export function ListenplatzRechner({ listPrice, onListPriceChange, sweetSpot, on
                         <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Ziel-Platz</Label>
                         <Select value={String(targetPlatz)} onValueChange={(v) => setTargetPlatz(Number(v))}>
                           <SelectTrigger className="mt-1 h-9 w-[110px]"><SelectValue /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent position="popper">
                             {Array.from({ length: m.pageSize }, (_, i) => i + 1).map((p) => (
                               <SelectItem key={p} value={String(p)}>Platz {p}</SelectItem>
                             ))}
@@ -390,7 +390,7 @@ export function ListenplatzRechner({ listPrice, onListPriceChange, sweetSpot, on
                 <span>günstiger als</span>
                 <Select value={String(rule.refPlatz)} onValueChange={(v) => setRule((r) => ({ ...r, refPlatz: Number(v) }))}>
                   <SelectTrigger className="h-8 w-[100px] text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     {Array.from({ length: m.pageSize }, (_, i) => i + 1).map((p) => (
                       <SelectItem key={p} value={String(p)}>Platz {p}</SelectItem>
                     ))}
@@ -399,7 +399,7 @@ export function ListenplatzRechner({ listPrice, onListPriceChange, sweetSpot, on
                 <span>auf</span>
                 <Select value={String(rule.refSeite)} onValueChange={(v) => setRule((r) => ({ ...r, refSeite: Number(v) }))}>
                   <SelectTrigger className="h-8 w-[100px] text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     {Array.from({ length: MAX_SEITE }, (_, i) => i + 1).map((s) => (
                       <SelectItem key={s} value={String(s)}>Seite {s}</SelectItem>
                     ))}
@@ -411,7 +411,7 @@ export function ListenplatzRechner({ listPrice, onListPriceChange, sweetSpot, on
                 <span className="text-muted-foreground">Neu bewerten</span>
                 <Select value={String(rule.reevalDays)} onValueChange={(v) => setRule((r) => ({ ...r, reevalDays: Number(v) }))}>
                   <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     {[7, 14, 30, 45].map((d) => (
                       <SelectItem key={d} value={String(d)}>alle {d} Tage</SelectItem>
                     ))}

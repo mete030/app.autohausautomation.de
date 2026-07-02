@@ -48,6 +48,13 @@ import { ListenplatzRechner } from './_components/ListenplatzRechner'
 import { VehicleIdentify } from './_components/VehicleIdentify'
 import { PaketConfirm } from './_components/PaketConfirm'
 import { PaketResult } from './_components/PaketResult'
+import { EquipmentPicker } from './_components/EquipmentPicker'
+import {
+  pkwEquipmentCatalog,
+  transporterEquipmentCatalog,
+  pkwExtraFlat,
+  transporterExtraFlat,
+} from '@/lib/mock-data-einkauf-equipment'
 import { formatCurrency } from '@/lib/utils'
 import {
   Loader2,
@@ -112,6 +119,10 @@ export default function EinkaufPage() {
 
   // Listenplatz-Rechner: gewählter Inseratspreis (Feature 1)
   const [listPrice, setListPrice] = useState<number>(PRICING_RESULT.mobileDe.medianPrice)
+
+  // Aus der Zielmarge im Hero abgeleiteter EK (spiegelt SingleVehicleResult nach oben,
+  // damit Action-Bar / Inserat-Modal / Listenplatz-Rechner denselben EK nutzen).
+  const [heroEk, setHeroEk] = useState<number | null>(null)
 
   // Paket-/Konvolut-Bewertung (Feature 3)
   const [paketVehicles, setPaketVehicles] = useState<EinkaufPackageVehicle[]>([])
@@ -215,12 +226,6 @@ export default function EinkaufPage() {
     setStep('identify')
   }
 
-  const toggleEquipment = (item: string) => {
-    setSelectedEquipment(prev =>
-      prev.includes(item) ? prev.filter(e => e !== item) : [...prev, item]
-    )
-  }
-
   const handleCreatePaketInserat = (vehicle: EinkaufPackageVehicle) => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem(
@@ -244,6 +249,7 @@ export default function EinkaufPage() {
     const paket = inputMode === 'paket'
     const isAuktionVin = vehicleData?.vin === einkaufVinMockAuktion.vin
     setStep('computing')
+    setHeroEk(null)
     setComputeProgress(0)
     setComputePhase(
       paket
@@ -310,6 +316,7 @@ export default function EinkaufPage() {
     setOverrideChannel(null)
     setOverrideNote('')
     setListPrice(PRICING_RESULT.mobileDe.medianPrice)
+    setHeroEk(null)
     setPaketVehicles([])
     setShowInseratModal(false)
     setInseratPrice('')
@@ -445,7 +452,7 @@ export default function EinkaufPage() {
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper">
                         <SelectItem value="sehr_gut">Sehr gut &mdash; Keine Mängel</SelectItem>
                         <SelectItem value="gut">Gut &mdash; Leichte Gebrauchsspuren</SelectItem>
                         <SelectItem value="maengel">Mängel vorhanden</SelectItem>
@@ -472,24 +479,17 @@ export default function EinkaufPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Bitte prüfen Sie die erkannte Ausstattung. Entfernen Sie Haken bei fehlenden oder defekten Optionen.
+                  Erkannte Ausstattung prüfen, fehlende entfernen, eigene ergänzen (tippen + Enter oder „Katalog“).
                 </p>
-                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                  {vehicleData.sonderausstattung.map((item) => (
-                    <label
-                      key={item}
-                      className="flex items-center gap-3 rounded-lg border border-border/60 px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedEquipment.includes(item)}
-                        onChange={() => toggleEquipment(item)}
-                        className="h-4 w-4 rounded border-border accent-primary"
-                      />
-                      <span className="text-sm">{item}</span>
-                    </label>
-                  ))}
-                </div>
+                <EquipmentPicker
+                  variant="full"
+                  value={selectedEquipment}
+                  onChange={setSelectedEquipment}
+                  detected={vehicleData.sonderausstattung}
+                  catalog={vehicleType === 'transporter' ? transporterEquipmentCatalog : pkwEquipmentCatalog}
+                  searchPool={vehicleType === 'transporter' ? transporterExtraFlat : pkwExtraFlat}
+                  emptyHint="Noch keine Ausstattung gewählt"
+                />
               </CardContent>
             </Card>
           </div>
@@ -576,29 +576,31 @@ export default function EinkaufPage() {
             </div>
           </div>
 
-          {/* ── Verwertungskanal-Banner (spannt Empfehlung + Detailanalyse) ── */}
-          {channelDecision && (
-            <RoutingBanner
-              decision={channelDecision}
-              overrideChannel={overrideChannel}
-              onOverrideChange={setOverrideChannel}
-              note={overrideNote}
-              onNoteChange={setOverrideNote}
-            />
-          )}
-
           {/* ── Einzelfahrzeug-Ergebnis (Empfehlung + Detailanalyse) ── */}
-          {/* Listenplatz-Rechner nur für Endkunden-Fahrzeuge (eine B2B-Auktion hat keinen mobile.de-Listenplatz) */}
+          {/* Verwertungskanal-Strip nur für PKW (bei Transportern sinnlos); Listenplatz-
+              Rechner nur für Endkunden-PKW (eine B2B-Auktion hat keinen mobile.de-Listenplatz). */}
           <SingleVehicleResult
             result={pricingResult}
             resultsView={resultsView}
             channel={channel}
+            onDerivedEkChange={setHeroEk}
+            channelStrip={
+              vehicleType !== 'transporter' && channelDecision ? (
+                <RoutingBanner
+                  decision={channelDecision}
+                  overrideChannel={overrideChannel}
+                  onOverrideChange={setOverrideChannel}
+                  note={overrideNote}
+                  onNoteChange={setOverrideNote}
+                />
+              ) : undefined
+            }
             empfehlungInsert={
               channel === 'endkunde' && vehicleType !== 'transporter' ? (
                 <ListenplatzRechner
                   listPrice={listPrice}
                   onListPriceChange={setListPrice}
-                  sweetSpot={pricingResult.sweetSpot}
+                  sweetSpot={heroEk ?? pricingResult.sweetSpot}
                   onInserat={(p) => handleOpenInseratModal(p)}
                 />
               ) : undefined
@@ -611,7 +613,7 @@ export default function EinkaufPage() {
               <div className="min-w-0">
                 <p className="text-sm font-medium">Nächster Schritt</p>
                 <p className="text-xs text-muted-foreground">
-                  Ankauf zu {formatCurrency(pricingResult.sweetSpot)} &middot; {L.nextLabel} zu ~{formatCurrency(effectiveSellPrice)} &middot; {L.spreadLabel} {formatCurrency(effectiveSellPrice - pricingResult.sweetSpot)}
+                  Ankauf zu {formatCurrency(heroEk ?? pricingResult.sweetSpot)} &middot; {L.nextLabel} zu ~{formatCurrency(effectiveSellPrice)} &middot; {L.spreadLabel} {formatCurrency(effectiveSellPrice - (heroEk ?? pricingResult.sweetSpot))}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 sm:flex-nowrap">
@@ -739,7 +741,7 @@ export default function EinkaufPage() {
                       />
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-                      Basis: {isAuction ? 'Ø Zuschlag' : 'mobile.de Median'} ({formatCurrency(effectiveSellPrice)}) &middot; Erwartete {isAuction ? 'Spread' : 'Marge'} bei EK {formatCurrency(pricingResult.sweetSpot)}: <span className="text-emerald-600 dark:text-emerald-400 font-medium">{formatCurrency(Number(inseratPrice || 0) - pricingResult.sweetSpot)}</span>
+                      Basis: {isAuction ? 'Ø Zuschlag' : 'mobile.de Median'} ({formatCurrency(effectiveSellPrice)}) &middot; Erwartete {isAuction ? 'Spread' : 'Marge'} bei EK {formatCurrency(heroEk ?? pricingResult.sweetSpot)}: <span className="text-emerald-600 dark:text-emerald-400 font-medium">{formatCurrency(Number(inseratPrice || 0) - (heroEk ?? pricingResult.sweetSpot))}</span>
                     </p>
                   </div>
 

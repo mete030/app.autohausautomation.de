@@ -14,7 +14,6 @@ import {
   buildPackageTotals,
   evaluatePackageBundle,
   allocateBundle,
-  paketVerdictConfig,
   CONDITION_DAT_LABEL,
   type EinkaufPackageVehicle,
 } from '@/lib/mock-data-paket'
@@ -40,7 +39,6 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
   const bundle = evaluatePackageBundle(result, priceNum)
   const allocation = allocateBundle(vehicles, priceNum, totals.ekRecommendation)
   const maxAlloc = Math.max(1, ...allocation.map((a) => a.alloc))
-  const verdict = paketVerdictConfig[bundle.verdict]
 
   // ── Drill-down into a single vehicle ──
   if (drillIndex !== null && vehicles[drillIndex]) {
@@ -86,7 +84,8 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
           <div>
             <p className="text-sm font-semibold">{v.model}</p>
             <p className="text-xs text-muted-foreground">
-              EZ {v.firstRegistration} &middot; {v.mileage.toLocaleString('de-DE')} km &middot; {v.equipmentSummary}
+              EZ {v.firstRegistration} &middot; {v.mileage.toLocaleString('de-DE')} km &middot;{' '}
+              {v.equipment.length ? v.equipment.join(' · ') : '—'}
             </p>
           </div>
         </div>
@@ -119,15 +118,12 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
                 Bandbreite: {formatCurrency(totals.ekMin)} &ndash; {formatCurrency(totals.ekMax)}
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-3 justify-center lg:justify-start">
-                <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                  {totals.confidence}% Konfidenz
-                </Badge>
                 <Badge variant="secondary" className="text-xs">{vehicles.length} Fahrzeuge</Badge>
                 <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
                   {totals.channelSplit.endkunde}× Endkunde · {totals.channelSplit.auktion}× Auktion
                 </Badge>
-                {/* F3: Treiber/Mitnahme-Split auf einen Blick */}
-                <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                {/* F3: Treiber/Mitnahme-Split — neutraler Faktenzähler */}
+                <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
                   {totals.roleSplit.treiber} Treiber · {totals.roleSplit.mitnahme} Mitnahme
                 </Badge>
               </div>
@@ -207,12 +203,20 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <p className="font-medium truncate">{v.model}</p>
-                            {/* E3: Treiber vs. Mitnahme visuell unterscheidbar */}
-                            <Badge variant="secondary" className={`shrink-0 text-[9px] px-1.5 py-0 ${packageRoleConfig[v.role].badge}`}>
+                            {/* E3: Treiber vs. Mitnahme über Füllung (gefüllt/Umriss), nicht Farbe */}
+                            <Badge
+                              variant={v.role === 'treiber' ? 'secondary' : 'outline'}
+                              className={`shrink-0 text-[9px] px-1.5 py-0 ${
+                                v.role === 'treiber' ? packageRoleConfig[v.role].badge : 'border-border/60 text-muted-foreground'
+                              }`}
+                            >
                               {packageRoleConfig[v.role].label}
                             </Badge>
                           </div>
-                          <p className="text-[10px] text-muted-foreground truncate">{v.firstRegistration} · {v.equipmentSummary}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {v.firstRegistration}
+                            {v.equipment.length ? ' · ' + v.equipment.join(' · ') : ''}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -266,17 +270,19 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
       {/* Bundle calculator */}
       <Card className="border-border/60">
         <CardContent className="p-5 sm:p-6 space-y-5">
-          {/* Hero: ein klarer Verdict mit Marge */}
+          {/* Hero: nur Fakten — Blended-Marge in % und €, kein „lohnt/lohnt-nicht"-Urteil */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${verdict.dot}`} />
-                <span className="text-sm font-medium text-muted-foreground">Lohnt sich das Paket?</span>
-              </div>
-              <p className={`mt-1 text-3xl sm:text-4xl font-bold tracking-tight ${verdict.tone}`}>{verdict.label}</p>
-              <p className="mt-1 text-base font-semibold tabular-nums">
-                {formatCurrency(bundle.blendedMargin)}{' '}
-                <span className="text-sm font-medium text-muted-foreground">Marge ({bundle.blendedMarginPercent.toFixed(1)}% auf Paketpreis)</span>
+              <p className="text-sm font-medium text-muted-foreground">Blended-Marge bei diesem Paketpreis</p>
+              <p className="mt-1 text-3xl sm:text-4xl font-bold tracking-tight tabular-nums">
+                {bundle.blendedMarginPercent.toFixed(1)}%
+              </p>
+              <p
+                className={`mt-1 text-base font-semibold tabular-nums ${
+                  bundle.blendedMargin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'
+                }`}
+              >
+                {formatCurrency(bundle.blendedMargin)} Marge
               </p>
             </div>
 
@@ -295,10 +301,11 @@ export function PaketResult({ vehicles, onReset, onCreateInserat }: PaketResultP
             </div>
           </div>
 
-          {/* Ein schlichter Erklärsatz + genau eine Kennzahl */}
+          {/* Nur Fakten: Break-even, kein Arbitrage-Kommentar */}
           <p className="text-sm text-muted-foreground">
-            {totals.roleSplit.treiber} starke Fahrzeuge tragen {totals.roleSplit.mitnahme} schwächere — der Mischpreis entscheidet.
-            Break-even bei <span className="tabular-nums font-medium text-foreground">{formatCurrency(bundle.breakEven)}</span>.
+            Break-even (Marge = 0) bei{' '}
+            <span className="tabular-nums font-medium text-foreground">{formatCurrency(bundle.breakEven)}</span> &middot;{' '}
+            {totals.roleSplit.treiber} Treiber / {totals.roleSplit.mitnahme} Mitnahme im Paket.
           </p>
 
           {/* Aufteilung — standardmäßig eingeklappt */}

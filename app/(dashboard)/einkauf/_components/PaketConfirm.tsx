@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { einkaufPackageVehicles, MB_MODEL_NAMES, type EinkaufPackageVehicle, type EinkaufCondition } from '@/lib/mock-data-paket'
+import { EquipmentPicker } from './EquipmentPicker'
+import { pkwEquipmentCatalog, pkwExtraFlat } from '@/lib/mock-data-einkauf-equipment'
 import { CheckCircle2, Plus, X, Sparkles, Settings2, Layers } from 'lucide-react'
 const CONDITIONS: { value: EinkaufCondition; label: string }[] = [
   { value: 'sehr_gut', label: 'Sehr gut' },
@@ -54,7 +56,7 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
         id: `pkg-neu-${addCounter}`,
         firstRegistration: '',
         fuelType: '',
-        equipmentSummary: '',
+        equipment: [],
       },
     ])
   }
@@ -73,15 +75,17 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2.5">
         {vehicles.map((v, i) => (
-          <div key={v.id} className="flex flex-col gap-3 rounded-xl border border-border/60 p-3 sm:flex-row sm:items-start">
-            <div className="h-16 w-24 sm:h-20 sm:w-28 rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border/60">
+          <div key={v.id} className="flex gap-3 rounded-xl border border-border/60 p-2.5">
+            {/* Thumbnail füllt die Kartenhöhe (kein Leerraum darunter) */}
+            <div className="w-20 shrink-0 self-stretch overflow-hidden rounded-lg bg-muted ring-1 ring-border/60 sm:w-24">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={v.imageUrl} alt={v.model} className="w-full h-full object-cover" />
+              <img src={v.imageUrl} alt={v.model} className="h-full w-full object-cover" />
             </div>
 
-            <div className="min-w-0 flex-1 space-y-2">
+            <div className="min-w-0 flex-1">
+              {/* Kopfzeile: Herkunft + Entfernen (schmale Zeile) */}
               <div className="flex items-center justify-between gap-2">
                 {/* A2: erkannte Fahrzeuge sichtbar als „aus Paket identifiziert" labeln */}
                 <Badge
@@ -94,27 +98,28 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 -mr-1 text-muted-foreground hover:text-red-500 shrink-0"
+                  className="h-6 w-6 -mr-0.5 text-muted-foreground hover:text-red-500 shrink-0"
                   onClick={() => remove(i)}
                   aria-label="Fahrzeug entfernen"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-12">
-                <div className="col-span-2 sm:col-span-4">
+              {/* Stammdaten — eine füllende Zeile (flex-wrap) statt 12-Spalten-Raster mit Lücke */}
+              <div className="mt-1.5 flex flex-wrap items-start gap-x-3 gap-y-2">
+                <div className="min-w-[150px] flex-[1.5]">
                   <FieldLabel>Modell</FieldLabel>
                   <Select value={v.model} onValueChange={(val) => update(i, { model: val })}>
                     <SelectTrigger className="mt-0.5 h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       {MB_MODEL_NAMES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="sm:col-span-4">
-                  <FieldLabel missing={!v.firstRegistration}>Erstzulassung</FieldLabel>
+                <div className="min-w-[104px] flex-1">
+                  <FieldLabel missing={!v.firstRegistration}>Erstzul.</FieldLabel>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -125,17 +130,17 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
                   />
                 </div>
 
-                <div className="sm:col-span-4">
+                <div className="min-w-[112px] flex-1">
                   <FieldLabel missing={!v.fuelType}>Kraftstoff</FieldLabel>
                   <Select value={v.fuelType} onValueChange={(val) => update(i, { fuelType: val })}>
                     <SelectTrigger className="mt-0.5 h-9"><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       {FUEL_TYPES.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="sm:col-span-4">
+                <div className="min-w-[96px] flex-1">
                   <FieldLabel>Kilometer</FieldLabel>
                   <Input
                     type="text"
@@ -146,24 +151,35 @@ export function PaketConfirm({ vehicles, onChange, onCompute }: PaketConfirmProp
                   />
                 </div>
 
-                <div className="sm:col-span-4">
+                <div className="min-w-[104px] flex-1">
                   <FieldLabel>Zustand</FieldLabel>
                   <Select value={v.condition} onValueChange={(val) => update(i, { condition: val as EinkaufCondition })}>
                     <SelectTrigger className="mt-0.5 h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       {CONDITIONS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
-                <div className="col-span-2 sm:col-span-4">
-                  <FieldLabel missing={!v.equipmentSummary}>Ausstattung</FieldLabel>
-                  <Input
-                    type="text"
-                    value={v.equipmentSummary}
-                    placeholder="Ausstattung ergänzen…"
-                    onChange={(e) => update(i, { equipmentSummary: e.target.value })}
-                    className="mt-0.5 h-9"
+              {/* Ausstattung — Label inline, Chips fließen daneben (spart eine Zeile) */}
+              <div className="mt-2 flex flex-wrap items-start gap-x-2 gap-y-1">
+                <span className="pt-1.5 text-[10px] text-muted-foreground shrink-0">Ausstattung</span>
+                {v.equipment.length === 0 && (
+                  <span className="flex items-center gap-1 pt-1.5 text-[10px] text-amber-600 shrink-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    fehlt
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <EquipmentPicker
+                    variant="compact"
+                    value={v.equipment}
+                    onChange={(next) => update(i, { equipment: next })}
+                    detected={v.equipment}
+                    catalog={pkwEquipmentCatalog}
+                    searchPool={pkwExtraFlat}
+                    emptyHint="Ausstattung ergänzen…"
                   />
                 </div>
               </div>

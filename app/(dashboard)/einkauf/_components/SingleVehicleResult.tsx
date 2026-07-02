@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -9,12 +9,8 @@ import {
   regionalMarketFor,
   buildMarktDynamik,
   recommendedEk,
-  buyRecommendationConfig,
-  reasoningTypeLabel,
-  packageRoleConfig,
   DATA_WINDOW_LABEL,
   SECONDARY_REFERENCE_NOTE,
-  DEFAULT_TARGET_MARGIN_PCT,
   type EinkaufPricingResult,
   type VerwertungChannel,
   type SearchRadiusKm,
@@ -23,7 +19,21 @@ import {
 } from '@/lib/mock-data-einkauf'
 import { InserateTable } from './InserateTable'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Clock, ShieldCheck, Globe, Gavel, BarChart3, MapPin, TrendingUp, TrendingDown, Minus, AlertTriangle, Calculator, Sun, Snowflake, Package, Boxes, ShoppingCart } from 'lucide-react'
+import {
+  Clock,
+  ShieldCheck,
+  Globe,
+  Gavel,
+  BarChart3,
+  MapPin,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Sun,
+  Snowflake,
+  Boxes,
+  ShoppingCart,
+} from 'lucide-react'
 import {
   Area,
   AreaChart,
@@ -31,7 +41,12 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
+  ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
@@ -44,28 +59,106 @@ interface SingleVehicleResultProps {
   channel?: VerwertungChannel
   /** Optional block rendered between the Hero card and the source cards (Empfehlung-Ansicht). */
   empfehlungInsert?: ReactNode
+  /** Verwertungskanal-Strip (nur PKW) — über der Hero-Karte gerendert. */
+  channelStrip?: ReactNode
+  /** Meldet den aus der Zielmarge abgeleiteten Einkaufspreis nach oben (Action-Bar/Inserat). */
+  onDerivedEkChange?: (ek: number) => void
 }
 
-const chartColors = ['#2563eb', '#10b981', '#f97316', '#7c3aed']
+// Fakten-Modus-Farbpalette: Einkauf = blau, VK/Markt = violett, Marge-Korridor =
+// grün/rot NUR als Geld-Vorzeichen. Keine Schwellen-/Ampel-Einfärbung.
+const NEUTRAL_MARKET = '#2563eb'
+const EK_COLOR = '#2563eb'
+const VK_COLOR = '#7c3aed'
+const MARGIN_POS = '#10b981'
+const MARGIN_NEG = '#ef4444'
 
-// Trendpfeil (grün ↑ / rot ↓ / neutral) für KBA-Nachfrage & Co.
-function TrendArrow({ dir, pct }: { dir: TrendDirection; pct: number }) {
+// Trendpfeil — IMMER neutral (Richtung eines Zählwerts ist keine Wertung).
+function TrendArrow({ dir, pct }: { dir: TrendDirection; pct?: number }) {
   const Icon = dir === 'up' ? TrendingUp : dir === 'down' ? TrendingDown : Minus
-  const tone =
-    dir === 'up'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : dir === 'down'
-        ? 'text-red-600 dark:text-red-400'
-        : 'text-muted-foreground'
   return (
-    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums ${tone}`}>
+    <span className="inline-flex items-center gap-0.5 text-xs font-medium tabular-nums text-muted-foreground">
       <Icon className="h-3.5 w-3.5" />
-      {pct >= 0 ? '+' : ''}{pct}%
+      {pct != null && (
+        <>
+          {pct >= 0 ? '+' : ''}
+          {pct}%
+        </>
+      )}
     </span>
   )
 }
 
-export function SingleVehicleResult({ result, resultsView, channel: channelProp, empfehlungInsert }: SingleVehicleResultProps) {
+// Kleine 2×2-Kennzahl im Hero.
+function HeroStat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'emerald' }) {
+  return (
+    <div className="text-center">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`text-xl font-bold tabular-nums mt-0.5 ${tone === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
+        {value}
+      </p>
+      {sub && <p className="text-[11px] text-muted-foreground tabular-nums">{sub}</p>}
+    </div>
+  )
+}
+
+// Referenzwerte-Spalte (nachrangige Quellen DAT + eigene Historie).
+function ReferenceColumn({
+  icon,
+  title,
+  tag,
+  rows,
+}: {
+  icon: ReactNode
+  title: string
+  tag: string
+  rows: [string, string, boolean?][]
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 p-3">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="text-muted-foreground">{icon}</span>
+        <span className="text-xs font-semibold">{title}</span>
+        <Badge variant="outline" className="text-[11px] ml-auto border-border/60 font-normal">
+          {tag}
+        </Badge>
+      </div>
+      <dl className="space-y-1">
+        {rows.map(([k, v, pos]) => (
+          <div key={k} className="flex justify-between gap-2 text-xs">
+            <dt className="text-muted-foreground">{k}</dt>
+            <dd className={`font-medium tabular-nums ${pos ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
+
+// Zahlenstrahl-Marker: EK-Seite (track 1) vs. VK/Markt-Seite (track 2).
+type Marker = { value: number; label: string; meaning: string; track: 1 | 2; emphasis?: boolean }
+
+// Eigener Punkt (Emphasis-Marker bekommen einen Ring).
+function PriceMarkerDot(props: { cx?: number; cy?: number; payload?: Marker }) {
+  const { cx = 0, cy = 0, payload } = props
+  if (!payload) return null
+  const fill = payload.track === 1 ? EK_COLOR : VK_COLOR
+  return (
+    <g>
+      {payload.emphasis && <circle cx={cx} cy={cy} r={8} fill="none" stroke={fill} strokeWidth={1.5} opacity={0.5} />}
+      <circle cx={cx} cy={cy} r={payload.emphasis ? 5 : 4} fill={fill} />
+    </g>
+  )
+}
+
+export function SingleVehicleResult({
+  result,
+  resultsView,
+  channel: channelProp,
+  empfehlungInsert,
+  channelStrip,
+  onDerivedEkChange,
+}: SingleVehicleResultProps) {
   const channel: VerwertungChannel = channelProp ?? result.channel ?? 'endkunde'
   const isAuction = channel === 'auktion'
   const L = channelLabels[channel]
@@ -75,191 +168,193 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
   const regional = result.region ? regionalMarketFor(result, radiusKm) : null
   const demand = result.kbaDemand
   const segment = result.segmentSignal
-  const umschlagLabel = (rate: number) => (rate >= 8 ? 'Dreht schnell' : rate >= 4 ? 'Mittel' : 'Träge')
 
-  // C1/C2: Zielmarge → empfohlener EK (rückwärts aus regionalem VK). Reaktiv auf
-  // Zielmarge UND Radius (Marktpreis-Basis ändert sich mit dem Umkreis).
-  const [targetMarginPct, setTargetMarginPct] = useState<number>(isAuction ? 7 : DEFAULT_TARGET_MARGIN_PCT)
-  const regionalVk = regional?.avgOfferPrice ?? result.mobileDe.medianPrice
-  const derivedEk = recommendedEk(regionalVk, targetMarginPct)
-  const derivedMarginEur = regionalVk - derivedEk
+  // Eine VK-Basis für alles (Hero-Marge, Sell-Stat, Zahlenstrahl, Action-Bar).
+  const sellPrice = isAuction
+    ? result.auction?.expectedHammerPrice ?? result.mobileDe.medianPrice
+    : result.mobileDe.medianPrice
+  const vkBasis = sellPrice
+  const vkLabel = isAuction ? 'Ø Auktionserlös' : 'mobile.de-Median'
 
-  // Markt im Umkreis: Angebot (8-Wochen-Inseratezahl) vs. Nachfrage (KBA) +
-  // Klartext-Verdict zum Ankauf-Timing. Reaktiv auf den Radius.
+  // Ziel-EK = VK − Zielmarge (App-Konvention: Marge auf VK). Default aus der
+  // eigenen Ø-Marge; reagiert auf den Regler. Meldet den EK nach oben.
+  const [targetMarginPct, setTargetMarginPct] = useState<number>(
+    Math.round(result.historical.averageMarginPercent * 2) / 2,
+  )
+  const mMin = isAuction ? 3 : 8
+  const mMax = isAuction ? 13 : 28
+  const derivedEk = recommendedEk(vkBasis, targetMarginPct)
+  const derivedMarginEur = vkBasis - derivedEk
+  useEffect(() => {
+    onDerivedEkChange?.(derivedEk)
+  }, [derivedEk, onDerivedEkChange])
+
+  // Markt-Dynamik (Angebot vs. Nachfrage) — nur noch Fakten, kein Timing-Verdict.
   const markt = result.region ? buildMarktDynamik(result, radiusKm) : null
-  // Farbe der Angebotskurve an das Verdict koppeln (gut=emerald, schwach=red, neutral=slate).
-  const marktTone = markt?.verdict.tone ?? 'neutral'
-  const marktColor = marktTone === 'gut' ? '#10b981' : marktTone === 'schwach' ? '#ef4444' : '#94a3b8'
-  const marktDotClass =
-    marktTone === 'gut' ? 'bg-emerald-500' : marktTone === 'schwach' ? 'bg-red-500' : 'bg-slate-400'
+  const marktColor = NEUTRAL_MARKET
   const angebotVals = markt?.angebot.points.map((p) => p.value) ?? []
   const angebotMin = angebotVals.length ? Math.min(...angebotVals) : 0
   const angebotMax = angebotVals.length ? Math.max(...angebotVals) : 0
   const angebotPad = Math.max(1, Math.round((angebotMax - angebotMin) * 0.5))
   const angebotDomain: [number, number] = [Math.max(0, angebotMin - angebotPad), angebotMax + angebotPad]
-  // Eigene Ausstattung des bewerteten Fahrzeugs als Vergleichsbasis für die Tabelle.
-  const subjectEquipment = result.dat.adjustments
-    .filter((a) => a.amount > 0)
-    .map((a) => a.label)
 
-  // G1–G5/B7: Transporter-spezifische Blöcke (nur im Transporter-Modus gesetzt).
+  // Eigene Ausstattung des bewerteten Fahrzeugs als Vergleichsbasis für die Tabelle.
+  const subjectEquipment = result.dat.adjustments.filter((a) => a.amount > 0).map((a) => a.label)
+
+  // Transporter-spezifische Blöcke (nur im Transporter-Modus gesetzt).
   const transporter = result.vehicleType === 'transporter'
   const seasonal = result.seasonalTrend
   const coverage = result.equipmentCoverage
-  const vorrat = result.vorratskauf
   const dealerSignals = result.dealerBuyingSignals
-  const neuzulassungHinweis = result.segmentSignal?.neuzulassungsHinweis
-  const rarityConfig: Record<EquipmentCoverage['rarity'], { label: string; badge: string }> = {
-    einzigartig: { label: 'Einziger im Umkreis', badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' },
-    selten: { label: 'Einer von wenigen', badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' },
-    verbreitet: { label: 'Verbreitet', badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300' },
+  const neuzulassungPct = result.segmentSignal?.neuzulassungsTrendPercent
+  // Rarity bleibt ein zählwertbasiertes Faktum — Label ja, Farbe neutral.
+  const rarityLabel: Record<EquipmentCoverage['rarity'], string> = {
+    einzigartig: 'Einziger im Umkreis',
+    selten: 'Einer von wenigen',
+    verbreitet: 'Verbreitet',
   }
+  const neutralBadge = 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300'
 
-  const sellPrice = isAuction ? (result.auction?.expectedHammerPrice ?? result.mobileDe.medianPrice) : result.mobileDe.medianPrice
-  const spread = isAuction ? (result.auction?.spread ?? sellPrice - result.sweetSpot) : sellPrice - result.sweetSpot
-
-  const accentClass = isAuction
-    ? 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300'
-    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-
-  const chartData = [
-    { source: 'Historisch (Ø EK)', value: result.historical.averagePurchasePrice },
-    { source: 'DAT bereinigt', value: result.dat.adjustedValue },
-    { source: isAuction ? 'Ø Auktionserlös' : 'mobile.de Median', value: sellPrice },
-    { source: 'Empfehlung (EK)', value: result.sweetSpot },
+  // ── Zahlenstrahl-Daten (Preisvergleich) ──
+  const ekMarkers: Marker[] = [
+    { value: result.historical.averagePurchasePrice, label: 'Ø EK (Historie)', meaning: 'Ø Einkauf der letzten Verkäufe', track: 1 },
+    ...(isAuction
+      ? [{ value: result.dat.adjustedValue, label: 'DAT Händler-EK', meaning: 'DAT/Schwacke Händler-Einkaufswert', track: 1 as const }]
+      : []),
+    { value: derivedEk, label: 'Ziel-EK', meaning: `EK bei ${targetMarginPct.toFixed(1)}% Zielmarge (Regler oben)`, track: 1, emphasis: true },
   ]
-  const values = chartData.map((d) => d.value)
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const pad = (max - min) * 0.18 || 1500
-  const domain: [number, number] = [
-    Math.floor((min - pad) / 1000) * 1000,
-    Math.ceil((max + pad) / 1000) * 1000,
+  const vkMarkers: Marker[] = [
+    { value: result.historical.averageSalePrice, label: 'Ø VK (Historie)', meaning: 'Ø Verkaufserlös der letzten Verkäufe', track: 2 },
+    ...(isAuction
+      ? []
+      : [{ value: result.dat.adjustedValue, label: 'DAT bereinigt', meaning: 'DAT/Schwacke bereinigter Marktwert', track: 2 as const }]),
+    {
+      value: vkBasis,
+      label: isAuction ? 'Ø Auktionserlös' : 'mobile.de-Median',
+      meaning: isAuction ? 'Ø erwarteter Zuschlag' : 'Median vergleichbarer Angebote im Umkreis',
+      track: 2,
+      emphasis: true,
+    },
   ]
+  const allMarkers = [...ekMarkers, ...vkMarkers]
+  const rawMin = Math.min(...allMarkers.map((m) => m.value))
+  const rawMax = Math.max(...allMarkers.map((m) => m.value))
+  const span = rawMax - rawMin || 1000
+  const pad = span * 0.15
+  const chartDomain: [number, number] = [
+    Math.floor((rawMin - pad) / 1000) * 1000,
+    Math.ceil((rawMax + pad) / 1000) * 1000,
+  ]
+  // Nahe beieinander liegende Marker einer Spur vertikal versetzen.
+  const scatterData = (['1', '2'] as const).flatMap((t) => {
+    const on = allMarkers.filter((m) => String(m.track) === t).sort((a, b) => a.value - b.value)
+    let dir = 1
+    return on.map((m, i) => {
+      const near = i > 0 && Math.abs(m.value - on[i - 1].value) < span * 0.02
+      if (near) dir = -dir
+      const y = Number(t) + (near ? dir * 0.14 : 0)
+      return { x: m.value, y, ...m }
+    })
+  })
+  const fmtK = (v: number) => `${(v / 1000).toFixed(0)}k`
 
   return (
     <>
       {/* ── Recommendation View ── */}
       {resultsView === 'empfehlung' && (
         <div className="space-y-5 animate-in fade-in duration-300">
-          {/* B6: Segment-/Kraftstoff-Trend — eine kompakte, scannbare Zeile */}
-          {segment && (() => {
-            const dir = segment.segmentTrendDirection
-            const TrendIcon = dir === 'up' ? TrendingUp : dir === 'down' ? TrendingDown : Minus
-            const fuelLabel = segment.kraftstoffart.charAt(0).toUpperCase() + segment.kraftstoffart.slice(1)
-            return (
-              <div
-                className={`flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border px-4 py-2.5 text-xs ${
-                  segment.caution
-                    ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20'
-                    : 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/15'
-                }`}
-              >
-                <TrendIcon className={`h-4 w-4 ${segment.caution ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
-                <Badge variant="secondary" className="text-[10px]">{segment.segment}</Badge>
-                <span className={`font-medium ${segment.caution ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
-                  {fuelLabel}-Trend {dir === 'up' ? 'steigend' : dir === 'down' ? 'rückläufig' : 'seitwärts'}
-                </span>
-                {segment.caution && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-                    <AlertTriangle className="h-3 w-3" />
-                    Kraftstoff-Trend rückläufig — kritisch prüfen
-                  </span>
-                )}
-              </div>
-            )
-          })()}
+          {/* Segment-/Kraftstoff-Trend — eine kompakte, neutrale Faktenzeile */}
+          {segment &&
+            (() => {
+              const dir = segment.segmentTrendDirection
+              const TrendIcon = dir === 'up' ? TrendingUp : dir === 'down' ? TrendingDown : Minus
+              return (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border border-border/60 bg-muted/30 px-4 py-2.5 text-xs">
+                  <TrendIcon className="h-4 w-4 text-muted-foreground" />
+                  <Badge variant="secondary" className="text-[10px]">
+                    {segment.segment}
+                  </Badge>
+                  <span className="text-muted-foreground">{segment.segmentTrendLabel}</span>
+                </div>
+              )
+            })()}
 
-          {/* Hero Price Card */}
+          {/* Verwertungskanal-Strip (nur PKW) — über der Hero-Karte, die er steuert */}
+          {channelStrip}
+
+          {/* Hero — transparente EK-Rechnung (Ziel-EK aus VK − Zielmarge) */}
           <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
             <CardContent className="p-6 sm:p-8">
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-6 items-center">
                 <div className="text-center lg:text-left">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                    Empfohlener Einkaufspreis
+                    Ziel-Einkaufspreis
                   </p>
                   <div className="flex items-baseline gap-2 justify-center lg:justify-start">
                     <span className="text-4xl sm:text-5xl font-bold tracking-tight tabular-nums">
-                      {formatCurrency(result.sweetSpot)}
+                      {formatCurrency(derivedEk)}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Bandbreite: {formatCurrency(result.recommendedMin)} &ndash; {formatCurrency(result.recommendedMax)}
+                    Engine-Spanne: {formatCurrency(result.recommendedMin)} &ndash; {formatCurrency(result.recommendedMax)}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+                    {formatCurrency(vkBasis)} {vkLabel} &minus; {targetMarginPct.toFixed(1)}% ={' '}
+                    <span className="font-medium text-foreground">{formatCurrency(derivedEk)}</span>
+                  </p>
+
+                  {/* Zielmarge-Regler */}
+                  <div className="mt-3 flex items-center gap-3 justify-center lg:justify-start">
+                    <span className="text-xs font-medium whitespace-nowrap">Zielmarge (auf VK)</span>
+                    <input
+                      type="range"
+                      min={mMin}
+                      max={mMax}
+                      step={0.5}
+                      value={targetMarginPct}
+                      onChange={(e) => setTargetMarginPct(Number(e.target.value))}
+                      className="w-36 accent-primary"
+                      aria-label="Zielmarge"
+                    />
+                    <span className="text-sm font-bold tabular-nums w-12 text-right">{targetMarginPct.toFixed(1)}%</span>
+                  </div>
+
+                  {/* Fakten-Chips */}
                   <div className="flex flex-wrap items-center gap-2 mt-3 justify-center lg:justify-start">
-                    {/* E1: Kauf-/Nicht-Kauf-Ampel */}
-                    {result.buyDecision && (
-                      <Badge
-                        variant="secondary"
-                        className={`text-xs font-semibold ${buyRecommendationConfig[result.buyDecision.recommendation].badge}`}
-                      >
-                        <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${buyRecommendationConfig[result.buyDecision.recommendation].dot}`} />
-                        {buyRecommendationConfig[result.buyDecision.recommendation].label}
-                      </Badge>
-                    )}
-                    {/* E2: Begründungstyp */}
-                    {result.buyDecision && (
-                      <Badge variant="outline" className="text-xs border-border/60">
-                        {reasoningTypeLabel[result.buyDecision.reasoningType]}
-                      </Badge>
-                    )}
-                    {/* E3: Paket-Rolle (nur im Paket-Kontext) */}
-                    {result.packageRole && (
-                      <Badge variant="secondary" className={`text-xs ${packageRoleConfig[result.packageRole].badge}`}>
-                        {packageRoleConfig[result.packageRole].label}
-                      </Badge>
-                    )}
-                    <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                      {result.confidence}% Konfidenz
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      {result.marketPosition.label}
-                    </Badge>
-                    <Badge variant="secondary" className={`text-xs ${accentClass}`}>
+                    <Badge variant="secondary" className={`text-xs ${neutralBadge}`}>
                       {isAuction ? <Gavel className="h-3 w-3 mr-1" /> : null}
                       {L.tag}
                     </Badge>
+                    {result.marketPosition?.percentile != null && (
+                      <Badge variant="secondary" className="text-xs">
+                        EK im {result.marketPosition.percentile}. Perzentil der Regionalangebote
+                      </Badge>
+                    )}
                   </div>
-                  {/* E2: Begründungstext */}
-                  {result.buyDecision && (
-                    <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto lg:mx-0">
-                      {result.buyDecision.rationale}
-                    </p>
-                  )}
                 </div>
 
                 <Separator orientation="vertical" className="hidden lg:block h-24" />
                 <Separator className="lg:hidden" />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">{L.sellLabel}</p>
-                    <p className="text-xl font-bold tabular-nums mt-0.5">{formatCurrency(sellPrice)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">{L.spreadLabel}</p>
-                    <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-                      {formatCurrency(spread)}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Ø Marge (historisch)</p>
-                    <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-                      {result.historical.averageMarginPercent.toFixed(1)}%
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">{L.standzeitLabel}</p>
-                    <p className="text-xl font-bold tabular-nums mt-0.5">
-                      {result.historical.averageDaysOnLot.toFixed(0)} Tage
-                    </p>
-                  </div>
+                  <HeroStat label={L.sellLabel} value={formatCurrency(sellPrice)} />
+                  <HeroStat
+                    label={`${isAuction ? 'Spread' : 'Marge'} bei diesem EK`}
+                    value={formatCurrency(derivedMarginEur)}
+                    tone="emerald"
+                  />
+                  <HeroStat
+                    label="Ø Marge (Historie)"
+                    value={`${result.historical.averageMarginPercent.toFixed(1)}%`}
+                    tone="emerald"
+                  />
+                  <HeroStat label={L.standzeitLabel} value={`${result.historical.averageDaysOnLot.toFixed(0)} Tage`} />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Markt im Umkreis: Angebot vs. Nachfrage + Klartext-Ankauf-Timing (8 Wochen) */}
+          {/* Markt im Umkreis: Angebot (mobile.de) vs. Nachfrage (KBA) — nur Fakten */}
           {regional && markt && (
             <Card className="border-border/60">
               <CardHeader className="pb-3">
@@ -271,7 +366,6 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                       {DATA_WINDOW_LABEL}
                     </Badge>
                   </CardTitle>
-                  {/* Standort + Radius-Umschalter */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">Umkreis {regional.location}</span>
                     <div className="flex gap-1 rounded-lg border bg-muted p-1">
@@ -291,35 +385,45 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Verdict-Zeile: farbiger Punkt + Klartext-Fazit zum Ankauf-Timing */}
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
-                  <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${marktDotClass}`} />
-                  <span className="text-sm font-semibold">{markt.verdict.headline}</span>
-                  <span className="w-full text-xs text-muted-foreground sm:w-auto sm:flex-1">
-                    {markt.verdict.sentence}
+                {/* Neutrale Relations-Zeile: mobile.de-Angebot neben KBA-Nachfrage */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-xs">
+                  <span className="text-muted-foreground">
+                    Angebot (mobile.de):{' '}
+                    <span className="font-semibold text-foreground tabular-nums">{markt.angebot.current}</span> vergleichbare
+                    &middot; Ø {markt.standtage} Tage Standzeit
+                  </span>
+                  <span className="hidden text-border sm:inline">&middot;</span>
+                  <span className="text-muted-foreground">
+                    Nachfrage (KBA):{' '}
+                    <span className="font-semibold text-foreground tabular-nums">{markt.nachfrage.umschlagsrate}%</span>{' '}
+                    Umschlagsrate &middot; {markt.nachfrage.besitzumschreibungen} Umschreibungen / 8 Wo.
                   </span>
                 </div>
 
-                {/* Angebot vs. Nachfrage — zwei klar getrennte Blöcke */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* ANGEBOT (Supply) */}
+                  {/* ANGEBOT (Quelle mobile.de) */}
                   <div className="rounded-xl border border-border/60 p-4 space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Angebot</p>
-                      <TrendArrow dir={markt.angebot.direction} pct={markt.angebot.changePercent} />
+                      <div className="flex items-center gap-2">
+                        <TrendArrow dir={markt.angebot.direction} pct={markt.angebot.changePercent} />
+                        <Badge variant="outline" className="text-[10px] border-border/60 font-normal">
+                          Quelle: mobile.de
+                        </Badge>
+                      </div>
                     </div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-bold tabular-nums">{markt.angebot.current}</span>
                       <span className="text-xs text-muted-foreground">vergleichbare Fahrzeuge</span>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
-                      <span>Ø {markt.standtage} Tage Standzeit</span>
+                      <span>Median VK {formatCurrency(result.mobileDe.medianPrice)}</span>
                       <span>
                         {formatCurrency(regional.priceRange.min)} &ndash; {formatCurrency(regional.priceRange.max)}
                       </span>
+                      <span>Ø {markt.standtage} Tage Standzeit</span>
                     </div>
 
-                    {/* 8-Wochen-Angebotskurve mit beschrifteten Achsen */}
                     <div>
                       <p className="text-[10px] text-muted-foreground mb-1">
                         Angebot im Umkreis &mdash; letzte 8 Wochen (Anzahl vergleichbarer Inserate)
@@ -342,17 +446,8 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                               tickLine={false}
                               axisLine={false}
                             />
-                            <XAxis
-                              dataKey="week"
-                              interval={1}
-                              tick={{ fontSize: 9 }}
-                              tickLine={false}
-                              axisLine={false}
-                            />
-                            <RechartsTooltip
-                              formatter={(v) => [`${v} Inserate`, 'Angebot']}
-                              labelStyle={{ fontWeight: 600 }}
-                            />
+                            <XAxis dataKey="week" interval={1} tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
+                            <RechartsTooltip formatter={(v) => [`${v} Inserate`, 'Angebot']} labelStyle={{ fontWeight: 600 }} />
                             <Area
                               type="monotone"
                               dataKey="value"
@@ -367,37 +462,28 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                     </div>
                   </div>
 
-                  {/* NACHFRAGE (Demand) */}
+                  {/* NACHFRAGE (Quelle KBA) */}
                   <div className="rounded-xl border border-border/60 p-4 space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Nachfrage</p>
-                      <TrendArrow dir={markt.nachfrage.direction} pct={markt.nachfrage.changePercent} />
+                      <div className="flex items-center gap-2">
+                        <TrendArrow dir={markt.nachfrage.direction} pct={markt.nachfrage.changePercent} />
+                        <Badge variant="outline" className="text-[10px] border-border/60 font-normal">
+                          Quelle: KBA
+                        </Badge>
+                      </div>
                     </div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-bold tabular-nums">{markt.nachfrage.umschlagsrate}%</span>
                       <span className="text-xs text-muted-foreground">Umschlagsrate / 8 Wo.</span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground tabular-nums">
-                      {markt.nachfrage.besitzumschreibungen} Besitzumschreibungen im Umkreis
-                    </p>
-                    {demand && (
-                      <Badge
-                        variant="secondary"
-                        className={`text-[11px] ${
-                          demand.umschlagsrate >= 8
-                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-                            : demand.umschlagsrate >= 4
-                              ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
-                              : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'
-                        }`}
-                      >
-                        {umschlagLabel(demand.umschlagsrate)}
-                      </Badge>
-                    )}
-                    <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                      <p className="text-[11px] text-muted-foreground">Ø Angebotspreis (Region)</p>
-                      <p className="text-lg font-bold tabular-nums mt-0.5">{formatCurrency(regional.avgOfferPrice)}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
+                      <span>{markt.nachfrage.besitzumschreibungen} Besitzumschreibungen</span>
+                      {demand && <span>Bestand {demand.regionalerBestand.toLocaleString('de-DE')}</span>}
                     </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Umschlagsrate = Besitzumschreibungen &divide; regionaler Bestand (letzte 8 Wochen).
+                    </p>
                   </div>
                 </div>
 
@@ -417,70 +503,19 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
             </Card>
           )}
 
-          {/* C1/C2: Zielmarge → empfohlener EK (rückwärts aus regionalem VK), reaktiv */}
-          {regional && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Calculator className="h-4 w-4 text-muted-foreground" />
-                  Preis- & Margenkalkulation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-sm font-medium">Zielmarge (auf VK)</span>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={5}
-                      max={15}
-                      step={0.5}
-                      value={targetMarginPct}
-                      onChange={(e) => setTargetMarginPct(Number(e.target.value))}
-                      className="w-44 accent-primary"
-                      aria-label="Zielmarge"
-                    />
-                    <span className="text-sm font-bold tabular-nums w-12 text-right">{targetMarginPct.toFixed(1)}%</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                    <p className="text-[11px] text-muted-foreground">Regionaler VK (Basis)</p>
-                    <p className="text-lg font-bold tabular-nums mt-0.5">{formatCurrency(regionalVk)}</p>
-                  </div>
-                  <div className="rounded-lg border border-primary/30 bg-primary/[0.04] p-3">
-                    <p className="text-[11px] text-muted-foreground">Empfohlener EK (= VK − Marge)</p>
-                    <p className="text-lg font-bold tabular-nums mt-0.5">{formatCurrency(derivedEk)}</p>
-                  </div>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                    <p className="text-[11px] text-muted-foreground">Erwartete Marge</p>
-                    <p className="text-lg font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(derivedMarginEur)} <span className="text-xs font-medium">({targetMarginPct.toFixed(1)}%)</span>
-                    </p>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Engine-Empfehlung (EK): {formatCurrency(result.sweetSpot)} &middot; die Zielmarge rechnet den EK rückwärts aus dem regionalen Marktpreis (reagiert auf Radius &amp; Zielmarge).
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ── Transporter-Modus: Nischen-, Saison- & Beobachtungslogik (G2–G5, B7) ── */}
+          {/* ── Transporter-Modus: Nischen-, Saison- & Beobachtungsfakten ── */}
           {transporter && (
             <div className="space-y-5">
-              {/* B7: Neuzulassungs-Frühindikator */}
-              {neuzulassungHinweis && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs dark:border-amber-800 dark:bg-amber-950/20">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                  <div>
-                    <span className="font-semibold">Neuzulassungs-Frühindikator</span>
-                    <p className="text-muted-foreground">{neuzulassungHinweis}</p>
-                  </div>
+              {/* Neuzulassungs-Frühindikator (neutrale Zahl) */}
+              {neuzulassungPct != null && (
+                <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-4 py-2.5 text-xs">
+                  <span className="font-medium">Neuzulassungen (Segment)</span>
+                  <TrendArrow dir={neuzulassungPct >= 0 ? 'up' : 'down'} pct={neuzulassungPct} />
+                  <span className="text-muted-foreground">im Quartal</span>
                 </div>
               )}
 
-              {/* G2: Saisonale Nachfrage (Sommer/Winter) */}
+              {/* Saisonale Nachfrage (Sommer/Winter) */}
               {seasonal && (
                 <Card className="border-border/60">
                   <CardHeader className="pb-2">
@@ -488,11 +523,17 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                       <CardTitle className="text-base flex items-center gap-2">
                         <Sun className="h-4 w-4 text-amber-500" />
                         Saisonale Nachfrage
-                        <Badge variant="secondary" className="text-[10px]">Umkreis {seasonal.region}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          Umkreis {seasonal.region}
+                        </Badge>
                       </CardTitle>
                       <div className="flex items-center gap-3 text-xs font-medium">
-                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"><Sun className="h-3.5 w-3.5" /> Sommer {seasonal.summerIndex}</span>
-                        <span className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400"><Snowflake className="h-3.5 w-3.5" /> Winter {seasonal.winterIndex}</span>
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <Sun className="h-3.5 w-3.5" /> Sommer {seasonal.summerIndex}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400">
+                          <Snowflake className="h-3.5 w-3.5" /> Winter {seasonal.winterIndex}
+                        </span>
                       </div>
                     </div>
                   </CardHeader>
@@ -512,81 +553,61 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">{seasonal.note}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Index 100 = Jahresschnitt &middot; Sommer {seasonal.summerIndex} / Winter {seasonal.winterIndex}
+                    </p>
                   </CardContent>
                 </Card>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* G3: Nischen-/Ausstattungsabdeckung */}
-                {coverage && coverage.length > 0 && (
-                  <Card className="border-border/60">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Boxes className="h-4 w-4 text-muted-foreground" />
-                        Nischen-Abdeckung im Umkreis
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {coverage.map((c) => (
-                        <div key={c.feature} className="flex items-center justify-between gap-2 text-sm">
-                          <span className="truncate">{c.feature}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs text-muted-foreground tabular-nums">{c.comparableInRegion}× in Region</span>
-                            <Badge variant="secondary" className={`text-[10px] ${rarityConfig[c.rarity].badge}`}>
-                              {rarityConfig[c.rarity].label}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* G4: Vorratskauf (lange Standzeit unkritisch) */}
-                {vorrat && (
-                  <Card className="border-border/60">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                        Vorratskauf
-                        {vorrat.recommended && (
-                          <Badge variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                            empfohlen
+              {/* Nischen-/Ausstattungsabdeckung im Umkreis (volle Breite) */}
+              {coverage && coverage.length > 0 && (
+                <Card className="border-border/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Boxes className="h-4 w-4 text-muted-foreground" />
+                      Nischen-Abdeckung im Umkreis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {coverage.map((c) => (
+                      <div key={c.feature} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="truncate">{c.feature}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-foreground tabular-nums">{c.comparableInRegion}× in Region</span>
+                          <Badge variant="secondary" className={`text-[10px] ${neutralBadge}`}>
+                            {rarityLabel[c.rarity]}
                           </Badge>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <p className="text-sm text-muted-foreground">{vorrat.note}</p>
-                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
-                        <Clock className="h-3.5 w-3.5" />
-                        Lange Standzeit wird im Transporter-Modus nicht negativ gewertet.
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
-              {/* G5: Was kaufen andere Mercedes-Händler aktuell ein? (Frühindikator, nur Beobachtung) */}
+              {/* Was Mercedes-Händler aktuell einkaufen (Fakten: Count + Trend-Token) */}
               {dealerSignals && dealerSignals.length > 0 && (
                 <Card className="border-border/60">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
                       <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                       Was Mercedes-Händler aktuell einkaufen
-                      <Badge variant="outline" className="text-[10px] border-border/60">nur Beobachtung</Badge>
+                      <Badge variant="outline" className="text-[10px] border-border/60">
+                        nur Beobachtung
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {dealerSignals.map((s) => (
-                      <div key={s.model} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium truncate">{s.model}</span>
-                            <TrendArrow dir={s.trend} pct={s.trend === 'up' ? 8 : s.trend === 'down' ? -8 : 0} />
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">{s.note}</p>
+                      <div
+                        key={s.model}
+                        className="flex items-center justify-between gap-3 border-b border-border/40 pb-2.5 last:border-0 last:pb-0"
+                      >
+                        <div className="min-w-0 flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">{s.model}</span>
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            Trend: {s.trend === 'up' ? 'steigend' : s.trend === 'down' ? 'rückläufig' : 'stabil'}
+                          </span>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-lg font-bold tabular-nums">{s.dealersBuying}</p>
@@ -595,7 +616,7 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                       </div>
                     ))}
                     <p className="text-[10px] text-muted-foreground">
-                      Nachfrage-Frühindikator aus Auktions-/Großhandelssignalen — reine Beobachtung, kein automatisches Bieten.
+                      Quelle: Auktions-/Großhandelssignale (Demo) — reine Beobachtung, kein automatisches Bieten.
                     </p>
                   </CardContent>
                 </Card>
@@ -603,112 +624,104 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
             </div>
           )}
 
-          {/* Optional inserted block (e.g. Listenplatz-Rechner) */}
+          {/* Optional inserted block (z.B. Listenplatz-Rechner) */}
           {empfehlungInsert}
 
-          {/* Three Source Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="border-border/60 hover:shadow-md transition-shadow opacity-80">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium">{L.histTitle}</span>
-                    <p className="text-[10px] text-muted-foreground">
-                      {result.historical.sales.length} {isAuction ? 'Einlieferungen' : 'Verkäufe'}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-2xl font-bold tabular-nums">{formatCurrency(result.historical.averageSalePrice)}</div>
-                <p className="text-xs text-muted-foreground">{isAuction ? 'Ø Zuschlagserlös' : 'Ø Verkaufspreis'}</p>
-                <div className="mt-3 pt-2.5 border-t border-border/40">
-                  <span className="text-xs text-muted-foreground">
-                    Ø {result.historical.averageDaysOnLot.toFixed(0)} Tage {isAuction ? 'bis Zuschlag' : 'Standzeit'}
-                  </span>
-                  <p className="text-[10px] italic text-muted-foreground/80 mt-1">{SECONDARY_REFERENCE_NOTE}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/60 hover:shadow-md transition-shadow opacity-80">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-8 w-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium">{L.datTitle}</span>
-                    <p className="text-[10px] text-muted-foreground">{isAuction ? 'Händler-EK' : 'Offiziell'}</p>
-                  </div>
-                </div>
-                <div className="text-2xl font-bold tabular-nums">{formatCurrency(result.dat.adjustedValue)}</div>
-                <p className="text-xs text-muted-foreground">{L.datSub}</p>
-                <div className="mt-3 pt-2.5 border-t border-border/40">
-                  <span className="text-xs text-muted-foreground">
-                    Basis {formatCurrency(result.dat.baseValue)} + {result.dat.adjustments.length} Korrekturen
-                  </span>
-                  <p className="text-[10px] italic text-muted-foreground/80 mt-1">{SECONDARY_REFERENCE_NOTE}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/60 hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-8 w-8 rounded-lg bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center">
-                    {isAuction ? (
-                      <Gavel className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                    ) : (
-                      <Globe className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium">{L.source3Title}</span>
-                    <p className="text-[10px] text-muted-foreground">
-                      {result.mobileDe.count} {isAuction ? 'Referenzen' : 'Angebote'}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-2xl font-bold tabular-nums">{formatCurrency(sellPrice)}</div>
-                <p className="text-xs text-muted-foreground">{L.source3Sub}</p>
-                <div className="mt-3 pt-2.5 border-t border-border/40">
-                  <span className="text-xs text-muted-foreground">
-                    {formatCurrency(result.mobileDe.lowestPrice)} &ndash; {formatCurrency(result.mobileDe.highestPrice)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Referenzwerte (nachrangige Quellen: DAT + eigene Historie) */}
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <ReferenceColumn
+                icon={<ShieldCheck className="h-4 w-4" />}
+                title={L.datTitle}
+                tag={isAuction ? 'Händler-EK' : 'Offiziell'}
+                rows={[
+                  [L.datSub, formatCurrency(result.dat.adjustedValue)],
+                  ['Grundwert', formatCurrency(result.dat.baseValue)],
+                  [
+                    'Korrekturen',
+                    `${result.dat.adjustments.length} · ${result.dat.totalAdjustment >= 0 ? '+' : ''}${formatCurrency(result.dat.totalAdjustment)}`,
+                  ],
+                  ['Stand', formatDate(result.dat.valuationDate)],
+                ]}
+              />
+              <ReferenceColumn
+                icon={<Clock className="h-4 w-4" />}
+                title={L.histTitle}
+                tag="Referenz"
+                rows={[
+                  ['Ø VK', formatCurrency(result.historical.averageSalePrice)],
+                  [
+                    'Ø Marge',
+                    `${formatCurrency(result.historical.averageMargin)} (${result.historical.averageMarginPercent.toFixed(1)}%)`,
+                    true,
+                  ],
+                  [L.standzeitLabel, `${result.historical.averageDaysOnLot.toFixed(0)} Tage`],
+                  [isAuction ? 'Einlieferungen' : 'Verkäufe', String(result.historical.sales.length)],
+                ]}
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2">
+              Nachrangige Referenz &middot; {SECONDARY_REFERENCE_NOTE}. Primärvergleich (mobile.de ↔ KBA) siehe „Markt im
+              Umkreis“.
+            </p>
           </div>
 
-          {/* Chart */}
+          {/* Preisvergleich — Zahlenstrahl: Einkauf-Seite vs. VK/Markt-Seite */}
           <Card className="border-border/60">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 Preisvergleich
+                <span className="text-xs font-normal text-muted-foreground">— Einkauf-Seite vs. VK/Markt-Seite</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30, top: 10, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                  <XAxis
-                    type="number"
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                    tick={{ fontSize: 11 }}
-                    domain={domain}
+            <CardContent>
+              <div className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ left: 8, right: 24, top: 16, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" dataKey="x" domain={chartDomain} tickFormatter={fmtK} tick={{ fontSize: 11 }} />
+                    <YAxis
+                      type="number"
+                      dataKey="y"
+                      domain={[0.4, 2.6]}
+                      ticks={[1, 2]}
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(v) => (v === 1 ? 'EINKAUF' : isAuction ? 'AUKTION' : 'VK / MARKT')}
+                      width={72}
+                    />
+                    <ReferenceArea
+                      x1={Math.min(derivedEk, vkBasis)}
+                      x2={Math.max(derivedEk, vkBasis)}
+                      y1={0.4}
+                      y2={2.6}
+                      fill={derivedMarginEur >= 0 ? MARGIN_POS : MARGIN_NEG}
+                      fillOpacity={0.08}
+                    />
+                    <ReferenceLine x={derivedEk} stroke={EK_COLOR} strokeDasharray="4 3" />
+                    <Scatter data={scatterData} shape={<PriceMarkerDot />}>
+                      <LabelList dataKey="x" position="top" formatter={(v) => formatCurrency(Number(v))} style={{ fontSize: 10 }} />
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Faktische Legende (kein Verdict) */}
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                {allMarkers.map((m) => (
+                  <span key={m.label} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="h-2 w-2 rounded-full" style={{ background: m.track === 1 ? EK_COLOR : VK_COLOR }} />
+                    <span className="font-medium text-foreground">{m.label}</span> — {m.meaning}
+                  </span>
+                ))}
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span
+                    className="h-2 w-3 rounded-sm"
+                    style={{ background: derivedMarginEur >= 0 ? MARGIN_POS : MARGIN_NEG, opacity: 0.3 }}
                   />
-                  <YAxis type="category" dataKey="source" tick={{ fontSize: 11 }} width={130} />
-                  <RechartsTooltip formatter={(v) => formatCurrency(Number(v))} labelStyle={{ fontWeight: 600 }} />
-                  <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={32}>
-                    {chartData.map((_, index) => (
-                      <Cell key={index} fill={chartColors[index]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                  <span className="font-medium text-foreground">Marge-Korridor</span> — Ziel-EK ↔ VK ={' '}
+                  {formatCurrency(derivedMarginEur)}
+                </span>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -717,6 +730,9 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
       {/* ── Detail View ── */}
       {resultsView === 'details' && (
         <div className="space-y-5 animate-in fade-in duration-300">
+          {/* Verwertungskanal-Strip (nur PKW) */}
+          {channelStrip}
+
           {/* Historical */}
           <Card className="border-border/60">
             <CardHeader className="pb-3">
@@ -791,8 +807,11 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                     <span>{adj.label}</span>
                     <p className="text-[10px] text-muted-foreground">{adj.reason}</p>
                   </div>
-                  <span className={`font-medium tabular-nums shrink-0 ml-4 ${adj.amount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                    {adj.amount >= 0 ? '+' : ''}{formatCurrency(adj.amount)}
+                  <span
+                    className={`font-medium tabular-nums shrink-0 ml-4 ${adj.amount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}
+                  >
+                    {adj.amount >= 0 ? '+' : ''}
+                    {formatCurrency(adj.amount)}
                   </span>
                 </div>
               ))}
@@ -802,7 +821,8 @@ export function SingleVehicleResult({ result, resultsView, channel: channelProp,
                 <span className="text-lg font-bold tabular-nums">{formatCurrency(result.dat.adjustedValue)}</span>
               </div>
               <p className="text-[10px] text-muted-foreground pt-1">
-                Zustand: {result.dat.condition} &middot; Schwacke-ID: {result.dat.schwackeId} &middot; Stand: {formatDate(result.dat.valuationDate)}
+                Zustand: {result.dat.condition} &middot; Schwacke-ID: {result.dat.schwackeId} &middot; Stand:{' '}
+                {formatDate(result.dat.valuationDate)}
               </p>
             </CardContent>
           </Card>
